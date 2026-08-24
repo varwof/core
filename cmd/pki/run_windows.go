@@ -8,7 +8,6 @@ package main
 import (
 	"os"
 	"os/exec"
-	"syscall"
 )
 
 // execBinary runs binary as a child process on Windows (no execve semantics),
@@ -23,9 +22,6 @@ func execBinary(binary string, args []string) error {
 		return nil
 	}
 	if ee, ok := err.(*exec.ExitError); ok {
-		if code, ok := ee.Sys().(syscall.WaitStatus); ok {
-			os.Exit(int(code))
-		}
 		os.Exit(ee.ExitCode())
 	}
 	return err

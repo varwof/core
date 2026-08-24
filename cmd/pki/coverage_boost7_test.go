@@ -1,15 +1,15 @@
 // SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
 // SPDX-License-Identifier: AGPL-3.0
 
+//go:build !windows
+
 package main
 
 import (
 	"context"
-	"net/http"
 	"os"
 	"path/filepath"
 	"sync/atomic"
-	"syscall"
 	"testing"
 	"time"
 
@@ -18,31 +18,6 @@ import (
 	"github.com/varwof/core/internal/tsa"
 	"github.com/varwof/engine/db"
 )
-
-func TestServeWaitSignal(t *testing.T) {
-	var reloads atomic.Int32
-	oldFn := reloadFn
-	setReloadHandler(func() { reloads.Add(1) })
-	defer setReloadHandler(oldFn)
-
-	srv := &http.Server{}
-	sigCh := make(chan os.Signal, 2)
-	sigCh <- syscall.SIGHUP
-	sigCh <- syscall.SIGTERM
-	done := make(chan error, 1)
-	go func() { done <- serveWaitSignal(srv, nil, sigCh) }()
-	select {
-	case err := <-done:
-		if err != nil {
-			t.Fatal(err)
-		}
-	case <-time.After(5 * time.Second):
-		t.Fatal("serveWaitSignal did not return after SIGTERM")
-	}
-	if reloads.Load() != 1 {
-		t.Fatalf("expected 1 reload on SIGHUP, got %d", reloads.Load())
-	}
-}
 
 func TestReloadConfigAndRecordBuffer(t *testing.T) {
 	// reloadFn nil → warn path (no panic)

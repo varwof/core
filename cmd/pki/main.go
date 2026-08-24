@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"log/syslog"
 	"os"
 	"strings"
 
@@ -327,7 +326,7 @@ func initLogFormat(format, dest string, verbose bool) {
 	case dest == "" || dest == "stderr":
 		// default
 	case dest == "syslog":
-		sw, err := syslog.New(syslog.LOG_INFO|syslog.LOG_DAEMON, "varwof-core")
+		sw, err := openSyslogWriter()
 		if err != nil {
 			slog.Warn("log: syslog unavailable, falling back to stderr", "error", err)
 		} else {
