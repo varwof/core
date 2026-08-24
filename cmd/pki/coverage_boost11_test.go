@@ -322,6 +322,7 @@ func TestStartServersTLSAndOptions(t *testing.T) {
 	stopCRL()
 	stopTSARenewal()
 	stopAuditSaltRetirement()
+	stopRecordBuffer()
 	if httpServer != nil {
 		httpServer.Close()
 	}
@@ -364,6 +365,7 @@ func TestReloadConfigNowWithMuxesRunning(t *testing.T) {
 	stopCRL()
 	stopTSARenewal()
 	stopAuditSaltRetirement()
+	stopRecordBuffer()
 	if httpServer != nil {
 		httpServer.Close()
 	}
@@ -424,6 +426,7 @@ func TestReloadKeepEngineOnSameDB(t *testing.T) {
 	stopCRL()
 	stopTSARenewal()
 	stopAuditSaltRetirement()
+	stopRecordBuffer()
 	if httpServer != nil {
 		httpServer.Close()
 	}
@@ -484,6 +487,7 @@ func TestReloadRebuildsEngineOnChangedDB(t *testing.T) {
 	stopCRL()
 	stopTSARenewal()
 	stopAuditSaltRetirement()
+	stopRecordBuffer()
 	if httpServer != nil {
 		httpServer.Close()
 	}

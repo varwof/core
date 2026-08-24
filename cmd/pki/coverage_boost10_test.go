@@ -154,6 +154,7 @@ func TestStartServersSuccess(t *testing.T) {
 	stopCRL()
 	stopTSARenewal()
 	stopAuditSaltRetirement()
+	stopRecordBuffer() // closes the WAL file; must run before TempDir cleanup
 	if httpServer != nil {
 		httpServer.Close()
 	}
