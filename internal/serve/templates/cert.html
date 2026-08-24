@@ -1,0 +1,32 @@
+{{define "cert.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{.Title}}</title>
+<link rel="stylesheet" href="/pki/pki.css">
+</head>
+<body>
+<nav><a href="/">{{t "template.nav_home"}}</a> &middot; <a href="/dashboard">{{t "template.nav_dashboard"}}</a> &middot; <a href="/cas">{{t "template.nav_cas"}}</a> &middot; <a href="/certs">{{t "template.nav_certs"}}</a> &middot; <a href="/topology">{{t "template.nav_topology"}}</a></nav>
+<h1>{{t "template.heading_cert_detail"}}</h1>
+{{if .Certs}}
+{{with index .Certs 0}}
+<table>
+<tbody>
+<tr><td>{{t "template.serial_label"}}</td><td><code>{{.SerialNumber}}</code></td></tr>
+<tr><td>{{t "template.cn_label"}}</td><td>{{.CommonName}}</td></tr>
+<tr><td>{{t "template.ca_label"}}</td><td><a href="/ca/{{.CAName}}">{{.CAName}}</a></td></tr>
+<tr><td>{{t "template.status_label"}}</td><td class="badge-{{.StatusBadge}}">{{.Status}}</td></tr>
+<tr><td>{{t "template.not_before_label"}}</td><td>{{.NotBefore}}</td></tr>
+<tr><td>{{t "template.not_after_label"}}</td><td>{{.NotAfter}}</td></tr>
+</tbody>
+</table>
+{{end}}
+<p><a href="/api/cert/{{(index .Certs 0).CAName}}/{{(index .Certs 0).SerialNumber}}">{{t "template.link_json"}}</a></p>
+{{else}}
+<p>{{t "template.cert_not_found"}}</p>
+{{end}}
+</body>
+</html>
+{{end}}

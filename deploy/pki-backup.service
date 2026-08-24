@@ -1,0 +1,16 @@
+[Unit]
+Description=pki — Database Backup
+Documentation=https://github.com/varwof/pki
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/pki-backup
+User=pki
+DynamicUser=yes
+StateDirectory=pki
+ReadWritePaths=/var/lib/pki
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=true

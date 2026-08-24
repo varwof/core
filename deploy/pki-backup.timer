@@ -1,0 +1,11 @@
+[Unit]
+Description=pki — Daily Database Backup
+Documentation=https://github.com/varwof/pki
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=1h
+
+[Install]
+WantedBy=timers.target

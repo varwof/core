@@ -1,0 +1,41 @@
+agentd
+*.crl
+*.csr
+*.db
+*.db-shm
+*.db-wal
+.DS_Store
+*.key
+*.out
+*.p7s
+*.pem
+*.pfx
+/pki
+pki-core-new
+.svn/
+*.test
+Thumbs.db
+/tmp/
+
+# build/test artifacts
+*.tar.gz
+pki.exe
+*.exe
+
+# binaries (build outputs, not source)
+/pki-core
+/k8s-issuer/k8s-issuer
+
+# SQLite DSN accidentally created as filename (go-sqlite3 pragma)
+*?_pragma=journal_mode*_pragma=busy_timeout*
+
+# generated compliance report artifacts
+cmd/pki/compliance-soc2-*.pdf
+
+# Local state
+/.lego/
+/.opencode/
+/AGENT.md
+/AGENT_EN.md
+/CLAUDE.md
+/.claude/

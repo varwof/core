@@ -1,0 +1,36 @@
+{{define "index.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{.Title}}</title>
+<link rel="stylesheet" href="/pki/pki.css">
+</head>
+<body>
+<nav><a href="/">{{t "template.nav_home"}}</a> &middot; <a href="/dashboard">{{t "template.nav_dashboard"}}</a> &middot; <a href="/cas">{{t "template.nav_cas"}}</a> &middot; <a href="/certs">{{t "template.nav_certs"}}</a> &middot; <a href="/topology">{{t "template.nav_topology"}}</a> &middot; <a href="/api/cas">{{t "template.nav_api"}}</a></nav>
+<h1>{{t "template.heading_dashboard"}}</h1>
+{{if .CAs}}
+<h2>{{t "template.heading_cas"}}</h2>
+<table>
+<thead><tr><th>{{t "template.th_name"}}</th><th>{{t "template.th_subject"}}</th><th>{{t "template.th_algorithm"}}</th><th>{{t "template.th_expires"}}</th><th>{{t "template.th_certs"}}</th></tr></thead>
+<tbody>
+{{range .CAs}}
+<tr>
+  <td><a href="/ca/{{.Name}}">{{.Name}}</a></td>
+  <td>{{.Subject}}</td>
+  <td>{{.KeyAlgorithm}}</td>
+  <td>{{.NotAfter}}</td>
+  <td>{{.CertCount}}</td>
+</tr>
+{{end}}
+</tbody>
+</table>
+{{else}}
+<p>{{t "template.no_cas"}}</p>
+{{end}}
+<hr>
+<p><small>{{t "template.config_version" .Config.Version .Config.DefaultCA}}</small></p>
+</body>
+</html>
+{{end}}

@@ -1,0 +1,13 @@
+{
+  "db": "/home/varwof/src/github/varwof/core/data/pki.db",
+  "defaults": {
+    "ca": "Varwof Issuing CA",
+    "validity": 365
+  },
+  "serve": {
+    "listen": ":4430",
+    "tls_addr": ":4433",
+    "auth_username": "admin",
+    "auth_password": "CHANGE_ME"
+  }
+}

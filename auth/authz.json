@@ -1,0 +1,199 @@
+{
+  "version": "v2",
+  "roles": {
+    "superadmin": {
+      "display_name": "超级管理员",
+      "profiles": ["m-superadmin"],
+      "grants": [
+        "ca:create", "ca:delete",
+        "ca:list", "ca:info",
+        "cert:issue", "cert:revoke", "cert:renew", "cert:batch",
+        "cert:list", "cert:export",
+        "crl:generate",
+        "user:manage", "user:list", "user:revoke-all",
+        "log:read", "log:export",
+        "config:read", "config:write",
+        "report:view", "report:export", "report:generate",
+        "ra:approve", "ra:reject",
+        "cross-cert:issue", "cross-cert:revoke",
+        "webhook:manage",
+        "key:recover",
+        "dns:manage",
+        "trust:import", "trust:list", "trust:delete",
+        "agent:manage",
+        "swagger:view", "web:view"
+      ],
+      "scope": ["Management CA"]
+    },
+    "admin": {
+      "display_name": "管理员",
+      "profiles": ["m-admin"],
+      "grants": [
+        "ca:list", "ca:info",
+        "cert:issue", "cert:revoke", "cert:renew",
+        "cert:list", "cert:export", "cert:batch",
+        "crl:generate",
+        "log:read", "log:export",
+        "report:view", "report:export", "report:generate",
+        "ra:approve", "ra:reject",
+        "cross-cert:issue", "cross-cert:revoke",
+        "webhook:manage",
+        "key:recover",
+        "dns:manage",
+        "trust:import", "trust:list", "trust:delete",
+        "agent:manage",
+        "swagger:view", "web:view"
+      ]
+    },
+    "operator": {
+      "display_name": "运营操作员",
+      "profiles": [],
+      "grants": [
+        "ca:list", "ca:info",
+        "cert:issue", "cert:revoke", "cert:renew",
+        "cert:list", "cert:export", "cert:batch",
+        "crl:generate",
+        "log:read", "log:export",
+        "report:view", "report:export", "report:generate",
+        "ra:approve", "ra:reject",
+        "cross-cert:issue", "cross-cert:revoke",
+        "webhook:manage",
+        "key:recover",
+        "dns:manage",
+        "trust:import", "trust:list", "trust:delete",
+        "agent:manage",
+        "swagger:view", "web:view"
+      ],
+      "scope": ["显式设定"]
+    },
+    "revoker": {
+      "display_name": "自动吊销器",
+      "profiles": ["m-revoker"],
+      "grants": [
+        "ca:list", "ca:info",
+        "cert:list", "cert:revoke",
+        "log:read",
+        "report:view",
+        "web:view"
+      ],
+      "scope": ["*"]
+    },
+    "auditor": {
+      "display_name": "审计员",
+      "profiles": ["m-auditor"],
+      "grants": [
+        "ca:list", "ca:info",
+        "cert:list",
+        "log:read", "log:export",
+        "report:view", "report:export",
+        "swagger:view", "web:view"
+      ]
+    },
+    "readonly": {
+      "display_name": "只读用户",
+      "profiles": ["m-readonly"],
+      "grants": [
+        "ca:list", "ca:info",
+        "cert:list",
+        "swagger:view", "web:view"
+      ]
+    },
+    "console": {
+      "display_name": "控制台用户",
+      "profiles": [],
+      "grants": [
+        "ca:list", "ca:info",
+        "cert:issue", "cert:revoke", "cert:renew",
+        "cert:list", "cert:export",
+        "crl:generate",
+        "log:read",
+        "report:view", "report:generate",
+        "ra:approve", "ra:reject",
+        "trust:list",
+        "swagger:view", "web:view"
+      ],
+      "scope": ["显式设定"]
+    },
+    "auto-renew": {
+      "display_name": "自动续期服务",
+      "profiles": ["m-auto-renew"],
+      "grants": [
+        "ca:list", "ca:info",
+        "cert:list", "cert:renew", "cert:export",
+        "log:read",
+        "web:view"
+      ]
+    },
+    "reporter": {
+      "display_name": "报表用户",
+      "profiles": ["m-reporter"],
+      "grants": [
+        "ca:list", "ca:info",
+        "cert:list",
+        "log:read",
+        "report:view", "report:export", "report:generate",
+        "web:view"
+      ]
+    },
+    "agent": {
+      "display_name": "AI Agent",
+      "profiles": ["agent-proxy"],
+      "grants": ["gateway:*"]
+    },
+    "gateway-admin": {
+      "display_name": "网关管理员",
+      "profiles": [],
+      "grants": ["gateway:*"]
+    },
+    "gateway-reader": {
+      "display_name": "网关只读",
+      "profiles": [],
+      "grants": ["varwof/demo-mysql-v1:SELECT:*"]
+    },
+    "gateway-writer": {
+      "display_name": "网关读写",
+      "profiles": [],
+      "grants": ["varwof/demo-mysql-v1:SELECT:*", "varwof/demo-mysql-v1:INSERT:*", "varwof/demo-mysql-v1:UPDATE:*"]
+    },
+    "gateway-ops": {
+      "display_name": "网关运维",
+      "profiles": [],
+      "grants": ["varwof/demo-mysql-v1:SELECT:*", "varwof/demo-mysql-v1:INSERT:*", "varwof/demo-mysql-v1:UPDATE:*", "varwof/demo-mysql-v1:DELETE:*"]
+    },
+    "gateway-ddl": {
+      "display_name": "网关DDL管理员",
+      "profiles": [],
+      "grants": ["varwof/demo-mysql-v1:SELECT:*", "varwof/demo-mysql-v1:INSERT:*", "varwof/demo-mysql-v1:UPDATE:*", "varwof/demo-mysql-v1:DELETE:*", "varwof/demo-mysql-v1:DDL:*"]
+    }
+  },
+  "ou_mapping": {
+    "SuperAdmin": "superadmin",
+    "admin": "admin",
+    "Admin": "admin",
+    "operator": "operator",
+    "Operator": "operator",
+    "auditor": "auditor",
+    "Auditor": "auditor",
+    "revoker": "revoker",
+    "Revoker": "revoker",
+    "readonly": "readonly",
+    "ReadOnly": "readonly",
+    "console": "console",
+    "Console": "console",
+    "auto-renew": "auto-renew",
+    "AutoRenew": "auto-renew",
+    "reporter": "reporter",
+    "Reporter": "reporter",
+    "gateway:reader": "gateway-reader",
+    "gateway:writer": "gateway-writer",
+    "gateway:ops": "gateway-ops",
+    "gateway:ddl": "gateway-ddl"
+  },
+  "gateway_namespaces": {
+    "gateway:": {
+      "display_name": "网关角色前缀",
+      "prefix": "gateway:",
+      "grants": ["gateway:*"]
+    }
+  }
+}

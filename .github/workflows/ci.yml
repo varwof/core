@@ -1,0 +1,84 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  GOPROXY: https://goproxy.cn,direct
+  GOFLAGS: -buildvcs=false
+  GOSUMDB: sum.golang.org
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+      - run: go mod verify
+      - run: go vet ./...
+
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        go: ['1.26']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+      - run: go build ./...
+      - run: go vet ./...
+      - run: go test -count=1 -short ./...
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+      - run: go build ./...
+      - name: Run tests with coverage
+        run: go test -count=1 -short -coverprofile=coverage.out -covermode=atomic ./...
+      - name: Enforce coverage floor
+        # Regression gate: total -short coverage must stay at or above this
+        # floor. Baseline measured 2026-07-20 = 65.3% (short) / 82.1% (full).
+        run: |
+          TOTAL=$(go tool cover -func=coverage.out | tail -1 | awk '{print $3}' | sed 's/%//')
+          echo "total coverage: ${TOTAL}%"
+          FLOOR=60.0
+          awk -v t="$TOTAL" -v f="$FLOOR" 'BEGIN { if (t+0 < f+0) { print "coverage ${TOTAL}% is below floor ${FLOOR}%"; exit 1 } }'
+          echo "coverage gate passed (>= ${FLOOR}%)"
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.out
+
+  cross-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+      - name: Build linux/amd64
+        run: GOOS=linux GOARCH=amd64 go build -o pki-linux-amd64 ./cmd/pki/
+      - name: Build windows/amd64
+        run: GOOS=windows GOARCH=amd64 go build -o pki-windows-amd64.exe ./cmd/pki/
+      - name: Build linux/arm64
+        run: GOOS=linux GOARCH=arm64 go build -o pki-linux-arm64 ./cmd/pki/
+      - name: Build darwin/amd64
+        run: GOOS=darwin GOARCH=amd64 go build -o pki-darwin-amd64 ./cmd/pki/
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pki-binaries
+          path: pki-*

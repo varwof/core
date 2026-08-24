@@ -1,0 +1,16 @@
+body { font-family: -apple-system, sans-serif; max-width: 960px; margin: 0 auto; padding: 1em; }
+nav { margin-bottom: 1.5em; padding: 0.5em 0; border-bottom: 1px solid #ccc; }
+nav a { color: #0366d6; text-decoration: none; margin-right: 0.5em; }
+nav a:hover { text-decoration: underline; }
+h1 { margin-top: 0; }
+table { border-collapse: collapse; width: 100%; }
+th, td { text-align: left; padding: 0.4em 0.6em; border-bottom: 1px solid #eee; }
+th { border-bottom: 2px solid #ddd; }
+code { font-size: 0.9em; }
+pre { background: #f6f8fa; padding: 1em; overflow-x: auto; font-size: 0.85em; border-radius: 4px; }
+.badge-valid { color: #28a745; }
+.badge-revoked { color: #cb2431; }
+.badge-expired { color: #6a737d; }
+form label { margin-right: 1em; }
+input, select, button { padding: 0.3em 0.6em; }
+hr { margin: 2em 0; }

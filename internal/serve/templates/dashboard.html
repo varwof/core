@@ -1,0 +1,53 @@
+{{define "dashboard.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{t "template.title_dashboard"}}</title>
+<link rel="stylesheet" href="/pki/pki.css">
+<style>
+.stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:1rem; margin-bottom:2rem; }
+.stat-card { background:var(--card-bg); border:1px solid var(--border); border-radius:8px; padding:1.5rem; }
+.stat-card h3 { margin:0 0 0.5rem; font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; }
+.stat-card .value { font-size:2rem; font-weight:700; margin:0; }
+.stat-card .value.warn { color:#e67e22; }
+.stat-card .value.danger { color:#e74c3c; }
+</style>
+</head>
+<body>
+<nav><a href="/">{{t "template.nav_home"}}</a> &middot; <a href="/dashboard">{{t "template.nav_dashboard"}}</a> &middot; <a href="/cas">{{t "template.nav_cas"}}</a> &middot; <a href="/certs">{{t "template.nav_certs"}}</a> &middot; <a href="/topology">{{t "template.nav_topology"}}</a> &middot; <a href="/api/stats">{{t "template.nav_api"}}</a></nav>
+<h1>{{t "template.heading_dashboard"}}</h1>
+<div class="stats-grid" id="stats-grid">
+  <div class="stat-card"><h3>{{t "template.stat_total_certificates"}}</h3><p class="value" id="stat-total">—</p></div>
+  <div class="stat-card"><h3>{{t "template.stat_expiring_30d"}}</h3><p class="value warn" id="stat-expiring">—</p></div>
+  <div class="stat-card"><h3>{{t "template.stat_cert_authorities"}}</h3><p class="value" id="stat-cas">—</p></div>
+  <div class="stat-card"><h3>{{t "template.stat_revoked_ratio"}}</h3><p class="value" id="stat-revoked">—</p></div>
+</div>
+<h2>{{t "template.stat_breakdown"}}</h2>
+<table id="status-table"><tr><th>{{t "template.th_status"}}</th><th>{{t "template.th_count"}}</th></tr></table>
+<p style="color:var(--text-muted);font-size:0.85rem" id="stats-updated">{{t "template.updated_at"}} —</p>
+<script>
+(function(){
+  function updateStats(stats) {
+    document.getElementById('stat-total').textContent = stats.total_certs;
+    document.getElementById('stat-expiring').textContent = stats.expiring_30d;
+    document.getElementById('stat-cas').textContent = stats.total_cas;
+    document.getElementById('stat-revoked').textContent = (stats.revoked_ratio * 100).toFixed(1) + '%';
+    document.getElementById('stats-updated').textContent = '{{t "template.updated_at"}} ' + stats.updated_at;
+    var tbody = document.getElementById('status-table');
+    tbody.innerHTML = '<tr><th>{{t "template.th_status"}}</th><th>{{t "template.th_count"}}</th></tr>';
+    for (var k in stats.by_status) {
+      var row = tbody.insertRow();
+      row.insertCell().textContent = k;
+      row.insertCell().textContent = stats.by_status[k];
+    }
+  }
+  var evtSource = new EventSource('/api/v1/stats/events');
+  evtSource.onmessage = function(e) { updateStats(JSON.parse(e.data)); };
+  evtSource.onerror = function() { document.getElementById('stats-updated').textContent = '{{t "template.connection_lost"}}'; };
+})();
+</script>
+</body>
+</html>
+{{end}}

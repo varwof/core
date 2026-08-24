@@ -1,0 +1,14 @@
+.git/
+*.md
+docs/
+dev-docs/
+testdata/
+cmd/
+internal/
+k8s-issuer/
+tools/
+go.mod
+go.sum
+*.go
+*.mod
+*.sum

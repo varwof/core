@@ -1,0 +1,40 @@
+{{define "certs.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{.Title}}</title>
+<link rel="stylesheet" href="/pki/pki.css">
+</head>
+<body>
+<nav><a href="/">{{t "template.nav_home"}}</a> &middot; <a href="/dashboard">{{t "template.nav_dashboard"}}</a> &middot; <a href="/cas">{{t "template.nav_cas"}}</a> &middot; <a href="/certs">{{t "template.nav_certs"}}</a> &middot; <a href="/topology">{{t "template.nav_topology"}}</a> &middot; <a href="/api/certs">{{t "template.nav_api"}}</a></nav>
+<h1>{{t "template.heading_certs"}}</h1>
+<form method="get" action="/certs">
+<label>{{t "template.label_ca_search"}} <input type="text" name="ca" placeholder="{{.Config.DefaultCA}}"></label>
+<label>{{t "template.label_cn_search"}} <input type="text" name="cn" placeholder="search"></label>
+<label>{{t "template.label_status"}} <select name="status"><option value="">{{t "template.option_all"}}</option><option value="V">{{t "template.option_valid"}}</option><option value="R">{{t "template.option_revoked"}}</option></select></label>
+<button type="submit">{{t "template.btn_search"}}</button>
+</form>
+{{if .Certs}}
+<table>
+<thead><tr><th>{{t "template.th_serial"}}</th><th>{{t "template.th_cn"}}</th><th>{{t "template.th_ca"}}</th><th>{{t "template.th_status"}}</th><th>{{t "template.th_not_before"}}</th><th>{{t "template.th_not_after"}}</th></tr></thead>
+<tbody>
+{{range .Certs}}
+<tr>
+  <td><a href="/cert/{{.CAName}}/{{.SerialNumber}}">{{.SerialNumber}}</a></td>
+  <td>{{.CommonName}}</td>
+  <td>{{.CAName}}</td>
+  <td class="badge-{{.StatusBadge}}">{{.Status}}</td>
+  <td>{{.NotBefore}}</td>
+  <td>{{.NotAfter}}</td>
+</tr>
+{{end}}
+</tbody>
+</table>
+{{else}}
+<p>{{t "template.no_certs"}}</p>
+{{end}}
+</body>
+</html>
+{{end}}

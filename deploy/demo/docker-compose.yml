@@ -1,0 +1,43 @@
+services:
+  pki:
+    build:
+      context: ../..
+      dockerfile: deploy/Dockerfile
+    image: varwof/pki:latest
+    container_name: pki-demo
+    entrypoint: ["/entrypoint.sh"]
+    volumes:
+      - pki-data:/var/lib/pki
+      - nginx-certs:/certs
+    environment:
+      - PKI_KEY_PASSWORD=demo123
+      - PKI_CA_NAME=Demo Root CA
+      - PKI_CA_KEY_TYPE=ecdsa-p256
+      - PKI_NGINX_CN=demo.pki.local
+      - PKI_NGINX_SAN=DNS:demo.pki.local,DNS:localhost,IP:127.0.0.1
+      - TZ=Asia/Shanghai
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8443/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+
+  nginx:
+    image: nginx:alpine
+    container_name: pki-demo-nginx
+    ports:
+      - "443:443"
+      - "8081:80"
+    volumes:
+      - nginx-certs:/etc/nginx/certs:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      pki:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pki-data:
+  nginx-certs:

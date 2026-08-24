@@ -1,0 +1,2400 @@
+openapi: "3.0.3"
+info:
+  title: pki PKI API
+  version: "1.0.0"
+  description: |
+    All-in-One PKI Infrastructure API
+
+    ## AIC Agent Access Control
+    Agent Identity Certificates (AIC) authenticate as `Role(agent)` and only
+    receive the **intersection** of their declared `capabilities` and the bound
+    user's role grants (fail-closed: an AIC with no capabilities grants nothing).
+    Destructive endpoints (revoke / delete / sub-CA / trust / webhook / TSA
+    rotate / config write / key recovery / cross-cert / RA approval / batch
+    issue / user management) are marked `x-allow-aic: false` and are
+    **denied to agents by default**; a rule without that annotation allows
+    agents (subject to their capability intersection).
+servers:
+  - url: https://pki.example.com
+paths:
+  /api/v1/cas:
+    get:
+      summary: List all CAs
+      x-permission: "cert:list"
+      parameters:
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [json, csv]
+          description: Response format (default json)
+      responses:
+        '200':
+          description: CA list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CA'
+            text/csv:
+              schema:
+                type: string
+                description: CSV file with BOM
+  /api/v1/ca/{name}:
+    get:
+      summary: Get CA details
+      x-permission: "cert:list"
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: CA details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CA'
+  /api/v1/ca/{name}/rotation:
+    get:
+      summary: Get CA master key rotation state
+      description: >
+        Returns the active CA signing certificate details and, when a rotation
+        is in progress, the retained legacy certificate (dual-signing
+        transition window).
+      x-permission: "ca:info"
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Rotation state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CAKeyRotationState'
+  /api/v1/ca/{name}/rotate:
+    post:
+      summary: Rotate CA master key (dual-signing transition window)
+      description: >
+        Atomically swaps the active CA signing key for the supplied new
+        certificate + private key. The previous key is retained as legacy so
+        previously-issued certs/CRLs keep verifying during the transition.
+        Requires superadmin/admin.
+      x-permission: "config:write"
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CARotateRequest'
+      responses:
+        '200':
+          description: Key rotated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: rotated
+                  ca:
+                    type: string
+                  old_serial:
+                    type: string
+                  new_serial:
+                    type: string
+                  active:
+                    $ref: '#/components/schemas/CAKeyRotationState'
+        '400':
+          description: Invalid cert/key or mismatch
+        '401':
+          description: Unauthorized
+  /api/v1/certs:
+    get:
+      summary: List certificates
+      x-permission: "cert:list"
+      parameters:
+        - name: ca
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [V, R, E]
+        - name: cn
+          in: query
+          schema:
+            type: string
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [json, csv]
+          description: Response format (default json). csv 为导出语义，返回全部匹配证书。
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+          description: 每页条数（JSON 分页；csv 忽略）。limit<=0 返回全部。
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+          description: 分页偏移量。
+      responses:
+        '200':
+          description: Certificate list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Certificate'
+            text/csv:
+              schema:
+                type: string
+                description: CSV file with BOM
+    post:
+      summary: Issue a certificate
+      x-permission: "cert:issue"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueRequest'
+      responses:
+        '200':
+          description: Issued certificate
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueResponse'
+  /api/v1/certs/report.pdf:
+    get:
+      summary: Download certificate report as PDF
+      x-permission: "cert:list"
+      parameters:
+        - name: ca
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: PDF report
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+  /api/v1/cert/{ca}/{serial}:
+    get:
+      summary: Get certificate details
+      x-permission: "cert:list"
+      parameters:
+        - name: ca
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: serial
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Certificate details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Certificate'
+            application/x-pem-file:
+              schema:
+                type: string
+            application/pkix-cert:
+              schema:
+                type: string
+                format: binary
+  /api/v1/crl/{ca}:
+    get:
+      summary: Get CRL
+      x-permission: "cert:list"
+      parameters:
+        - name: ca
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: CRL in DER format
+          content:
+            application/pkix-crl:
+              schema:
+                type: string
+                format: binary
+  /api/v1/certs/batch:
+    post:
+      summary: Batch issue certificates
+      x-permission: "cert:batch"
+      x-allow-aic: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+              schema:
+                type: object
+                properties:
+                  requests:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BatchRequestItem'
+                  fast:
+                    type: boolean
+                    default: false
+                    description: >
+                      true = sign only, never persist (high-throughput in-memory batch);
+                      false (default) = sign in memory then bulk-insert once at the end.
+                      SkipDB avoids per-cert SQLite write-lock serialization (~16x faster).
+      responses:
+        '200':
+          description: Batch results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BatchResponseItem'
+  /api/v1/webhooks:
+    get:
+      summary: List webhook subscriptions
+      x-permission: "webhook:manage"
+      responses:
+        '200':
+          description: Webhook list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WebhookSub'
+    post:
+      summary: Create webhook subscription
+      x-permission: "webhook:manage"
+      x-allow-aic: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url:
+                  type: string
+                events:
+                  type: string
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookSub'
+    delete:
+      summary: Delete webhook subscription
+      x-permission: "webhook:manage"
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Deleted
+
+  /api/v1/dashboard:
+    get:
+      summary: PKI dashboard statistics
+      x-permission: "web:view"
+      responses:
+        '200':
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dashboard'
+
+  /api/v1/dashboard/events:
+    get:
+      summary: Dashboard statistics SSE stream
+      x-permission: "cert:list"
+      responses:
+        '200':
+          description: SSE event stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
+  /api/v1/stats:
+    get:
+      summary: Legacy PKI stats summary
+      x-permission: "cert:list"
+      responses:
+        '200':
+          description: Stats summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Stats'
+
+  /api/v1/cross-certs:
+    get:
+      summary: List cross certificates
+      x-permission: "cert:list"
+      responses:
+        '200':
+          description: Cross certificate list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CrossCert'
+
+  /api/v1/dns/records:
+    get:
+      summary: List DNS management records
+      x-permission: "dns:manage"
+      responses:
+        '200':
+          description: DNS records
+          content:
+            application/json:
+              schema:
+                type: array
+  /api/v1/dns/healthz:
+    get:
+      summary: DNS server health check
+      x-permission: "dns:manage"
+      responses:
+        '200':
+          description: Health OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+
+
+  /api/v1/users:
+    get:
+      summary: List users
+      x-permission: "user:list"
+    post:
+      summary: Create user
+      x-permission: "user:manage"
+      x-allow-aic: false
+  /api/v1/users/{id}:
+    delete:
+      summary: Delete user
+      x-permission: "user:manage"
+  /api/v1/users/{id}/operator-cert:
+    post:
+      summary: Bind an operator certificate to a user (CA scope proxy)
+      description: >-
+        Validates the certificate with the same fail-closed rules used at
+        authentication time (management certificate, DigitalSignature KU,
+        valid OU, inside validity window, issued by this PKI, not revoked).
+        The certificate's CA scope (SAN URI + OID) becomes the user's
+        effective CA scope for password/token/basic auth.
+      x-permission: "user:manage"
+      x-require-role: ["superadmin", "admin"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cert_pem]
+              properties:
+                cert_pem:
+                  type: string
+                  description: PEM-encoded operator (management) certificate
+      responses:
+        "200":
+          description: Bound
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: bound
+                  scope:
+                    type: array
+                    items:
+                      type: string
+        "400":
+          description: Invalid operator certificate
+    delete:
+      summary: Unbind an operator certificate from a user
+      x-permission: "user:manage"
+      x-require-role: ["superadmin", "admin"]
+      responses:
+        "200":
+          description: Unbound
+  /api/v1/tokens:
+    get:
+      summary: List API tokens
+      x-permission: "user:list"
+    post:
+      summary: Create API token
+      x-permission: "user:manage"
+  /api/v1/users/login:
+    post:
+      summary: Login
+  /api/v1/session:
+    get:
+      summary: Session identity probe (user + bound certificate identity for Web user detection)
+      responses:
+        "200":
+          description: Authenticated session with optional certificate identity
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  authenticated:
+                    type: boolean
+                  username:
+                    type: string
+                  role:
+                    type: string
+                  cert_identity:
+                    type: object
+                    properties:
+                      serial:
+                        type: string
+                      issuer:
+                        type: string
+                      cn:
+                        type: string
+                      spki_hash:
+                        type: string
+                      principal_uid:
+                        type: string
+                      agent_id:
+                        type: string
+                      not_after:
+                        type: string
+                        format: date-time
+        "401":
+          description: Unauthenticated
+  /api/v1/users/info:
+    get:
+      summary: Current user info
+  /api/v1/users/logout:
+    post:
+      summary: Logout
+  /api/v1/tokens/{id}:
+    delete:
+      summary: Delete API token
+      x-permission: "user:manage"
+  /api/v1/ra:
+    get:
+      summary: List RA requests
+      x-permission: "cert:list"
+    post:
+      summary: Submit RA request
+      x-permission: "cert:list"
+  /api/v1/keys/recover:
+    post:
+      summary: Recover escrowed key
+      x-permission: "key:recover"
+      x-allow-aic: false
+
+  /api/v1/version:
+    get:
+      summary: Version info
+      responses:
+        "200":
+          description: Version
+          content:
+            application/json:
+              schema:
+                type: object
+
+  # ──────────────────────────────────────────
+  # Infrastructure
+  # ──────────────────────────────────────────
+  /healthz:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: Health OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  db: {type: string}
+                  tsa: {type: string}
+                  ocsp: {type: string}
+  /readyz:
+    get:
+      summary: Readiness probe
+      responses:
+        '200':
+          description: Ready
+        '503':
+          description: Not ready
+  /metrics:
+    get:
+      summary: Prometheus metrics
+      description: >-
+        Prometheus text exposition. In addition to the standard pki_* metrics
+        (HTTP requests, certificate issued/revoked, OCSP/TSA responses, active
+        cert gauges), when the memory engine is enabled the response also
+        includes the varwof_engine_* engine metrics: varwof_engine_certindex_size,
+        varwof_engine_revokedset_size, varwof_engine_nonceset_size, varwof_engine_danonceset_size,
+        varwof_engine_subca_size, varwof_engine_trustanchor_size, varwof_engine_aic_size,
+        varwof_engine_pipeline_pending (gauges) and varwof_engine_window_evictions_total,
+        varwof_engine_read_hit_total, varwof_engine_read_miss_total (counters).
+      responses:
+        '200':
+          description: Metrics in Prometheus text format
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  # ──────────────────────────────────────────
+  # Web UI
+  # ──────────────────────────────────────────
+  /:
+    get:
+      summary: Web console SPA entry
+      x-permission: "web:view"
+      responses:
+        '200':
+          description: HTML SPA
+    post:
+      summary: TSA timestamp query (RFC 3161) or OCSP request (RFC 6960)
+      description: |
+        Routes based on Content-Type:
+        - `application/timestamp-query` → TSA signing
+        - `application/ocsp-request` → OCSP status check
+      requestBody:
+        required: true
+        content:
+          application/timestamp-query:
+            schema:
+              type: string
+              format: binary
+          application/ocsp-request:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: TSA timestamp reply or OCSP response
+  /pki/{path}:
+    get:
+      summary: Static PKI resources (CRL files, cert chains, etc.)
+      x-permission: "web:view"
+      parameters:
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Static file
+  /cas:
+    get:
+      summary: CA list page (Web UI)
+      x-permission: "web:view"
+      responses:
+        '200':
+          description: HTML page
+  /ca/{name}:
+    get:
+      summary: CA detail page (Web UI)
+      x-permission: "web:view"
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: HTML page
+  /certs:
+    get:
+      summary: Certificate list page (Web UI)
+      x-permission: "web:view"
+      responses:
+        '200':
+          description: HTML page
+  /cert/{ca}/{serial}:
+    get:
+      summary: Certificate detail page (Web UI)
+      x-permission: "web:view"
+      parameters:
+        - name: ca
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: serial
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: HTML page
+  /dashboard:
+    get:
+      summary: Dashboard page (Web UI)
+      x-permission: "web:view"
+      responses:
+        '200':
+          description: HTML page
+  /topology:
+    get:
+      summary: CA topology D3.js visualization
+      x-permission: "cert:list"
+      responses:
+        '200':
+          description: HTML page
+
+  # ──────────────────────────────────────────
+  # CA Management
+  # ──────────────────────────────────────────
+  /api/v1/cas/import:
+    post:
+      summary: Import an external CA
+      x-permission: "ca:create"
+      x-allow-aic: false
+      security:
+        - BearerAuth: [ca:create]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ca_pem: {type: string}
+                key_pem: {type: string}
+                key_password: {type: string}
+      responses:
+        '200':
+          description: Import result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportCAResponse'
+  /api/v1/cas/tree:
+    get:
+      summary: CA hierarchy tree
+      x-permission: "cert:list"
+      responses:
+        '200':
+          description: CA tree (5min cache)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CATreeNode'
+
+  # ──────────────────────────────────────────
+  # Certificate Operations
+  # ──────────────────────────────────────────
+  /api/v1/cert/{ca}/{serial}/revoke:
+    post:
+      summary: Revoke a certificate
+      x-permission: "cert:revoke"
+      x-allow-aic: false
+      parameters:
+        - name: ca
+          in: path
+          required: true
+          schema: {type: string}
+        - name: serial
+          in: path
+          required: true
+          schema: {type: string}
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: {type: string}
+      responses:
+        '200':
+          description: Revocation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevokeResponse'
+  /api/v1/cert/{ca}/{serial}/renew:
+    post:
+      summary: Renew a certificate (new key pair)
+      x-permission: "cert:renew"
+      x-allow-aic: false
+      parameters:
+        - name: ca
+          in: path
+          required: true
+          schema: {type: string}
+        - name: serial
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: Renewal result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueResponse'
+  /api/v1/cert/{ca}/{serial}/export:
+    get:
+      summary: Export certificate in various formats
+      x-permission: "cert:export"
+      parameters:
+        - name: ca
+          in: path
+          required: true
+          schema: {type: string}
+        - name: serial
+          in: path
+          required: true
+          schema: {type: string}
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [pem, der, p12]
+      responses:
+        '200':
+          description: Certificate export
+          content:
+            text/plain:
+              schema:
+                type: string
+                description: PEM-encoded certificate
+  /api/v1/cert/{ca}/{serial}/re-sign:
+    post:
+      summary: Re-sign a certificate (same public key)
+      x-permission: "cert:issue"
+      x-allow-aic: false
+      parameters:
+        - name: ca
+          in: path
+          required: true
+          schema: {type: string}
+        - name: serial
+          in: path
+          required: true
+          schema: {type: string}
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                target_ca: {type: string, description: New CA}
+                profile: {type: string}
+                validity: {type: integer, description: Days}
+      responses:
+        '200':
+          description: Re-sign result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueResponse'
+  /api/v1/cert/by-key:
+    get:
+      summary: Find certificate by SPKI hash
+      x-permission: "cert:list"
+      parameters:
+        - name: hash
+          in: query
+          required: true
+          schema: {type: string}
+        - name: ca
+          in: query
+          schema: {type: string}
+      responses:
+        '200':
+          description: Certificate list matching the key hash
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Certificate'
+  /api/v1/certs/upload:
+    post:
+      summary: Upload an existing certificate
+      x-permission: "cert:issue"
+      security:
+        - BearerAuth: [cert:issue]
+      responses:
+        '200':
+          description: Upload result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CertUploadResponse'
+  /api/v1/certs/revoke-by-principal:
+    post:
+      summary: Revoke all certs for a principal
+      x-permission: "user:revoke-all"
+      x-allow-aic: false
+      security:
+        - BearerAuth: [user:revoke-all]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                principal_uid: {type: string}
+                reason: {type: string}
+      responses:
+        '200':
+          description: Revocation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevokeByPrincipalResponse'
+  /api/v1/certs/revoke-batch:
+    post:
+      summary: Bulk-revoke a large set of certificates (revocation storm)
+      x-permission: "user:revoke-all"
+      x-allow-aic: false
+      security:
+        - BearerAuth: [user:revoke-all]
+      description: >-
+        Revokes many certificates in one call. With the memory engine enabled
+        the batch lands in memory under a single lock ("memory is truth" —
+        immediately visible to reads, async persisted); entries not resident
+        in memory are retried against the DB. Without the engine a single
+        transaction is used. Suitable for mass-revocation of a compromised
+        batch without per-cert request overhead.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [entries]
+              properties:
+                entries:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [ca, serial]
+                    properties:
+                      ca: {type: string}
+                      serial: {type: string}
+                      reason: {type: string, description: "CRL reason name (keyCompromise, cACompromise, ...)"}
+      responses:
+        '200':
+          description: Revocation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevokeBatchResponse'
+  /api/v1/certs/async:
+    post:
+      summary: Submit async certificate issuance
+      x-permission: "cert:issue"
+      security:
+        - BearerAuth: [cert:issue]
+      responses:
+        '202':
+          description: Async job accepted
+  /api/v1/certs/async/{id}:
+    get:
+      summary: Check async certificate issuance status
+      x-permission: "cert:list"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: Job status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AsyncJobStatusResponse'
+
+  # ──────────────────────────────────────────
+  # CRL
+  # ──────────────────────────────────────────
+  /api/v1/crl/{ca}/generate:
+    post:
+      summary: Generate CRL for a CA (base CRL, or Delta CRL with ?delta=1)
+      x-permission: "crl:generate"
+      x-allow-aic: false
+      parameters:
+        - name: ca
+          in: path
+          required: true
+          schema: {type: string}
+        - name: delta
+          in: query
+          required: false
+          schema: {type: boolean, default: false}
+          description: >-
+            When true, generate a Delta CRL (RFC 5280 §5.2.4) carrying the
+            Delta CRL Indicator (2.5.29.27) and Base CRL Number (2.5.29.31)
+            extensions, covering only certificates revoked since the base CRL.
+        - name: since
+          in: query
+          required: false
+          schema: {type: string, format: date-time}
+          description: >-
+            Base CRL thisUpdate (RFC 3339). Only certificates revoked at or
+            after this time are included. Required when delta=1 and no last
+            thisUpdate is recorded.
+      responses:
+        '200':
+          description: CRL generated (delta flag echoed in body)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CRLGenerateResponse'
+
+  # ──────────────────────────────────────────
+  # Sub-CA Management
+  # ──────────────────────────────────────────
+  /api/v1/sub-cas:
+    get:
+      summary: List sub-CAs
+      x-permission: "cert:list"
+      responses:
+        '200':
+          description: Sub-CA list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SubCA'
+    post:
+      summary: Create a sub-CA
+      x-permission: "ca:create"
+      x-allow-aic: false
+      description: >-
+        Only superadmin may create a sub-CA. The parent CA must exist and its
+        key must be available to the server.
+      security:
+        - BearerAuth: [ca:create]
+      responses:
+        '201':
+          description: Sub-CA created
+  /api/v1/sub-ca/{name}:
+    get:
+      summary: Get sub-CA details
+      x-permission: "ca:info"
+      x-ca-scope: true
+      description: >-
+        The caller's admin certificate scope must cover the named sub-CA.
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: Sub-CA details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubCA'
+  /api/v1/sub-ca/{name}/revoke:
+    post:
+      summary: Revoke a sub-CA
+      x-permission: "cert:revoke"
+      x-allow-aic: false
+      x-ca-scope: true
+      description: >-
+        The caller's admin certificate scope must cover the named sub-CA.
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: Sub-CA revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubCARevokeResponse'
+  /api/v1/sub-ca/{name}/revoke-all:
+    post:
+      summary: Revoke all certificates under a sub-CA
+      x-permission: "cert:revoke"
+      x-allow-aic: false
+      x-ca-scope: true
+      description: >-
+        The caller's admin certificate scope must cover the named sub-CA.
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: All certificates revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevokeSubCAResponse'
+
+  # ──────────────────────────────────────────
+  # AIC / Agent
+  # ──────────────────────────────────────────
+  /api/v1/agent/register:
+    post:
+      summary: Register a new AI Agent
+      x-permission: "agent:manage"
+      x-allow-aic: false
+      responses:
+        '200':
+          description: Agent registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentRegisterResponse'
+  /api/v1/aic/issue:
+    post:
+      summary: Issue an Agent Identity Certificate (AIC)
+      x-permission: "cert:issue"
+      x-allow-aic: false
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ca: {type: string}
+                cn: {type: string}
+                principal_uid: {type: string}
+                agent_id: {type: string}
+                capabilities:
+                  type: array
+                  items:
+                    type: object
+                authorization_constraints:
+                  type: array
+                  description: Session-level constraints (allowed-cidr / time-window / max-concurrent), written to AIC extension field 7 and enforced offline by gateways
+                  items:
+                    type: object
+                    properties:
+                      scheme_id: {type: string}
+                      capability_id: {type: string}
+                      parameters:
+                        type: string
+                        format: byte
+                user_auth_signature: {type: string}
+                user_auth_timestamp:
+                  type: string
+                  format: date-time
+                  description: "DelegationAuthorization signature timestamp (RFC3339). Freshness checked at issuance: |now - timestamp| <= da_max_timestamp_skew (default 30s); stale submissions rejected 403 api.da_timestamp_stale."
+                user_auth_nonce:
+                  type: string
+                  description: "DelegationAuthorization nonce (32 bytes, base64). CA persists it to da_nonces on issuance; replaying the same nonce is rejected with 403 api.da_nonce_replayed."
+                user_auth_lifetime: {type: integer}
+      responses:
+        '200':
+          description: AIC issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AICIssueResponse'
+  /api/v1/user/revoke-all:
+    post:
+      summary: Revoke all certs for a user
+      x-permission: "user:revoke-all"
+      x-allow-aic: false
+      security:
+        - BearerAuth: [user:revoke-all]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: {type: string}
+      responses:
+        '200':
+          description: User certificates revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRevokeAllResponse'
+
+  # ──────────────────────────────────────────
+  # Cross-Certification
+  # ──────────────────────────────────────────
+  /api/v1/cross-cert/issue:
+    post:
+      summary: Issue a cross-certificate
+      x-permission: "cross-cert:issue"
+      x-allow-aic: false
+      security:
+        - BearerAuth: [cross:issue]
+      responses:
+        '200':
+          description: Cross-certificate issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CrossCert'
+  /api/v1/cross-cert/revoke:
+    post:
+      summary: Revoke a cross-certificate
+      x-permission: "cross-cert:revoke"
+      x-allow-aic: false
+      security:
+        - BearerAuth: [cross:revoke]
+      responses:
+        '200':
+          description: Cross-certificate revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+
+  # ──────────────────────────────────────────
+  # Trust Anchors
+  # ──────────────────────────────────────────
+  /api/v1/trust:
+    get:
+      summary: List trust anchors
+      x-permission: "trust:list"
+      responses:
+        '200':
+          description: Trust anchor list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TrustAnchor'
+    post:
+      summary: Import a trust anchor
+      x-permission: "trust:import"
+      x-allow-aic: false
+      responses:
+        '200':
+          description: Trust anchor imported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustImportResponse'
+  /api/v1/trust/stats:
+    get:
+      summary: Trust anchor statistics
+      x-permission: "trust:list"
+      responses:
+        '200':
+          description: Trust stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustStats'
+  /api/v1/trust/{hash_id}:
+    get:
+      summary: Get trust anchor details
+      x-permission: "trust:list"
+      parameters:
+        - name: hash_id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: Trust anchor details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustAnchor'
+    patch:
+      summary: Update trust anchor settings
+      x-permission: "trust:import"
+      parameters:
+        - name: hash_id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: Trust anchor updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trusted:
+                    type: boolean
+    delete:
+      summary: Delete a trust anchor
+      x-permission: "trust:delete"
+      parameters:
+        - name: hash_id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: Trust anchor deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+
+  # ──────────────────────────────────────────
+  # Admin / Config
+  # ──────────────────────────────────────────
+  /api/v1/admin/config:
+    get:
+      summary: Get current server configuration
+      x-permission: "config:read"
+      responses:
+        '200':
+          description: Configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigResponse'
+    put:
+      summary: Update server configuration at runtime
+      x-permission: "config:write"
+      x-allow-aic: false
+      responses:
+        '200':
+          description: Configuration updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+
+  # ──────────────────────────────────────────
+  # TSA
+  # ──────────────────────────────────────────
+  /tsa:
+    post:
+      summary: TSA timestamp query (alternative path)
+      x-permission: "cert:list"
+      responses:
+        '200':
+          description: Timestamp reply
+
+  # ──────────────────────────────────────────
+  # TSA Management
+  # ──────────────────────────────────────────
+  /api/v1/tsa/cert:
+    get:
+      summary: Get TSA signer certificate
+      x-permission: "config:write"
+      responses:
+        '200':
+          description: TSA signer cert info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TSAConfigResponse'
+  /api/v1/tsa/cert/renew:
+    post:
+      summary: Renew TSA signer certificate
+      x-permission: "config:write"
+      x-allow-aic: false
+      responses:
+        '200':
+          description: TSA signer renewed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TSAConfigResponse'
+  /api/v1/tsa/cert/rotate:
+    post:
+      summary: Rotate TSA signer key pair
+      x-permission: "config:write"
+      x-allow-aic: false
+      responses:
+        '200':
+          description: TSA signer rotated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TSAConfigResponse'
+  /api/v1/tsa/ca:
+    get:
+      summary: Get TSA CA certificate
+      x-permission: "config:write"
+      responses:
+        '200':
+          description: TSA CA info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TSACAInfoResponse'
+  /api/v1/tsa/ca/renew:
+    post:
+      summary: Renew TSA CA certificate
+      x-permission: "config:write"
+      x-allow-aic: false
+      responses:
+        '200':
+          description: TSA CA renewed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TSAConfigResponse'
+
+  # ──────────────────────────────────────────
+  # Permissions / RBAC
+  # ──────────────────────────────────────────
+  /api/v1/permissions/check:
+    post:
+      summary: Check permission for a user
+      x-permission: "cert:list"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user: {type: string}
+                permission: {type: string}
+                ca: {type: string}
+      responses:
+        '200':
+          description: Permission check result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PermissionCheckResponse'
+
+  # ──────────────────────────────────────────
+  # CSR / Signing
+  # ──────────────────────────────────────────
+  /api/v1/csr/sign:
+    post:
+      summary: Sign a CSR
+      x-permission: "cert:issue"
+      security:
+        - BearerAuth: [cert:issue]
+      responses:
+        '200':
+          description: Signed certificate
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CSRSignResponse'
+  /api/v1/k8s/sign:
+    post:
+      summary: Sign a Kubernetes CSR
+      x-permission: "cert:issue"
+      responses:
+        '200':
+          description: Signed certificate
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/K8sSignResponse'
+  /api/v1/verify/cert:
+    post:
+      summary: Verify a certificate
+      x-permission: "cert:list"
+      responses:
+        '200':
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyCertResponse'
+
+  # ──────────────────────────────────────────
+  # Gateway Management
+  # ──────────────────────────────────────────
+  /api/v1/gateway/register:
+    post:
+      summary: Register a gateway
+      x-permission: "cert:list"
+      responses:
+        '200':
+          description: Gateway registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GatewayRegisterResponse'
+  /api/v1/gateway/heartbeat:
+    post:
+      summary: Send gateway heartbeat
+      x-permission: "cert:list"
+      responses:
+        '200':
+          description: Heartbeat received
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+  /api/v1/gateway/list:
+    get:
+      summary: List registered gateways
+      x-permission: "cert:list"
+      responses:
+        '200':
+          description: Gateway list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GatewayListResponse'
+  /api/v1/gateway/disconnect-agent:
+    post:
+      summary: Disconnect an agent from all gateways
+      x-permission: "agent:manage"
+      responses:
+        '200':
+          description: Agent disconnected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GatewayDisconnectResponse'
+  /api/v1/gateway/disconnect-user:
+    post:
+      summary: Disconnect a user from all gateways
+      x-permission: "user:revoke-all"
+      responses:
+        '200':
+          description: User disconnected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GatewayDisconnectResponse'
+
+  # ──────────────────────────────────────────
+  # DNS
+  # ──────────────────────────────────────────
+  /api/v1/dns-query:
+    get:
+      summary: DNS-over-HTTPS query
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema: {type: string}
+        - name: type
+          in: query
+          schema: {type: string}
+      responses:
+        '200':
+          description: DNS response (JSON)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DNSQueryResponse'
+    get:
+      summary: Get ACME DNS-01 challenge record
+      x-permission: "dns:manage"
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: ACME challenge TXT record
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: {type: string}
+                  fqdn: {type: string}
+                  value: {type: string}
+  /api/v1/dns/cert/{name}:
+    get:
+      summary: Get CERT DNS record
+      x-permission: "dns:manage"
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: CERT record
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name: {type: string}
+                  cert_pem: {type: string}
+
+  # ──────────────────────────────────────────
+  # Reports
+  # ──────────────────────────────────────────
+  /api/v1/reports/compliance:
+    get:
+      summary: List compliance reports
+      x-permission: "report:view"
+      responses:
+        '200':
+          description: Compliance report list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+    post:
+      summary: Generate compliance report
+      x-permission: "report:generate"
+      security:
+        - BearerAuth: [report:generate]
+      responses:
+        '200':
+          description: Compliance report
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  # ──────────────────────────────────────────
+  # Audit Log
+  # ──────────────────────────────────────────
+  /api/v1/audit:
+    get:
+      summary: Query audit log
+      x-permission: "log:read"
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Audit log entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+
+  # ──────────────────────────────────────────
+  # RA Workflow
+  # ──────────────────────────────────────────
+  /api/v1/ra/{id}/approve:
+    post:
+      summary: Approve an RA request
+      x-permission: "ra:approve"
+      x-allow-aic: false
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: RA request approved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+  /api/v1/ra/{id}/reject:
+    post:
+      summary: Reject an RA request
+      x-permission: "ra:reject"
+      x-allow-aic: false
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: RA request rejected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+
+  # ──────────────────────────────────────────
+  # Swagger UI
+  # ──────────────────────────────────────────
+  /swagger/:
+    get:
+      summary: Swagger UI
+      x-permission: "swagger:view"
+      responses:
+        '200':
+          description: Swagger HTML UI
+  /swagger/openapi.yaml:
+    get:
+      summary: OpenAPI specification file
+      x-permission: "swagger:view"
+      responses:
+        '200':
+          description: openapi.yaml
+
+  # ──────────────────────────────────────────
+  # Legacy
+  # ──────────────────────────────────────────
+  /api/v1/stats/events:
+    get:
+      summary: Legacy stats SSE stream (compat)
+      x-permission: "cert:list"
+      responses:
+        '200':
+          description: SSE event stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    BasicAuth:
+      type: http
+      scheme: basic
+  schemas:
+    CA:
+      type: object
+      properties:
+        name:
+          type: string
+        subject:
+          type: string
+        not_before:
+          type: string
+        not_after:
+          type: string
+        key_algorithm:
+          type: string
+        fingerprint:
+          type: string
+        cert_pem:
+          type: string
+    CAKeyRotationState:
+      type: object
+      properties:
+        ca:
+          type: string
+        rotated:
+          type: boolean
+        subject:
+          type: string
+        serial:
+          type: string
+        not_before:
+          type: string
+        not_after:
+          type: string
+        expires_in:
+          type: string
+        needs_rotation:
+          type: boolean
+        legacy_subject:
+          type: string
+        legacy_serial:
+          type: string
+        transition_active:
+          type: boolean
+        error:
+          type: string
+    CARotateRequest:
+      type: object
+      required: [cert_pem, key_pem]
+      oneOf:
+        - description: Inline PEM
+          properties:
+            cert_pem:
+              type: string
+              description: New CA certificate PEM
+            key_pem:
+              type: string
+              description: New CA private key PEM
+        - description: File paths
+          properties:
+            cert:
+              type: string
+              description: Path to new CA certificate PEM file
+            key:
+              type: string
+              description: Path to new CA private key PEM file
+    Certificate:
+      type: object
+      properties:
+        serial_number:
+          type: string
+        ca_name:
+          type: string
+        status:
+          type: string
+          enum: [V, R, E]
+        subject:
+          type: string
+        common_name:
+          type: string
+        not_before:
+          type: string
+        not_after:
+          type: string
+        revoked_at:
+          type: string
+          nullable: true
+        revoke_reason:
+          type: integer
+          nullable: true
+        fingerprint:
+          type: string
+        cert_pem:
+          type: string
+          description: PEM-encoded certificate (omitted in list responses)
+    IssueResponse:
+      type: object
+      properties:
+        serial_number:
+          type: string
+        common_name:
+          type: string
+        cert_pem:
+          type: string
+        key_pem:
+          type: string
+          description: Encrypted or plain private key PEM
+        ca:
+          type: string
+    IssueRequest:
+      type: object
+      properties:
+        cn:
+          type: string
+          description: Common name (required)
+        ca:
+          type: string
+          description: Defaults to configured default
+        profile:
+          type: string
+          description: >-
+            Certificate profile (default server). identity-user issues a person's
+            base identity certificate with CN/OU/email auto-filled from the
+            configured identity source (bridge-ldap/bridge-oauth).
+        identity_username:
+          type: string
+          description: >-
+            Identity-source username for the identity-user profile. When set,
+            CN/OU/email are resolved from the configured identity source
+            (config identity.source_url) and cn may be omitted.
+        identity_source:
+          type: string
+          description: >-
+            Identity source_tag override for the identity-user lookup
+            (defaults to config identity.source).
+        validity:
+          type: integer
+          description: Validity in days
+        key_type:
+          type: string
+          description: e.g. rsa-2048, ecdsa-p256
+        sans:
+          type: array
+          items:
+            type: string
+          description: Subject Alternative Names (DNS:x.com, IP:1.2.3.4)
+        key_password:
+          type: string
+          description: Encrypt private key with this password
+        authorization_constraints:
+          type: array
+          description: >-
+            Session-level constraints for agent-proxy (AIC) certificates
+            (allowed-cidr / time-window / max-concurrent). Written to AIC
+            extension field 7 and enforced offline by gateways. Each item is
+            {scheme_id, capability_id, parameters}.
+          items:
+            type: object
+            properties:
+              scheme_id:
+                type: string
+              capability_id:
+                type: string
+              parameters:
+                type: string
+                format: byte
+        ca_scope:
+          type: string
+          description: >-
+            Management scope for m-admin/m-superadmin certificates (a sub-CA
+            name). Only superadmin may set an arbitrary scope; a scoped admin
+            may only mint scopes within its own scope (no escalation). Written
+            to SAN URI (urn:pki:ca:<scope>) and the OID
+            1.3.6.1.4.1.66257.1.5.1 extension.
+        agent_id:
+          type: string
+          description: Agent identity (required for agent-proxy AIC issuance)
+        principal_uid:
+          type: string
+          description: >-
+            Principal UID (realm:identifier:keyFingerprint). KeyHash is the
+            SPKI SHA-256 of the user certificate; defaults to the requester's
+            mTLS peer cert when absent.
+        delegation_mode:
+          type: integer
+          enum: [0, 1]
+          description: >-
+            0=authorized (default), 1=representative. When 1, the
+            principal_authorization.delegation_policy.allowed_mode must also be
+            1 (B6 gate) or issuance is rejected 403 api.representative_policy_denied.
+        capabilities:
+          type: array
+          description: AIC capabilities {scheme_id, capability_id, parameters}
+          items:
+            type: object
+            properties:
+              scheme_id:
+                type: string
+              capability_id:
+                type: string
+              parameters:
+                type: string
+                format: byte
+        user_auth_signature:
+          type: string
+          description: >-
+            Base64 DelegationAuthorization signature over the reconstructed
+            DelegationAuthTBS. CA verifies it at issuance (C3) using the DA
+            signer certificate public key; tampered signatures are rejected
+            403 api.delegation_signature_invalid.
+        user_auth_signature_algo:
+          type: string
+          description: ECDSA-SHA256 / RSA-SHA256 / RSA-PSS-SHA256 / Ed25519
+        user_auth_nonce:
+          type: string
+          description: >-
+            DelegationAuthorization nonce (32 bytes, base64). CA persists it to
+            da_nonces on issuance; replaying the same nonce is rejected 403
+            api.da_nonce_replayed.
+        user_auth_lifetime:
+          type: integer
+          description: Requested DA lifetime in seconds (1..86400, default 3600)
+        user_auth_timestamp:
+          type: string
+          format: date-time
+          description: >-
+            DA signature timestamp (RFC3339). Freshness |now - timestamp| <=
+            da_max_timestamp_skew (default 30s) or 403 api.da_timestamp_stale.
+        user_auth_reason_code:
+          type: string
+          description: >-
+            DA reason code. Required for agent-proxy issuance (C2): the CA
+            rejects requests without it 400 api.reason_required instead of
+            fabricating a default. Default API_ISSUE when the client supplies
+            the field explicitly (e.g. via pki-client).
+        user_auth_reason_description:
+          type: string
+          description: DA reason description (default "user-authorized AIC issuance")
+        user_cert_pem:
+          type: string
+          description: >-
+            PEM of the DA signer (user) certificate. CA verifies its SPKI
+            matches principal_uid.keyHash and uses its public key to verify the
+            user_auth_signature (C3). Falls back to the mTLS peer cert when the
+            peer SPKI matches keyHash.
+        principal_authorization:
+          type: object
+          description: >-
+            Explicit PrincipalAuthorization {Grants, DelegationPolicy}. Grants
+            must cover all AIC capabilities (subset check); when
+            delegation_mode=1 the DelegationPolicy.allowed_mode must be 1.
+          properties:
+            Grants:
+              type: array
+              description: Principal grant capabilities {scheme_id, capability_id, parameters}
+              items:
+                type: object
+            DelegationPolicy:
+              type: object
+              description: >-
+                Delegation policy. AllowedMode (0=authorized-only,
+                1=representative-allowed), MaxAgents (max concurrent delegated
+                agent instances for this principal; 0=unlimited; exceeded issues
+                are rejected 403 api.max_agents_exceeded), MaxSessionHours
+                (session duration cap; limits agent-proxy AIC validity to
+                min(agent_proxy_max_validity, maxSessionHours)).
+    APIError:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        detail:
+          type: string
+    BatchRequestItem:
+      type: object
+      properties:
+        cn:
+          type: string
+        san:
+          type: string
+        profile:
+          type: string
+        ca:
+          type: string
+        validity:
+          type: integer
+        key_type:
+          type: string
+    BatchResponseItem:
+      type: object
+      properties:
+        serial:
+          type: string
+        cn:
+          type: string
+        status:
+          type: string
+        error:
+          type: string
+    WebhookSub:
+      type: object
+      properties:
+        id:
+          type: integer
+        url:
+          type: string
+        events:
+          type: string
+        enabled:
+          type: boolean
+        created:
+          type: string
+
+    Dashboard:
+      type: object
+      properties:
+        summary:
+          $ref: '#/components/schemas/SummaryStats'
+        per_ca:
+          type: array
+          items:
+            $ref: '#/components/schemas/CAStats'
+        expiry:
+          $ref: '#/components/schemas/ExpiryBuckets'
+        trends:
+          $ref: '#/components/schemas/TrendStats'
+    SummaryStats:
+      type: object
+      properties:
+        total_certs: {type: integer}
+        total_cas: {type: integer}
+        valid: {type: integer}
+        revoked: {type: integer}
+        expired: {type: integer}
+        expiring_30d: {type: integer}
+        revoked_ratio: {type: number}
+    CAStats:
+      type: object
+      properties:
+        name: {type: string}
+        certs: {type: integer}
+        revoked: {type: integer}
+        expiring_30d: {type: integer}
+        subject: {type: string}
+    ExpiryBuckets:
+      type: object
+      properties:
+        within_30d: {type: integer}
+        within_60d: {type: integer}
+        within_90d: {type: integer}
+        within_180d: {type: integer}
+        within_365d: {type: integer}
+        over_365d: {type: integer}
+    TrendStats:
+      type: object
+      properties:
+        issued_today: {type: integer}
+        issued_this_week: {type: integer}
+        issued_this_month: {type: integer}
+        revoked_today: {type: integer}
+    Stats:
+      type: object
+      properties:
+        total_certs: {type: integer}
+        by_status: {type: object}
+        expiring_30d: {type: integer}
+        total_cas: {type: integer}
+        revoked_ratio: {type: number}
+    CrossCert:
+      type: object
+      properties:
+        issuer_ca: {type: string}
+        subject_ca: {type: string}
+        serial_number: {type: string}
+        status: {type: string}
+        not_before: {type: string}
+        not_after: {type: string}
+        cert_pem: {type: string}
+        revoked_at: {type: string, nullable: true}
+        revoke_reason: {type: integer, nullable: true}
+        fingerprint: {type: string}
+    StatusResponse:
+      type: object
+      properties:
+        status:
+          type: string
+    RevokeResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        ca:
+          type: string
+        serial:
+          type: string
+        cascade_count:
+          type: integer
+          description: Number of cascading revocations (AIC same principal)
+    RevokeByPrincipalResponse:
+      type: object
+      properties:
+        status: {type: string}
+        principal_uid: {type: string}
+        revoked_count: {type: integer}
+    RevokeBatchResponse:
+      type: object
+      properties:
+        status: {type: string}
+        revoked_count: {type: integer, description: "Number of certificates actually revoked (engine memory-first path, plus DB fallback for non-resident entries)"}
+    RevokeSubCAResponse:
+      type: object
+      properties:
+        status: {type: string}
+        sub_ca: {type: string}
+        revoked_count: {type: integer}
+    ImportCAResponse:
+      type: object
+      properties:
+        success: {type: boolean}
+        name: {type: string}
+        fingerprint: {type: string}
+        subject: {type: string}
+        not_after: {type: string}
+        key_stored: {type: boolean}
+    CertUploadResponse:
+      type: object
+      properties:
+        serial_number: {type: string}
+        common_name: {type: string}
+        ca_name: {type: string}
+        not_before: {type: string}
+        not_after: {type: string}
+        fingerprint: {type: string}
+    CATreeNode:
+      type: object
+      properties:
+        name: {type: string}
+        subject: {type: string}
+        issuer_name: {type: string}
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/CATreeNode'
+        depth: {type: integer}
+    SubCA:
+      type: object
+      properties:
+        id: {type: integer}
+        name: {type: string}
+        parent_ca: {type: string}
+        cert_pem: {type: string}
+        subject: {type: string}
+        not_before: {type: string}
+        not_after: {type: string}
+        key_algorithm: {type: string}
+        fingerprint: {type: string}
+        status: {type: string}
+        protocol: {type: string}
+        key_usage: {type: string}
+        max_path_len: {type: integer}
+        created_at: {type: string}
+        revoked_at: {type: string, nullable: true}
+        revoke_reason: {type: integer, nullable: true}
+    CreateSubCAResponse:
+      type: object
+      properties:
+        name: {type: string}
+        cert_pem: {type: string}
+        key_pem: {type: string, description: Omitted for remote signer}
+        serial_number: {type: string}
+        fingerprint: {type: string}
+    SubCARevokeResponse:
+      type: object
+      properties:
+        status: {type: string}
+        name: {type: string}
+    CSRSignResponse:
+      type: object
+      properties:
+        certificate_pem: {type: string}
+        ca_cert_pem: {type: string}
+        chain_pem: {type: string}
+        serial_number: {type: string}
+        common_name: {type: string}
+    K8sSignResponse:
+      type: object
+      properties:
+        certificate_pem: {type: string}
+        ca_cert_pem: {type: string}
+        chain_pem: {type: string}
+        serial_number: {type: string}
+    TrustAnchor:
+      type: object
+      properties:
+        id: {type: integer}
+        name: {type: string}
+        hash_id: {type: string}
+        subject: {type: string}
+        not_before: {type: string}
+        not_after: {type: string}
+        issuer: {type: string}
+        trusted: {type: boolean}
+        source: {type: string}
+    TrustStats:
+      type: object
+      properties:
+        total: {type: integer}
+        trusted: {type: integer}
+        untrusted: {type: integer}
+        sources:
+          type: object
+          description: Map of source name to count
+    TrustImportResponse:
+      type: object
+      properties:
+        imported: {type: integer}
+        skipped: {type: integer}
+        total: {type: integer}
+        source: {type: string}
+    HealthResponse:
+      type: object
+      properties:
+        status: {type: string}
+        version: {type: string}
+        db: {type: string}
+        tsa_signer: {type: string}
+        ocsp_signer: {type: string}
+        crl_status: {type: string}
+    ConfigResponse:
+      type: object
+      properties:
+        config:
+          type: object
+          description: Full server configuration
+        config_path:
+          type: string
+        hot_reload:
+          type: boolean
+    VersionResponse:
+      type: object
+      properties:
+        version: {type: string}
+        build: {type: string}
+    LoginResponse:
+      type: object
+      properties:
+        token: {type: string}
+        user_id: {type: integer}
+        username: {type: string}
+        role: {type: string}
+    UserInfoResponse:
+      type: object
+      properties:
+        user_id: {type: integer}
+        username: {type: string}
+        role: {type: string}
+    PermissionCheckResponse:
+      type: object
+      properties:
+        has_permission: {type: boolean}
+        role: {type: string}
+        roles_from_cert:
+          type: array
+          items: {type: string}
+    PermissionRolesResponse:
+      type: object
+      properties:
+        roles:
+          type: array
+          items: {type: string}
+        permissions:
+          type: object
+          description: Map of role name to permission array
+    VerifyCertResponse:
+      type: object
+      properties:
+        valid: {type: boolean}
+        chain:
+          type: array
+          items: {type: string, description: PEM certificate}
+        warnings:
+          type: array
+          items: {type: string}
+    DNSQueryResponse:
+      type: object
+      properties:
+        name: {type: string}
+        answers:
+          type: array
+          items:
+            type: object
+            properties:
+              type: {type: string}
+              value: {type: string}
+    HealthzResponse:
+      type: object
+      properties:
+        db: {type: string}
+        tsa: {type: string}
+        ocsp: {type: string}
+    GatewayRegisterResponse:
+      type: object
+      properties:
+        status: {type: string}
+        address: {type: string}
+    GatewayListResponse:
+      type: object
+      properties:
+        gateways:
+          type: array
+          items:
+            type: object
+        count: {type: integer}
+    GatewayDisconnectResponse:
+      type: object
+      properties:
+        status: {type: string}
+        target: {type: string}
+        gateway_count: {type: integer}
+        succeeded: {type: integer}
+        failed: {type: integer}
+        errors:
+          type: array
+          items: {type: string}
+    TSAConfigResponse:
+      type: object
+      properties:
+        status: {type: string}
+        cert_info:
+          type: object
+          description: TSA signer certificate info
+    TSACAInfoResponse:
+      type: object
+      properties:
+        serial_number: {type: string}
+        subject: {type: string}
+        issuer: {type: string}
+        not_before: {type: string}
+        not_after: {type: string}
+        is_ca: {type: boolean}
+    AsyncJobResponse:
+      type: object
+      properties:
+        job_id: {type: string}
+        total: {type: integer}
+    AsyncJobStatusResponse:
+      type: object
+      properties:
+        job_id: {type: string}
+        status: {type: string}
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              cn: {type: string}
+              serial: {type: string}
+              status: {type: string}
+              error: {type: string}
+    CRLGenerateResponse:
+      type: object
+      properties:
+        ca: {type: string}
+        delta: {type: boolean, default: false}
+        length: {type: integer}
+    AICIssueResponse:
+      type: object
+      properties:
+        cert_pem: {type: string}
+        serial_number: {type: string}
+        ca: {type: string}
+        key_pem: {type: string, description: Only when server-generated key}
+    AgentRegisterResponse:
+      type: object
+      properties:
+        status: {type: string}
+        agent_id: {type: string}
+        principal_uid: {type: string}
+    UserRevokeAllResponse:
+      type: object
+      properties:
+        status: {type: string}
+        principal_uid: {type: string}
+        revoked_count: {type: integer}

@@ -1,0 +1,25 @@
+[Unit]
+Description=pki — All-in-One PKI Service
+Documentation=https://github.com/varwof/pki
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/varwof serve --config /etc/varwof/core/pki.json
+ExecStartPre=/usr/local/bin/pki-init /etc/varwof/core/pki.json
+Restart=always
+RestartSec=5
+User=pki
+DynamicUser=yes
+StateDirectory=pki
+RuntimeDirectory=pki
+CacheDirectory=pki
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/etc/pki /var/lib/pki /run/pki
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

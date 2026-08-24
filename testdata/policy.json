@@ -1,0 +1,12 @@
+{
+  "rules": [
+    {
+      "comment": "Allow internal certs with max 365 days",
+      "allowed_cns": ["*.example.com", "*.internal", "*.varwof.com"],
+      "allowed_sans": ["*.example.com", "*.internal", "*.varwof.com"],
+      "allowed_profiles": ["tls-server", "tls-client", "timestamp"],
+      "allowed_key_types": ["ecdsa-p256", "ecdsa-p384", "ed25519"],
+      "max_validity_days": 365
+    }
+  ]
+}

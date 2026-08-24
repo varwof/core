@@ -1,0 +1,15 @@
+{
+  "db": "/var/lib/pki/pki.db",
+  "defaults": {
+    "ca": "root",
+    "profile": "tls-server"
+  },
+  "serve": {
+    "listen": ":4430",
+    "tls_addr": ":4433",
+    "tls_cert": "/etc/varwof/core/server.pem",
+    "tls_key": "/etc/varwof/core/server.key",
+    "auth_username": "admin",
+    "auth_password": "changeme"
+  }
+}

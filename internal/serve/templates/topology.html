@@ -1,0 +1,55 @@
+{{define "topology.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{t "template.title_topology"}}</title>
+<link rel="stylesheet" href="/pki/pki.css">
+<style>
+#topology-svg { width:100%; height:600px; border:1px solid var(--border); border-radius:8px; background:var(--card-bg); }
+.node circle { stroke:#fff; stroke-width:2px; cursor:pointer; }
+.node.root circle { fill:#e74c3c; }
+.node.subca circle { fill:#3498db; }
+.node text { font-size:12px; font-family:monospace; }
+.link { stroke:#999; stroke-opacity:0.6; stroke-width:2px; fill:none; }
+</style>
+</head>
+<body>
+<nav><a href="/">{{t "template.nav_home"}}</a> &middot; <a href="/dashboard">{{t "template.nav_dashboard"}}</a> &middot; <a href="/cas">{{t "template.nav_cas"}}</a> &middot; <a href="/certs">{{t "template.nav_certs"}}</a> &middot; <a href="/topology">{{t "template.nav_topology"}}</a> &middot; <a href="/api/cas">{{t "template.nav_api"}}</a></nav>
+<h1>{{t "template.heading_topology"}}</h1>
+<svg id="topology-svg"></svg>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+fetch('/api/v1/cas/tree').then(r=>r.json()).then(data=>{
+  var nodes = [], links = [];
+  function walk(node, parent) {
+    var n = {id: node.name, subject: node.subject, depth: node.depth, root: node.depth === 0};
+    nodes.push(n);
+    if (parent) links.push({source: parent.id, target: node.name});
+    (node.children||[]).forEach(function(c){ walk(c, node); });
+  }
+  data.forEach(function(r){ walk(r, null); });
+  var svg = d3.select('#topology-svg'), width = svg.node().getBoundingClientRect().width, height = 600;
+  var simulation = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(links).id(d=>d.id).distance(150))
+    .force('charge', d3.forceManyBody().strength(-400))
+    .force('center', d3.forceCenter(width/2, height/2));
+  var link = svg.append('g').selectAll('line').data(links).join('line').attr('class','link');
+  var node = svg.append('g').selectAll('g').data(nodes).join('g').attr('class', d=>'node'+(d.root?' root':' subca'))
+    .call(d3.drag()
+      .on('start', (e,d)=>{ if(!e.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+      .on('drag', (e,d)=>{ d.fx = e.x; d.fy = e.y; })
+      .on('end', (e,d)=>{ if(!e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }));
+  node.append('circle').attr('r', 20);
+  node.append('text').text(d=>d.id).attr('dx', 25).attr('dy', 5);
+  node.append('title').text(d=>d.subject);
+  simulation.on('tick', ()=>{
+    link.attr('x1',d=>d.source.x).attr('y1',d=>d.source.y).attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);
+    node.attr('transform',d=>`translate(${d.x},${d.y})`);
+  });
+});
+</script>
+</body>
+</html>
+{{end}}

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="pageTitle">pki Manager</title>
+<link rel="icon" type="image/svg+xml" href="/pki/favicon.svg">
+<link rel="stylesheet" href="/pki/style.css">
+<!--LOCALE_DATA-->
+</head>
+<body>
+<div id="loginPage" class="login-page">
+  <div class="login-card">
+    <h1 id="loginTitle">pki Manager</h1>
+    <p id="loginSubtitle">PKI Infrastructure Management Platform</p>
+    <input type="text" id="loginUsername" placeholder="Username" autofocus>
+    <input type="password" id="loginPassword" placeholder="Password">
+    <button class="btn-login" id="loginBtn">Login</button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+  <aside class="sidebar">
+    <h1 class="logo" id="sidebarLogo">pki</h1>
+    <nav class="sidebar-nav">
+      <button class="nav-btn active" data-page="dashboard" id="navDashboard">Dashboard</button>
+      <button class="nav-btn" data-page="certs" id="navCerts">Certificates</button>
+      <button class="nav-btn" data-page="issue" id="navIssue">Issue</button>
+      <button class="nav-btn" data-page="cas" id="navCas">CA</button>
+      <button class="nav-btn" data-page="topology" id="navTopology">Topology</button>
+      <button class="nav-btn" data-page="ra" id="navRa">RA</button>
+      <button class="nav-btn" data-page="reports" id="navReports">Reports</button>
+      <button class="nav-btn" data-page="admin" id="navAdmin">Admin</button>
+    </nav>
+    <div class="sidebar-footer">
+      <span id="userDisplay"></span>
+      <button id="logoutBtn" title="Logout">🚪</button>
+    </div>
+  </aside>
+  <main class="main" id="main">
+    <div class="page active" id="page-dashboard"><h2 id="pageDashboardTitle">Dashboard</h2><div class="stats-grid" id="statsGrid"></div><div class="nearest-expiry" id="nearestExpiry"></div><div class="expiry-section"><h3 id="expiryTitle">Expiry Distribution</h3><div id="expiryBars"></div></div></div>
+    <div class="page" id="page-certs"><h2 id="pageCertsTitle">Certificates</h2><div class="toolbar"><input id="certSearch" placeholder="Search CN"><select id="certStatus"><option value="" id="certStatusAll">All</option><option value="V" id="certStatusValid">Valid</option><option value="R" id="certStatusRevoked">Revoked</option></select><button id="refreshCerts">Refresh</button></div><div id="certsList"></div></div>
+    <div class="page" id="page-issue"><h2 id="pageIssueTitle">Issue Certificate</h2><form id="issueForm"><label><span id="issueCALabel">CA</span> <select id="issueCA"></select></label><label><span id="issueCNLabel">CN</span> <input id="issueCN" required></label><label><span id="issueSANLabel">SAN</span> <input id="issueSAN" placeholder="DNS:x.com,IP:1.2.3.4"></label><label><span id="issueValidityLabel">Validity (days)</span> <input id="issueValidity" value="365" type="number"></label><label><span id="issueKeyTypeLabel">Key Type</span> <select id="issueKeyType"><option value="ecdsa-p256">ECDSA P-256</option><option value="ecdsa-p384">ECDSA P-384</option><option value="rsa-2048">RSA 2048</option><option value="ed25519">Ed25519</option></select></label><label><span id="issueProfileLabel">Profile</span> <select id="issueProfile"><option value="tls-server">TLS Server</option><option value="tls-client">TLS Client</option><option value="codesigning">Code Signing</option></select></label><button type="submit" id="issueBtn">Issue</button></form><pre id="issueResult" class="hidden"></pre></div>
+    <div class="page" id="page-cas"><h2 id="pageCasTitle">Certificate Authorities</h2><div id="casList"></div></div>
+    <div class="page" id="page-topology"><h2 id="pageTopologyTitle">Topology</h2><svg id="topoSvg" width="100%" height="500"></svg></div>
+    <div class="page" id="page-ra"><h2 id="pageRaTitle">Registration Authority</h2><div class="toolbar"><button id="refreshRA">Refresh</button></div><div class="admin-tabs"><button class="ra-tab active" data-tab="pending" id="raTabPending">Pending</button><button class="ra-tab" data-tab="history" id="raTabHistory">History</button></div><div id="raContent"></div></div>
+    <div class="page" id="page-reports"><h2 id="pageReportsTitle">Compliance Reports</h2><p id="reportsDesc" style="color:var(--text2);margin-bottom:16px;"></p><div class="stats-grid" id="reportsGrid"></div></div>
+    <div class="page" id="page-admin"><h2 id="pageAdminTitle">Admin</h2><div class="admin-tabs"><button class="admin-tab active" data-tab="users" id="adminTabUsers">Users</button><button class="admin-tab" data-tab="tokens" id="adminTabTokens">Tokens</button><button class="admin-tab" data-tab="audit" id="adminTabAudit">Audit</button><button class="admin-tab" data-tab="config" id="adminTabConfig">Config</button></div><div id="adminContent"></div></div>
+  </main>
+</div>
+<div id="toast" class="toast hidden"></div>
+<script src="/pki/app.js"></script>
+</body>
+</html>

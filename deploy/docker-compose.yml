@@ -1,0 +1,25 @@
+services:
+  pki:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: varwof/pki:latest
+    container_name: pki
+    ports:
+      - "4430:4430"   # HTTP API
+      - "4433:4433"   # HTTPS API
+    volumes:
+      - pki-data:/var/lib/pki
+      - ./pki.json:/etc/varwof/core/pki.json:ro
+    environment:
+      - TZ=Asia/Shanghai
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:4430/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  pki-data:
