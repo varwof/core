@@ -1,0 +1,44 @@
+To: crypt@bis.doc.gov; enc@nsa.gov
+Cc: pki@varwof.com
+Subject: TSU NOTIFICATION - Encryption
+
+SUBMISSION TYPE: TSU
+SUBMITTED BY: Jijie Wei
+SUBMITTED FOR: Varwof PKI Project
+POINT OF CONTACT: Jijie Wei, pki@varwof.com
+PHONE and/or FAX: n/a
+MANUFACTURER: Varwof Project
+PRODUCT NAME/MODEL #: Varwof PKI Toolkit (AIC X.509 Certificate Extension Implementation)
+ECCN: 5D002
+
+NOTIFICATION:
+
+This email serves as a notice that the Varwof Project provides Varwof PKI
+Toolkit, an open source Public Key Infrastructure (PKI) software implementing
+cryptographic functionality including X.509 certificate issuance, digital
+signatures (ECDSA, RSA, Ed25519), and the AI Agent Identity Certificate (AIC)
+extension as defined in IETF draft-wei-aic-identity-cert-00.
+
+The source code is publicly available at the following locations:
+
+  https://github.com/varwof/core            (core engine, GNU AGPL v3.0)
+  https://github.com/varwof/engine          (storage engine, GNU AGPL v3.0)
+  https://github.com/varwof/gateway-core    (Apache License 2.0)
+  https://github.com/varwof/gateway         (Apache License 2.0)
+  https://github.com/varwof/types           (Apache License 2.0)
+  https://github.com/varwof/client          (Apache License 2.0)
+  https://github.com/varwof/register        (Apache License 2.0)
+  https://github.com/varwof/pkcs7           (Apache License 2.0)
+  https://github.com/varwof/capability      (Apache License 2.0)
+
+This notification is submitted pursuant to the License Exception TSU under
+the U.S. Export Administration Regulations (EAR), Section 742.15(b)(2).
+
+Please direct any correspondence regarding this notification to the point
+of contact listed above.
+
+Sincerely,
+
+Jijie Wei
+pki@varwof.com
+2026-08-24
