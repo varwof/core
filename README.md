@@ -3,7 +3,7 @@
 > ⚠️ **技术预览版** — 核心加密原语已通过 OpenSSL 互操作性验证，正持续进行 RFC 合规补全。
 > 欢迎提交 Issue 共同完善。
 
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-AGPL%203.0-blue.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/go-1.26-blue)](https://go.dev)
 [![Go Reference](https://pkg.go.dev/badge/github.com/varwof/core)](https://pkg.go.dev/github.com/varwof/core)
 [![Build](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/varwof/core/actions)
@@ -168,7 +168,7 @@ pki binary
 
 ## License
 
-[Apache 2.0](LICENSE) © 2026 varwof
+[AGPL-3.0](LICENSE) © 2026 varwof
 
 ## Contributing
 
