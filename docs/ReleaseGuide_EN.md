@@ -24,42 +24,31 @@ During CI/CD, override it via ldflags injection without modifying the source fil
 go build -ldflags "-X main.version=1.0.1" -o pki ./cmd/pki/
 ```
 
-## Build Script
+## Tag & Release
 
-`deploy/build.sh` implements a one-click release process:
-
-```bash
-deploy/build.sh 1.0.1
-```
-
-Execution steps:
-1. Compile binary with ldflags → `pki`
-2. Create Git tag via `git tag trunk tags/1.0.1`
-3. Package `pki-src-1.0.1.tar.gz`
-4. SFTP upload to NAS `/sata1-17080036766a/home/src/`
-
-## Git Tag Convention
-
-Each release creates one tag, one-to-one with the version number:
-
-```bash
-git tag file:///home/varwof/svn/pki/trunk \
-         file:///home/varwof/svn/pki/tags/1.0.0 \
-         -m "tag 1.0.0"
-```
+1. Build and test:
+   ```bash
+   go build ./... && go vet ./... && go test ./...
+   ```
+2. Create a Git tag:
+   ```bash
+   git tag v1.0.1
+   git push origin v1.0.1
+   ```
+3. CI (`release.yml`) builds the release binaries and creates a GitHub Release on the tag.
 
 ## Artifact Naming
 
 | Artifact | Naming Format | Example |
 |---|---|---|
-| Source package | `pki-src-<version>.tar.gz` | `pki-src-1.0.0.tar.gz` |
+| Source archive | `pki-src-<version>.tar.gz` | `pki-src-1.0.0.tar.gz` |
 | Binary | `pki` | `pki` |
-| Git tag | `tags/<version>` | `tags/1.0.0` |
+| Git tag | `v<version>` | `v1.0.0` |
 
 ## Release Checklist
 
 - [ ] All tests pass (`go test ./...`)
 - [ ] Zero warnings (`go vet ./...`)
 - [ ] Version number updated
-- [ ] Archived on NAS
-- [ ] Git tag created
+- [ ] Git tag created and pushed
+- [ ] Release binaries verified

@@ -24,28 +24,18 @@ CI/CD 时通过 ldflags 注入覆盖，不修改源文件：
 go build -ldflags "-X main.version=1.0.1" -o pki ./cmd/pki/
 ```
 
-## 构建脚本
+## Tag 与发布
 
-`deploy/build.sh` 实现一键发版流程：
-
-```bash
-deploy/build.sh 1.0.1
-```
-
-执行步骤：
-1. ldflags 编译二进制 → `pki`
-2. `git tag v1.0.1` 打 Git tag
-3. 打包 `pki-src-1.0.1.tar.gz`
-4. SFTP 上传 NAS `/sata1-17080036766a/home/src/`
-
-## Git tag 规范
-
-每发一版打一个 tag，与版本号一一对应：
-
-```bash
-git tag v1.0.0 && git push origin v1.0.0
-         -m "tag 1.0.0"
-```
+1. 构建与测试：
+   ```bash
+   go build ./... && go vet ./... && go test ./...
+   ```
+2. 打 Git tag 并推送：
+   ```bash
+   git tag v1.0.1
+   git push origin v1.0.1
+   ```
+3. CI（`release.yml`）在 tag 上构建发布二进制并创建 GitHub Release。
 
 ## 产物命名
 
@@ -60,5 +50,5 @@ git tag v1.0.0 && git push origin v1.0.0
 - [ ] 测试全过（`go test ./...`）
 - [ ] 零警告（`go vet ./...`）
 - [ ] 版本号已更新
-- [ ] NAS 已存档
-- [ ] Git tag 已打
+- [ ] Git tag 已打并推送
+- [ ] 发布二进制已验证

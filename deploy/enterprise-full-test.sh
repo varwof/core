@@ -271,7 +271,7 @@ with open('$CFG','w') as f:json.dump(cfg,f,indent=2)
 echo ""
 echo "══════ Phase 7: 网关集成测试 ══════"
 
-GW_ROOT=/home/varwof/src/varwof
+GW_ROOT=${VARWOF_GW_ROOT:-../..}
 GW_LOG=$LOGDIR/gateway
 mkdir -p $GW_LOG
 
