@@ -1,0 +1,801 @@
+{
+  "scheme_id": "varwof/core",
+  "name": "Varwof PKI Core",
+  "version": "1.1.0",
+  "description": "Varwof PKI core engine operation permissions",
+  "vendor": "varwof",
+  "product": "core",
+  "author": "varwof",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/varwof/core",
+  "capabilities": [
+    {
+      "id": "ca:create",
+      "description": "Create CA",
+      "summary": "Create a new certificate authority (CA)",
+      "usage": "Used when initializing a new PKI hierarchy, establishing a new trust root, or issuing a sub-CA. A one-time initialization operation; re-authorization is usually not needed after creation.",
+      "when_not": "Not needed for routine certificate issuance/query tasks; only needed when an operations administrator initializes the PKI.",
+      "examples": [
+        "Initialize a root CA",
+        "Create a new sub-CA"
+      ],
+      "related": [
+        "ca:list",
+        "ca:info",
+        "ca:issue-sub"
+      ]
+    },
+    {
+      "id": "ca:delete",
+      "description": "Delete CA",
+      "summary": "Delete an existing certificate authority",
+      "usage": "Used to permanently remove a CA that is no longer in use along with its associated configuration. A dangerous operation, typically restricted to superadmins.",
+      "when_not": "Must never be granted for routine issuance/query tasks; deletion affects the entire trust chain.",
+      "examples": [
+        "Clean up abandoned test CAs"
+      ],
+      "related": [
+        "ca:create"
+      ]
+    },
+    {
+      "id": "ca:list",
+      "description": "List CAs",
+      "summary": "List all CAs",
+      "usage": "Used to see which CAs exist in the system (browsing the PKI structure, selecting an issuance target).",
+      "when_not": "No special restrictions; a read-only capability that can be a base grant for most roles.",
+      "examples": [
+        "Browse the available CA list",
+        "Confirm the target CA exists"
+      ],
+      "related": [
+        "ca:info"
+      ]
+    },
+    {
+      "id": "ca:info",
+      "description": "View CA details",
+      "summary": "View detailed information for a single CA",
+      "usage": "Used to view a CA's certificate, validity, status, and other details.",
+      "when_not": "No special restrictions; a read-only capability.",
+      "examples": [
+        "Check a CA certificate's validity period",
+        "View basic CA information"
+      ],
+      "related": [
+        "ca:list"
+      ]
+    },
+    {
+      "id": "ca:issue-sub",
+      "description": "Issue sub-CA certificate",
+      "parameters": {
+        "ca_scope": {
+          "type": "list",
+          "description": "Scope of sub-CAs that can be issued (restricts the sub-CA scope)",
+          "required": false
+        },
+        "max_validity_days": {
+          "type": "int",
+          "description": "Maximum validity (days)",
+          "default": 1825,
+          "min": 1,
+          "max": 3650
+        }
+      },
+      "summary": "Issue sub-CA certificate (hierarchy expansion)",
+      "usage": "Used to extend the PKI hierarchy and create sub-CAs for independent business domains.",
+      "when_not": "Routine certificate issuance (cert:issue) does not need this capability; only needed when creating a new CA tier.",
+      "examples": [
+        "Create an independent sub-CA for a department",
+        "Build a multi-level trust chain"
+      ],
+      "related": [
+        "ca:create",
+        "cert:issue"
+      ]
+    },
+    {
+      "id": "cert:issue",
+      "description": "Issue certificate",
+      "parameters": {
+        "ca_scope": {
+          "type": "list",
+          "description": "List of CAs allowed for issuance (restricts sub-CA issuance scope)",
+          "required": false
+        },
+        "max_validity_days": {
+          "type": "int",
+          "description": "Maximum validity (days)",
+          "default": 365,
+          "min": 1,
+          "max": 3650
+        }
+      },
+      "summary": "Issue an end-entity certificate",
+      "usage": "Used to issue new certificates for services, devices, users, or agents. The most common certificate operation.",
+      "when_not": "Pure query tasks (list/info) do not need it; existing certificates should be renewed with cert:renew rather than re-issued.",
+      "examples": [
+        "Issue a certificate for an HTTPS service",
+        "Issue an AIC certificate for an AI agent",
+        "Issue a client mTLS certificate"
+      ],
+      "related": [
+        "cert:renew",
+        "cert:revoke",
+        "cert:list"
+      ]
+    },
+    {
+      "id": "cert:revoke",
+      "description": "Revoke certificate",
+      "parameters": {
+        "ca_scope": {
+          "type": "list",
+          "description": "List of CAs where revocation is allowed",
+          "required": false
+        }
+      },
+      "summary": "Revoke an issued certificate",
+      "usage": "Used when a private key is compromised, the subject is no longer legitimate, or a certificate is reclaimed after task completion.",
+      "when_not": "Read-only tasks do not need it; revocation is a sensitive operation that should be limited to the smallest scope.",
+      "examples": [
+        "Revoke a certificate after a private key leak",
+        "Revoke a temporary certificate after an agent task completes"
+      ],
+      "related": [
+        "cert:issue",
+        "cert:list"
+      ]
+    },
+    {
+      "id": "cert:renew",
+      "description": "Renew certificate",
+      "summary": "Renew an existing certificate",
+      "usage": "Used when a certificate is about to expire and the same subject must continue operating. Typically keeps the original public key or regenerates it.",
+      "when_not": "First-time access by a new subject should use cert:issue; expiration reclamation should use cert:revoke.",
+      "examples": [
+        "Automatically renew a service certificate",
+        "Renew an agent certificate on expiry"
+      ],
+      "related": [
+        "cert:issue",
+        "cert:revoke"
+      ]
+    },
+    {
+      "id": "cert:list",
+      "description": "Query certificate list",
+      "summary": "Query the certificate list (filterable by CA/status/subject)",
+      "usage": "Used to search issued certificates and check their status (valid/revoked/expired). A read-only capability.",
+      "when_not": "No special restrictions; a read-only capability that can be a base grant.",
+      "examples": [
+        "List all certificates under a CA",
+        "Look up a certificate's revocation status"
+      ],
+      "related": [
+        "ca:list",
+        "cert:info"
+      ]
+    },
+    {
+      "id": "cert:export",
+      "description": "Export certificate",
+      "summary": "Export a certificate (PEM/DER format)",
+      "usage": "Used to download certificate files, hand them to a peer, or back them up. A read-only capability.",
+      "when_not": "No special restrictions, but note that the export is a public certificate, not a private key.",
+      "examples": [
+        "Export a service certificate for an Nginx config",
+        "Download a certificate for client deployment"
+      ],
+      "related": [
+        "cert:list"
+      ]
+    },
+    {
+      "id": "cert:batch",
+      "description": "Batch issue certificates",
+      "summary": "Issue multiple certificates in a batch",
+      "usage": "Used to issue certificates for a large number of devices/services at once (bulk onboarding, bulk expansion).",
+      "when_not": "Use cert:issue for single certificates; no batch permission needed.",
+      "examples": [
+        "Batch-issue certificates for 100 devices"
+      ],
+      "related": [
+        "cert:issue"
+      ]
+    },
+    {
+      "id": "crl:generate",
+      "description": "Generate CRL",
+      "summary": "Generate a certificate revocation list (CRL)",
+      "usage": "Used to generate/update a CRL for client validation after a revocation.",
+      "when_not": "Pure query tasks do not need it; usually triggered automatically by the revocation flow.",
+      "examples": [
+        "Generate the latest CRL after revocation"
+      ],
+      "related": [
+        "cert:revoke",
+        "crl:read"
+      ]
+    },
+    {
+      "id": "crl:read",
+      "description": "Read CRL",
+      "summary": "Read CRL contents",
+      "usage": "Used by clients to check certificate revocation status or for audit inspection. A read-only capability.",
+      "when_not": "No special restrictions; read-only.",
+      "examples": [
+        "Check whether a CRL contains a certificate"
+      ],
+      "related": [
+        "crl:generate",
+        "cert:list"
+      ]
+    },
+    {
+      "id": "ocsp:respond",
+      "description": "OCSP respond",
+      "summary": "OCSP online certificate status response",
+      "usage": "Used when providing an OCSP online revocation status query service. Usually held by the core service itself.",
+      "when_not": "Ordinary agent/user tasks do not need this capability.",
+      "examples": [
+        "OCSP responder service running"
+      ],
+      "related": [
+        "cert:revoke",
+        "crl:read"
+      ]
+    },
+    {
+      "id": "user:manage",
+      "description": "Manage users",
+      "summary": "Manage user accounts (create/delete/change roles)",
+      "usage": "Used to manage PKI user identities and assign role permissions. A sensitive administrative operation.",
+      "when_not": "Ordinary certificate operations do not need user management permissions.",
+      "examples": [
+        "Create a new user",
+        "Assign a role to a user"
+      ],
+      "related": [
+        "user:list",
+        "user:revoke-all"
+      ]
+    },
+    {
+      "id": "user:list",
+      "description": "Query user list",
+      "summary": "Query user list",
+      "usage": "Used to view system users and confirm identities. A read-only capability.",
+      "when_not": "No special restrictions; read-only.",
+      "examples": [
+        "List all users"
+      ],
+      "related": [
+        "user:manage"
+      ]
+    },
+    {
+      "id": "user:revoke-all",
+      "description": "Revoke all of a user's certificates",
+      "summary": "Revoke all certificates of a user",
+      "usage": "Used to revoke all certificates of a user on departure or account compromise.",
+      "when_not": "Use cert:revoke to revoke a single certificate.",
+      "examples": [
+        "Revoke all of a user's certificates after departure"
+      ],
+      "related": [
+        "user:manage",
+        "cert:revoke"
+      ]
+    },
+    {
+      "id": "log:read",
+      "description": "Read audit log",
+      "summary": "Read audit log",
+      "usage": "Used to view operation records or troubleshoot. A read-only capability.",
+      "when_not": "No special restrictions; read-only.",
+      "examples": [
+        "View recent certificate issuance records"
+      ],
+      "related": [
+        "log:export"
+      ]
+    },
+    {
+      "id": "log:export",
+      "description": "Export audit log",
+      "summary": "Export audit log",
+      "usage": "Used to hand logs to a SIEM, for offline archival, or compliance audits.",
+      "when_not": "Use log:read for viewing only.",
+      "examples": [
+        "Export the last 30 days of logs to an audit system"
+      ],
+      "related": [
+        "log:read"
+      ]
+    },
+    {
+      "id": "report:view",
+      "description": "View reports",
+      "summary": "View statistical reports",
+      "usage": "Used to view statistics such as issuance and revocation counts. Read-only.",
+      "when_not": "No special restrictions; read-only.",
+      "examples": [
+        "View the monthly issuance report"
+      ],
+      "related": [
+        "report:generate",
+        "report:export"
+      ]
+    },
+    {
+      "id": "report:export",
+      "description": "Export report",
+      "summary": "Export report data",
+      "usage": "Used to download report data (CSV/JSON).",
+      "when_not": "Use report:view for on-page viewing only.",
+      "examples": [
+        "Export a report to a finance system"
+      ],
+      "related": [
+        "report:view",
+        "report:generate"
+      ]
+    },
+    {
+      "id": "report:generate",
+      "description": "Generate report",
+      "summary": "Generate a new report",
+      "usage": "Used to generate reports on custom criteria.",
+      "when_not": "Use report:view for preset reports only.",
+      "examples": [
+        "Generate an issuance report for a custom time range"
+      ],
+      "related": [
+        "report:view"
+      ]
+    },
+    {
+      "id": "config:read",
+      "description": "Read config",
+      "summary": "Read system configuration",
+      "usage": "Used to view the current configuration (listen ports, CA paths, etc.). Read-only.",
+      "when_not": "No special restrictions; read-only.",
+      "examples": [
+        "View the current configuration"
+      ],
+      "related": [
+        "config:write"
+      ]
+    },
+    {
+      "id": "config:write",
+      "description": "Modify config",
+      "summary": "Modify system configuration",
+      "usage": "Used to change configuration and hot-reload. A sensitive operation; changes may affect all services.",
+      "when_not": "Must never be granted for routine tasks; only needed by operations administrators.",
+      "examples": [
+        "Modify the certificate validity configuration"
+      ],
+      "related": [
+        "config:read"
+      ]
+    },
+    {
+      "id": "ra:approve",
+      "description": "RA approve",
+      "summary": "RA approval (registration authority approval)",
+      "usage": "Used to approve pending certificate requests (manual review flow).",
+      "when_not": "Fully automated issuance does not need RA approval.",
+      "examples": [
+        "Approve a pending server certificate"
+      ],
+      "related": [
+        "ra:reject",
+        "cert:issue"
+      ]
+    },
+    {
+      "id": "ra:reject",
+      "description": "RA reject",
+      "summary": "RA reject",
+      "usage": "Used to reject non-compliant certificate requests.",
+      "when_not": "Same as ra:approve; only needed by approvers.",
+      "examples": [
+        "Reject a forged certificate request"
+      ],
+      "related": [
+        "ra:approve"
+      ]
+    },
+    {
+      "id": "cross-cert:issue",
+      "description": "Issue cross certificate",
+      "summary": "Issue a cross certificate (cross-trust-domain bridging)",
+      "usage": "Used to establish a trust bridge between two PKI domains. An advanced PKI operation.",
+      "when_not": "Not needed for issuance within a single domain.",
+      "examples": [
+        "Mutual trust between two enterprise PKIs"
+      ],
+      "related": [
+        "ca:issue-sub"
+      ]
+    },
+    {
+      "id": "cross-cert:revoke",
+      "description": "Revoke cross certificate",
+      "summary": "Revoke cross certificate",
+      "usage": "Used to revoke a cross-domain trust bridge.",
+      "when_not": "Not needed for single-domain operations.",
+      "examples": [
+        "Revoke inter-enterprise trust"
+      ],
+      "related": [
+        "cross-cert:issue"
+      ]
+    },
+    {
+      "id": "webhook:manage",
+      "description": "Manage webhook",
+      "summary": "Manage webhook notifications (create/delete/change URL)",
+      "usage": "Used to configure certificate event notifications (issued/revoked/expiring) to external systems.",
+      "when_not": "Tasks that do not subscribe to notifications do not need it.",
+      "examples": [
+        "Configure a certificate expiry reminder webhook"
+      ],
+      "related": [
+        "cert:issue",
+        "cert:revoke"
+      ]
+    },
+    {
+      "id": "key:recover",
+      "description": "Key recovery",
+      "summary": "Key recovery (private key retrieval)",
+      "usage": "Used to recover a private key from escrow. An extremely sensitive operation.",
+      "when_not": "Must never be granted for routine tasks; only for authorized key-escrow administrators.",
+      "examples": [
+        "Recover a lost service private key"
+      ],
+      "related": [
+        "cert:issue"
+      ]
+    },
+    {
+      "id": "dns:manage",
+      "description": "Manage DNS",
+      "summary": "Manage DNS records (domain validation before certificate issuance)",
+      "usage": "Used to create DNS validation records for certificate issuance (ACME challenges, etc.).",
+      "when_not": "Issuance that does not involve domain validation does not need it.",
+      "examples": [
+        "Create an _acme-challenge DNS record"
+      ],
+      "related": [
+        "cert:issue"
+      ]
+    },
+    {
+      "id": "trust:import",
+      "description": "Import trust anchor",
+      "summary": "Import a trust anchor / root certificate",
+      "usage": "Used when trusting a new external CA.",
+      "when_not": "Tasks that do not involve external trust do not need it.",
+      "examples": [
+        "Import a customer CA certificate"
+      ],
+      "related": [
+        "trust:list",
+        "trust:delete"
+      ]
+    },
+    {
+      "id": "trust:list",
+      "description": "Query trust anchors",
+      "summary": "Query the trust anchor list",
+      "usage": "Used to see which external CAs are currently trusted. Read-only.",
+      "when_not": "No special restrictions; read-only.",
+      "examples": [
+        "View trusted CAs"
+      ],
+      "related": [
+        "trust:import"
+      ]
+    },
+    {
+      "id": "trust:delete",
+      "description": "Delete trust anchor",
+      "summary": "Delete trust anchor",
+      "usage": "Used to revoke trust in an external CA.",
+      "when_not": "Not needed when not managing external trust.",
+      "examples": [
+        "Remove a no-longer-trusted CA"
+      ],
+      "related": [
+        "trust:import"
+      ]
+    },
+    {
+      "id": "agent:manage",
+      "description": "Manage AI agent",
+      "summary": "Manage AI agents (register/disconnect/configure)",
+      "usage": "Used to manage AI agent identities and sessions connecting to the gateway.",
+      "when_not": "An agent executing its own tasks does not need to manage other agents.",
+      "examples": [
+        "Disconnect an abnormal agent connection"
+      ],
+      "related": [
+        "cert:issue"
+      ]
+    },
+    {
+      "id": "swagger:view",
+      "description": "View API docs",
+      "summary": "View API documentation (Swagger/OpenAPI)",
+      "usage": "Used to browse the API documentation. Read-only.",
+      "when_not": "No special restrictions; read-only.",
+      "examples": [
+        "View API interface documentation"
+      ],
+      "related": [
+        "web:view"
+      ]
+    },
+    {
+      "id": "web:view",
+      "description": "Access web console",
+      "summary": "Access web console",
+      "usage": "Used to log in to the web management interface.",
+      "when_not": "Pure API-call tasks do not need it.",
+      "examples": [
+        "Log in to the management console"
+      ],
+      "related": [
+        "swagger:view"
+      ]
+    }
+  ],
+  "roles": {
+    "superadmin": {
+      "display_name": "Super Administrator",
+      "profiles": [
+        "m-superadmin"
+      ],
+      "ous": [
+        "SuperAdmin"
+      ],
+      "grants": [
+        "ca:create",
+        "ca:delete",
+        "ca:list",
+        "ca:info",
+        "cert:issue",
+        "cert:revoke",
+        "cert:renew",
+        "cert:batch",
+        "cert:list",
+        "cert:export",
+        "crl:generate",
+        "user:manage",
+        "user:list",
+        "user:revoke-all",
+        "log:read",
+        "log:export",
+        "config:read",
+        "config:write",
+        "report:view",
+        "report:export",
+        "report:generate",
+        "ra:approve",
+        "ra:reject",
+        "cross-cert:issue",
+        "cross-cert:revoke",
+        "webhook:manage",
+        "key:recover",
+        "dns:manage",
+        "trust:import",
+        "trust:list",
+        "trust:delete",
+        "agent:manage",
+        "swagger:view",
+        "web:view"
+      ]
+    },
+    "admin": {
+      "display_name": "Administrator",
+      "profiles": [
+        "m-admin"
+      ],
+      "ous": [
+        "admin",
+        "Admin"
+      ],
+      "grants": [
+        "ca:list",
+        "ca:info",
+        "cert:issue",
+        "cert:revoke",
+        "cert:renew",
+        "cert:list",
+        "cert:export",
+        "cert:batch",
+        "crl:generate",
+        "log:read",
+        "log:export",
+        "report:view",
+        "report:export",
+        "report:generate",
+        "ra:approve",
+        "ra:reject",
+        "cross-cert:issue",
+        "cross-cert:revoke",
+        "webhook:manage",
+        "key:recover",
+        "dns:manage",
+        "trust:import",
+        "trust:list",
+        "trust:delete",
+        "agent:manage",
+        "swagger:view",
+        "web:view"
+      ]
+    },
+    "operator": {
+      "display_name": "Operations Operator",
+      "profiles": [
+        "m-operator"
+      ],
+      "ous": [
+        "operator",
+        "Operator"
+      ],
+      "grants": [
+        "ca:list",
+        "ca:info",
+        "cert:issue",
+        "cert:revoke",
+        "cert:renew",
+        "cert:list",
+        "cert:export",
+        "cert:batch",
+        "crl:generate",
+        "log:read",
+        "report:view",
+        "web:view"
+      ]
+    },
+    "revoker": {
+      "display_name": "Auto Revoker",
+      "profiles": [
+        "m-revoker"
+      ],
+      "ous": [
+        "revoker",
+        "Revoker"
+      ],
+      "grants": [
+        "ca:list",
+        "ca:info",
+        "cert:list",
+        "cert:revoke",
+        "log:read",
+        "report:view",
+        "web:view"
+      ]
+    },
+    "auditor": {
+      "display_name": "Auditor",
+      "profiles": [
+        "m-auditor"
+      ],
+      "ous": [
+        "auditor",
+        "Auditor"
+      ],
+      "grants": [
+        "ca:list",
+        "ca:info",
+        "cert:list",
+        "log:read",
+        "log:export",
+        "report:view",
+        "report:export",
+        "swagger:view",
+        "web:view"
+      ]
+    },
+    "readonly": {
+      "display_name": "Read-Only User",
+      "profiles": [
+        "m-readonly"
+      ],
+      "ous": [
+        "readonly",
+        "ReadOnly"
+      ],
+      "grants": [
+        "ca:list",
+        "ca:info",
+        "cert:list",
+        "swagger:view",
+        "web:view"
+      ]
+    },
+    "console": {
+      "display_name": "Console User",
+      "profiles": [
+        "m-console"
+      ],
+      "ous": [
+        "console",
+        "Console"
+      ],
+      "grants": [
+        "ca:list",
+        "ca:info",
+        "cert:issue",
+        "cert:revoke",
+        "cert:renew",
+        "cert:list",
+        "cert:export",
+        "crl:generate",
+        "log:read",
+        "report:view",
+        "report:generate",
+        "ra:approve",
+        "ra:reject",
+        "trust:list",
+        "swagger:view",
+        "web:view"
+      ]
+    },
+    "auto-renew": {
+      "display_name": "Auto-Renew Service",
+      "profiles": [
+        "m-auto-renew"
+      ],
+      "ous": [
+        "auto-renew",
+        "AutoRenew"
+      ],
+      "grants": [
+        "ca:list",
+        "ca:info",
+        "cert:list",
+        "cert:renew",
+        "cert:export",
+        "log:read",
+        "web:view"
+      ]
+    },
+    "reporter": {
+      "display_name": "Report User",
+      "profiles": [
+        "m-reporter"
+      ],
+      "ous": [
+        "reporter",
+        "Reporter"
+      ],
+      "grants": [
+        "ca:list",
+        "ca:info",
+        "cert:list",
+        "log:read",
+        "report:view",
+        "report:export",
+        "report:generate",
+        "web:view"
+      ]
+    },
+    "agent": {
+      "display_name": "AI Agent",
+      "profiles": [
+        "agent-proxy"
+      ],
+      "grants": [
+        "gateway:*"
+      ]
+    }
+  }
+}

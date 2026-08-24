@@ -20,7 +20,7 @@ func TestServeCapRegistryHookRejectsUnregistered(t *testing.T) {
 
 	// Enable capability registry (embedded approach)
 	cr := capregistry.New()
-	if err := cr.LoadAndSet("../../../capability/data"); err != nil {
+	if err := cr.LoadAndSet("../../data/capability"); err != nil {
 		t.Fatalf("LoadAndSet: %v", err)
 	}
 	srv.SetCapRegistry(cr)
@@ -49,7 +49,7 @@ func TestServeCapRegistryHookAllowsRegistered(t *testing.T) {
 	srv, _, caCert, caKey := newTestServerWithCA(t)
 
 	cr := capregistry.New()
-	if err := cr.LoadAndSet("../../../capability/data"); err != nil {
+	if err := cr.LoadAndSet("../../data/capability"); err != nil {
 		t.Fatalf("LoadAndSet: %v", err)
 	}
 	srv.SetCapRegistry(cr)

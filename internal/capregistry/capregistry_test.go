@@ -12,7 +12,7 @@ import (
 
 func TestLoadEmbeddedAndValidate(t *testing.T) {
 	cr := New()
-	if err := cr.LoadAndSet("../../../capability/data"); err != nil {
+	if err := cr.LoadAndSet("../../data/capability"); err != nil {
 		t.Fatalf("LoadAndSet: %v", err)
 	}
 	if !cr.Enabled() {
@@ -39,7 +39,7 @@ func TestLoadEmbeddedAndValidate(t *testing.T) {
 
 func TestValidateAICCapabilities(t *testing.T) {
 	cr := New()
-	if err := cr.LoadAndSet("../../../capability/data"); err != nil {
+	if err := cr.LoadAndSet("../../data/capability"); err != nil {
 		t.Fatalf("LoadAndSet: %v", err)
 	}
 	// All valid
@@ -78,10 +78,10 @@ func TestNilSafety(t *testing.T) {
 func TestLoadAndSetOverride(t *testing.T) {
 	// Loading again after initial load (hot-reload path) should succeed without losing schemes
 	cr := New()
-	if err := cr.LoadAndSet("../../../capability/data"); err != nil {
+	if err := cr.LoadAndSet("../../data/capability"); err != nil {
 		t.Fatalf("first load: %v", err)
 	}
-	if err := cr.LoadAndSet("../../../capability/data"); err != nil {
+	if err := cr.LoadAndSet("../../data/capability"); err != nil {
 		t.Fatalf("reload: %v", err)
 	}
 	if err := cr.ValidateCapability("varwof/gateway:proxy:http"); err != nil {
@@ -91,7 +91,7 @@ func TestLoadAndSetOverride(t *testing.T) {
 
 func TestValidateClaim(t *testing.T) {
 	cr := New()
-	if err := cr.LoadAndSet("../../../capability/data"); err != nil {
+	if err := cr.LoadAndSet("../../data/capability"); err != nil {
 		t.Fatalf("LoadAndSet: %v", err)
 	}
 	if err := cr.ValidateClaim("varwof/core", "cert:issue"); err != nil {

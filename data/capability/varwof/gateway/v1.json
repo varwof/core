@@ -1,0 +1,383 @@
+{
+  "scheme_id": "varwof/gateway",
+  "name": "Varwof Gateway",
+  "version": "1.1.0",
+  "description": "Varwof gateway operation permissions (management API + data plane)",
+  "vendor": "varwof",
+  "product": "gateway",
+  "author": "varwof",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/varwof/gateway",
+  "capabilities": [
+    {
+      "id": "proxy:http",
+      "description": "HTTP/HTTPS reverse proxy data plane",
+      "summary": "HTTP/HTTPS reverse proxy data plane",
+      "usage": "Used to access HTTP/HTTPS backend services (web apps, REST APIs) through the gateway. The most common data-plane capability.",
+      "when_not": "Proprietary TCP/UDP protocol services do not need it; pure administrative operations do not need it.",
+      "examples": [
+        "Access an internal web service through the gateway",
+        "Call a backend REST API"
+      ],
+      "related": [
+        "proxy:websocket",
+        "proxy:grpc"
+      ]
+    },
+    {
+      "id": "proxy:tcp",
+      "description": "TCP transparent proxy data plane",
+      "summary": "TCP transparent proxy data plane",
+      "usage": "Used to forward arbitrary TCP protocols (SSH, databases, custom protocols).",
+      "when_not": "Use proxy:http for HTTP services.",
+      "examples": [
+        "Access an SSH service through the gateway",
+        "Forward a MySQL connection"
+      ],
+      "related": [
+        "proxy:http"
+      ]
+    },
+    {
+      "id": "proxy:udp",
+      "description": "UDP forwarding data plane",
+      "summary": "UDP forwarding data plane",
+      "usage": "Used to forward UDP traffic (DNS, audio/video, games).",
+      "when_not": "TCP/HTTP services do not need it.",
+      "examples": [
+        "Forward a DNS query through the gateway"
+      ],
+      "related": [
+        "proxy:quic"
+      ]
+    },
+    {
+      "id": "proxy:quic",
+      "description": "QUIC/HTTP3 proxy data plane",
+      "summary": "QUIC/HTTP3 proxy data plane",
+      "usage": "Used to support QUIC/HTTP3 client access.",
+      "when_not": "Legacy TCP clients do not need it.",
+      "examples": [
+        "A web service with HTTP3 support"
+      ],
+      "related": [
+        "proxy:udp",
+        "proxy:http"
+      ]
+    },
+    {
+      "id": "proxy:websocket",
+      "description": "WebSocket proxy data plane",
+      "summary": "WebSocket proxy data plane",
+      "usage": "Used to proxy WebSocket long-lived connections (real-time push, chat).",
+      "when_not": "Ordinary HTTP requests do not need it.",
+      "examples": [
+        "Proxy a real-time message push service"
+      ],
+      "related": [
+        "proxy:http"
+      ]
+    },
+    {
+      "id": "proxy:grpc",
+      "description": "gRPC proxy data plane",
+      "summary": "gRPC proxy data plane",
+      "usage": "Used to proxy gRPC bidirectional-stream services.",
+      "when_not": "REST/HTTP services do not need it.",
+      "examples": [
+        "Proxy a gRPC microservice"
+      ],
+      "related": [
+        "proxy:http"
+      ]
+    },
+    {
+      "id": "admin:config",
+      "description": "Read/modify gateway configuration",
+      "parameters": {
+        "config_key": {
+          "type": "string",
+          "description": "Config keys that may be accessed (empty = all)",
+          "required": false
+        }
+      },
+      "summary": "Read/modify gateway configuration",
+      "usage": "Used to adjust gateway listeners, routes, and upstream configuration.",
+      "when_not": "Must never be granted for routine data-plane tasks; only needed by operations administrators.",
+      "examples": [
+        "Modify route mappings"
+      ],
+      "related": [
+        "admin:reload"
+      ]
+    },
+    {
+      "id": "admin:reload",
+      "description": "Hot-reload configuration",
+      "summary": "Hot-reload configuration",
+      "usage": "Used when configuration changes need to be hot-loaded without interruption.",
+      "when_not": "Tasks with no configuration changes do not need it.",
+      "examples": [
+        "SIGHUP-triggered configuration reload"
+      ],
+      "related": [
+        "admin:config"
+      ]
+    },
+    {
+      "id": "admin:plugins",
+      "description": "Manage capability plugins (register/replace/delete)",
+      "summary": "Manage capability plugins (register/replace/delete)",
+      "usage": "Used to dynamically adjust capability-decision plugins (allowlist/denylist/rbac).",
+      "when_not": "Pure data-plane tasks do not need it.",
+      "examples": [
+        "Replace RBAC plugin"
+      ],
+      "related": [
+        "ops:plugins"
+      ]
+    },
+    {
+      "id": "admin:policy",
+      "description": "Policy versioning and rollback",
+      "summary": "Policy versioning and rollback",
+      "usage": "Used to manage authorization policy versions and perform rollbacks.",
+      "when_not": "Use ops:plugins for read-only policy viewing.",
+      "examples": [
+        "Roll back to the previous policy version"
+      ],
+      "related": [
+        "admin:branch"
+      ]
+    },
+    {
+      "id": "admin:branch",
+      "description": "Policy branch control (canary release)",
+      "summary": "Policy branch control (canary release)",
+      "usage": "Used to canary-deliver different policy versions per agent group.",
+      "when_not": "Global unified policy is not needed.",
+      "examples": [
+        "Canary a new policy to a specific agent"
+      ],
+      "related": [
+        "admin:policy"
+      ]
+    },
+    {
+      "id": "admin:renewal",
+      "description": "Confirmed renewal management (request/confirm/reject)",
+      "summary": "Confirmed renewal management (request/confirm/reject)",
+      "usage": "Used to manage the confirmed renewal flow for short-lived certificates.",
+      "when_not": "Scenarios without short-lived certificates do not need it.",
+      "examples": [
+        "Confirm an agent certificate renewal"
+      ],
+      "related": [
+        "admin:agents"
+      ]
+    },
+    {
+      "id": "admin:agents",
+      "description": "Agent directory and disconnect management",
+      "summary": "Agent directory and disconnect management",
+      "usage": "Used to view online agents and proactively disconnect abnormal ones.",
+      "when_not": "An agent's own tasks do not need to manage other agents.",
+      "examples": [
+        "Disconnect an abnormal agent connection"
+      ],
+      "related": [
+        "admin:connections"
+      ]
+    },
+    {
+      "id": "admin:connections",
+      "description": "Live connections / access points view",
+      "summary": "Live connections / access points view",
+      "usage": "Used to monitor active connections and view access points. Read-only.",
+      "when_not": "No special restrictions; read-only.",
+      "examples": [
+        "View current connection count"
+      ],
+      "related": [
+        "ops:metrics"
+      ]
+    },
+    {
+      "id": "ops:metrics",
+      "description": "Read Prometheus metrics",
+      "summary": "Read Prometheus metrics",
+      "usage": "Used to scrape gateway monitoring metrics (connections/PPS/latency). Read-only.",
+      "when_not": "No special restrictions; read-only.",
+      "examples": [
+        "Prometheus metric scraping"
+      ],
+      "related": [
+        "ops:health"
+      ]
+    },
+    {
+      "id": "ops:plugins",
+      "description": "View capability plugin list",
+      "summary": "View capability plugin list",
+      "usage": "Used to view currently loaded plugins and their scheme definitions. Read-only.",
+      "when_not": "No special restrictions; read-only.",
+      "examples": [
+        "View registered plugins"
+      ],
+      "related": [
+        "admin:plugins"
+      ]
+    },
+    {
+      "id": "audit:read",
+      "description": "Read audit log",
+      "summary": "Read audit log",
+      "usage": "Used to view gateway access/connection audit records. Read-only.",
+      "when_not": "No special restrictions; read-only.",
+      "examples": [
+        "View connection audit"
+      ],
+      "related": [
+        "audit:verify",
+        "audit:search"
+      ]
+    },
+    {
+      "id": "audit:verify",
+      "description": "Verify audit chain / Merkle",
+      "summary": "Verify audit chain / Merkle integrity",
+      "usage": "Used to verify the integrity of the audit hash chain (tamper-evident). Read-only.",
+      "when_not": "No special restrictions; read-only.",
+      "examples": [
+        "Verify audit chain"
+      ],
+      "related": [
+        "audit:read"
+      ]
+    },
+    {
+      "id": "audit:search",
+      "description": "Audit full-text search",
+      "summary": "Audit full-text search",
+      "usage": "Used to search audit records by keyword/time range. Read-only.",
+      "when_not": "No special restrictions; read-only.",
+      "examples": [
+        "Search an agent's audit records"
+      ],
+      "related": [
+        "audit:read"
+      ]
+    },
+    {
+      "id": "audit:chain",
+      "description": "Cross-gateway audit chain DAG references",
+      "summary": "Cross-gateway audit chain DAG references",
+      "usage": "Used to view reference relationships between multi-gateway audit chains. Read-only.",
+      "when_not": "No special restrictions; read-only.",
+      "examples": [
+        "View cross-gateway audit chain"
+      ],
+      "related": [
+        "audit:read"
+      ]
+    },
+    {
+      "id": "ops:health",
+      "description": "Health check",
+      "summary": "Health check",
+      "usage": "Used to probe gateway liveness. A public capability.",
+      "when_not": "No restrictions; typically public.",
+      "examples": [
+        "Load-balancer health check"
+      ],
+      "related": [
+        "ops:metrics"
+      ]
+    }
+  ],
+  "roles": {
+    "gateway:admin": {
+      "display_name": "Gateway Administrator",
+      "profiles": [
+        "m-admin"
+      ],
+      "ous": [
+        "gateway:admin"
+      ],
+      "grants": [
+        "proxy:*",
+        "admin:config",
+        "admin:reload",
+        "admin:plugins",
+        "admin:policy",
+        "admin:branch",
+        "admin:renewal",
+        "admin:agents",
+        "admin:connections",
+        "ops:metrics",
+        "ops:plugins",
+        "ops:health",
+        "audit:read",
+        "audit:verify",
+        "audit:search",
+        "audit:chain"
+      ]
+    },
+    "gateway:ops": {
+      "display_name": "Gateway Operator",
+      "profiles": [
+        "m-operator"
+      ],
+      "ous": [
+        "gateway:ops"
+      ],
+      "grants": [
+        "proxy:*",
+        "admin:reload",
+        "admin:renewal",
+        "admin:connections",
+        "ops:metrics",
+        "ops:plugins",
+        "ops:health"
+      ]
+    },
+    "gateway:audit": {
+      "display_name": "Gateway Auditor",
+      "profiles": [
+        "m-auditor"
+      ],
+      "ous": [
+        "gateway:audit"
+      ],
+      "grants": [
+        "audit:read",
+        "audit:verify",
+        "audit:search",
+        "audit:chain",
+        "ops:health"
+      ]
+    },
+    "gateway:read": {
+      "display_name": "Gateway Read-Only",
+      "profiles": [
+        "m-readonly"
+      ],
+      "ous": [
+        "gateway:read"
+      ],
+      "grants": [
+        "ops:metrics",
+        "ops:health"
+      ]
+    },
+    "agent": {
+      "display_name": "AI agent (data plane)",
+      "profiles": [
+        "agent-proxy"
+      ],
+      "grants": [
+        "proxy:*"
+      ]
+    }
+  }
+}
