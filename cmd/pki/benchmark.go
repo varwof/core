@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package main
 
 import (
@@ -22,11 +25,11 @@ import (
 )
 
 type benchResult struct {
-	Algorithm string `json:"algorithm"`
-	Operation string `json:"operation"`
-	Size      int    `json:"size"`
-	OpsPerSec int64  `json:"ops_per_sec"`
-	Latency   string `json:"latency"`
+	Algorithm  string `json:"algorithm"`
+	Operation  string `json:"operation"`
+	Size       int    `json:"size"`
+	OpsPerSec  int64  `json:"ops_per_sec"`
+	Latency    string `json:"latency"`
 	Throughput string `json:"throughput,omitempty"`
 }
 

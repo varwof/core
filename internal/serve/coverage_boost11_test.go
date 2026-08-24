@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package serve
 
 import (
@@ -19,8 +22,8 @@ import (
 
 	"github.com/varwof/core/internal"
 	"github.com/varwof/core/internal/ca"
-	"github.com/varwof/engine/db"
 	"github.com/varwof/core/internal/i18n"
+	"github.com/varwof/engine/db"
 )
 
 // newTestServerWithCA builds a full server with a known CA key (for signing
@@ -479,13 +482,13 @@ func newUserCertOU(t *testing.T, caCert *x509.Certificate, caKey crypto.Signer, 
 		t.Fatal(err)
 	}
 	tmpl := &x509.Certificate{
-		SerialNumber:     big.NewInt(time.Now().UnixNano()),
-		Subject:          pkix.Name{CommonName: cn, OrganizationalUnit: ous},
-		NotBefore:        time.Now().Add(-time.Hour),
-		NotAfter:         time.Now().Add(time.Hour),
-		KeyUsage:         x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:      []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
-		ExtraExtensions:  []pkix.Extension{paExt},
+		SerialNumber:    big.NewInt(time.Now().UnixNano()),
+		Subject:         pkix.Name{CommonName: cn, OrganizationalUnit: ous},
+		NotBefore:       time.Now().Add(-time.Hour),
+		NotAfter:        time.Now().Add(time.Hour),
+		KeyUsage:        x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		ExtraExtensions: []pkix.Extension{paExt},
 	}
 	der, err := x509.CreateCertificate(rand.Reader, tmpl, caCert, &key.PublicKey, caKey)
 	if err != nil {

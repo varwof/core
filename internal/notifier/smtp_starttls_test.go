@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package notifier
 
 import (
@@ -21,9 +24,9 @@ import (
 // AUTH PLAIN, MAIL/RCPT/DATA. It lets tests exercise the full sendSTARTTLS
 // success path without an external mail daemon.
 type fakeSMTPServer struct {
-	ln     net.Listener
-	tlsCfg *tls.Config
-	mu     sync.Mutex
+	ln       net.Listener
+	tlsCfg   *tls.Config
+	mu       sync.Mutex
 	messages [][]string
 }
 
@@ -155,13 +158,13 @@ func (s *fakeSMTPServer) lastMessage() (string, string) {
 func TestMailer_Send_STARTTLS_Success(t *testing.T) {
 	server := newFakeSMTPServer(t)
 	m := NewMailer(SMTPConfig{
-		Host:              "127.0.0.1",
-		Port:              serverPort(server),
-		Username:          "user@test.com",
-		Password:          "secret",
-		From:              "from@test.com",
-		To:                "to@test.com",
-		TLS:               true,
+		Host:               "127.0.0.1",
+		Port:               serverPort(server),
+		Username:           "user@test.com",
+		Password:           "secret",
+		From:               "from@test.com",
+		To:                 "to@test.com",
+		TLS:                true,
 		InsecureSkipVerify: true,
 	})
 	if err := m.Send("issue", "Certificate issued", "body text"); err != nil {

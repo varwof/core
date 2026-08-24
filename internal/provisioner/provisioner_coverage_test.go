@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package provisioner
 
 import (
@@ -234,8 +237,8 @@ func TestNewCertIdentityFromCert_AICBranch(t *testing.T) {
 		t.Fatal(err)
 	}
 	tmpl := &x509.Certificate{
-		SerialNumber: big.NewInt(99),
-		Subject:      pkix.Name{CommonName: "agent-7"},
+		SerialNumber:    big.NewInt(99),
+		Subject:         pkix.Name{CommonName: "agent-7"},
 		ExtraExtensions: []pkix.Extension{ext},
 	}
 	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
@@ -431,7 +434,7 @@ func TestGatewayForwardedCertUser_ErrorPaths(t *testing.T) {
 	UserResolver = func(string) (string, []string, error) { return "admin", nil, nil }
 
 	gwCert := &x509.Certificate{
-		Subject: pkix.Name{CommonName: "gw", OrganizationalUnit: []string{"gateway:admin"}},
+		Subject:      pkix.Name{CommonName: "gw", OrganizationalUnit: []string{"gateway:admin"}},
 		SerialNumber: big.NewInt(1),
 	}
 	req := func() *http.Request {

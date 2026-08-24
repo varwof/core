@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package notifier
 
 import (
@@ -10,15 +13,15 @@ import (
 )
 
 type SMTPConfig struct {
-	Host              string `json:"host,omitempty"`
-	Port              int    `json:"port,omitempty"`
-	Username          string `json:"username,omitempty"`
-	Password          string `json:"password,omitempty"`
-	From              string `json:"from,omitempty"`
-	To                string `json:"to,omitempty"`
-	TLS               bool   `json:"tls,omitempty"`
-	InsecureSkipVerify bool  `json:"insecure_skip_verify,omitempty"`
-	Events            string `json:"events,omitempty"`
+	Host               string `json:"host,omitempty"`
+	Port               int    `json:"port,omitempty"`
+	Username           string `json:"username,omitempty"`
+	Password           string `json:"password,omitempty"`
+	From               string `json:"from,omitempty"`
+	To                 string `json:"to,omitempty"`
+	TLS                bool   `json:"tls,omitempty"`
+	InsecureSkipVerify bool   `json:"insecure_skip_verify,omitempty"`
+	Events             string `json:"events,omitempty"`
 }
 
 var DefaultSMTPConfig = SMTPConfig{

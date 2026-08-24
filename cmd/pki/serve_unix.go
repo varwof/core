@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 //go:build !windows
 
 package main
@@ -61,4 +64,3 @@ func installService() error {
 func removeService() error {
 	return fmt.Errorf("service removal is only supported on Windows")
 }
-

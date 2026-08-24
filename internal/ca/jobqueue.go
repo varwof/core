@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ca
 
 import (
@@ -46,8 +49,8 @@ type JobResultItem struct {
 type Job struct {
 	ID        string          `json:"id"`
 	Status    JobStatus       `json:"status"`
-	Progress  int             `json:"progress"`    // completed count
-	Total     int             `json:"total"`       // total count
+	Progress  int             `json:"progress"` // completed count
+	Total     int             `json:"total"`    // total count
 	CreatedAt time.Time       `json:"created_at"`
 	Error     string          `json:"error,omitempty"`
 	Results   []JobResultItem `json:"results,omitempty"`
@@ -56,13 +59,13 @@ type Job struct {
 
 // JobQueue is an async job queue.
 type JobQueue struct {
-	mu       sync.RWMutex
-	jobs     map[string]*Job
-	pending  chan *Job
-	workers  int
-	done     chan struct{}
-	idGen    atomic.Int64
-	ttl      time.Duration // job result retention time
+	mu        sync.RWMutex
+	jobs      map[string]*Job
+	pending   chan *Job
+	workers   int
+	done      chan struct{}
+	idGen     atomic.Int64
+	ttl       time.Duration // job result retention time
 	processor JobProcessor
 }
 
@@ -73,8 +76,12 @@ type JobProcessor interface {
 
 // NewJobQueue creates an async job queue and starts background workers.
 func NewJobQueue(workers int, ttl time.Duration, processor JobProcessor) *JobQueue {
-	if workers <= 0 { workers = 4 }
-	if ttl <= 0 { ttl = 5 * time.Minute }
+	if workers <= 0 {
+		workers = 4
+	}
+	if ttl <= 0 {
+		ttl = 5 * time.Minute
+	}
 
 	q := &JobQueue{
 		jobs:      make(map[string]*Job),

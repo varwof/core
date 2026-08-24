@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package serve
 
 import (
@@ -176,12 +179,12 @@ func (s *Server) proxyDisconnectToGateways(w http.ResponseWriter, r *http.Reques
 	}
 
 	apiOK(w, map[string]any{
-		"status":       "dispatched",
-		"target":       target,
+		"status":        "dispatched",
+		"target":        target,
 		"gateway_count": len(gateways),
-		"succeeded":    succeeded,
-		"failed":       failed,
-		"errors":       errors,
+		"succeeded":     succeeded,
+		"failed":        failed,
+		"errors":        errors,
 	})
 }
 

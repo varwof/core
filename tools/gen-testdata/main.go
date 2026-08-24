@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package main
 
 import (
@@ -87,7 +90,7 @@ func main() {
 	// Sample CSR
 	csrKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	csrTmpl := &x509.CertificateRequest{
-		Subject: pkix.Name{CommonName: "test.example.com", Organization: []string{"Example"}},
+		Subject:  pkix.Name{CommonName: "test.example.com", Organization: []string{"Example"}},
 		DNSNames: []string{"test.example.com", "www.test.example.com"},
 	}
 	csrDER, _ := x509.CreateCertificateRequest(rand.Reader, csrTmpl, csrKey)

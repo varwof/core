@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package main
 
 import (
@@ -25,8 +28,8 @@ import (
 
 	"github.com/varwof/core/internal"
 	"github.com/varwof/core/internal/ca"
-	"github.com/varwof/engine/db"
 	"github.com/varwof/core/internal/signer"
+	"github.com/varwof/engine/db"
 )
 
 // ---------- Key encrypt / decrypt ----------
@@ -2171,7 +2174,6 @@ func TestCLIRecoverFullFlow(t *testing.T) {
 		t.Fatal("expected ECDSA private key")
 	}
 }
-
 
 func TestCLIRecoverBadAdminKey(t *testing.T) {
 	dir := t.TempDir()

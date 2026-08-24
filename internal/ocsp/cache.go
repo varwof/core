@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ocsp
 
 import (
@@ -10,12 +13,12 @@ import (
 )
 
 type Cache struct {
-	mu          sync.RWMutex
-	entries     map[string]*list.Element
-	serialKeys  map[string]map[string]struct{} // serial → set of cache keys
-	order       *list.List
-	maxSize     int
-	ttl         time.Duration
+	mu         sync.RWMutex
+	entries    map[string]*list.Element
+	serialKeys map[string]map[string]struct{} // serial → set of cache keys
+	order      *list.List
+	maxSize    int
+	ttl        time.Duration
 }
 
 type cacheEntry struct {
@@ -127,8 +130,8 @@ func (c *Cache) removeLocked(elem *list.Element) {
 // to persist (and share) verified responses across restarts so a cold node
 // does not immediately hammer the shared CA database (stateless OCSP node).
 type cacheDump struct {
-	SavedAt  time.Time `json:"saved_at"`
-	Entries  []cacheEntryJSON `json:"entries"`
+	SavedAt time.Time        `json:"saved_at"`
+	Entries []cacheEntryJSON `json:"entries"`
 }
 
 type cacheEntryJSON struct {

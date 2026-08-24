@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ca
 
 import (
@@ -11,13 +14,13 @@ import (
 
 func TestCollectAttrs(t *testing.T) {
 	cfg := &LDAPConfig{
-		UIDAttr: "uid",
-		MapCN:   "cn",
-		MapOrg:  "o",
-		MapOU:   "ou",
-		MapL:    "l",
-		MapST:   "st",
-		MapC:    "c",
+		UIDAttr:  "uid",
+		MapCN:    "cn",
+		MapOrg:   "o",
+		MapOU:    "ou",
+		MapL:     "l",
+		MapST:    "st",
+		MapC:     "c",
 		MapEmail: "mail",
 	}
 

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package serve
 
 import (
@@ -67,11 +70,11 @@ func TestCrossCertToJSON_WithRevoked(t *testing.T) {
 func TestCrossCertToJSON_WithPEM(t *testing.T) {
 	key, _ := rsa.GenerateKey(rand.Reader, 2048)
 	template := &x509.Certificate{
-		SerialNumber: bigInt(1),
-		Subject:      testSubject("CrossCA"),
-		NotBefore:    time.Now(),
-		NotAfter:     time.Now().Add(time.Hour),
-		IsCA:         true,
+		SerialNumber:          bigInt(1),
+		Subject:               testSubject("CrossCA"),
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().Add(time.Hour),
+		IsCA:                  true,
 		BasicConstraintsValid: true,
 	}
 	certDER, _ := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
@@ -262,7 +265,9 @@ func TestAPIUserByID_Delete_Success(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/users/1", nil)
 	req.SetBasicAuth("admin", "admin")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	// DeleteUser is idempotent — always succeeds regardless of existence
 	if resp.StatusCode != http.StatusOK {
@@ -290,7 +295,9 @@ func TestAPIUserByID_InvalidID(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/users/abc", nil)
 	req.SetBasicAuth("admin", "admin")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
@@ -476,7 +483,9 @@ func TestAPIUpdateConfig_PUT_EmptyConfig(t *testing.T) {
 	req.SetBasicAuth("superadmin", "superadmin")
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	// empty config may be valid or invalid depending on validation
 	// just check no panic

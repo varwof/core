@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 // Package auth defines the unified permission model for the Varwof PKI ecosystem.
 //
 // All sub-projects (varwof-core, pki-gateway, pki-web-console, etc.) share this package,
@@ -20,10 +23,10 @@ package auth
 type Permission string
 
 const (
-	PermCACreate  Permission = "ca:create"
-	PermCADelete  Permission = "ca:delete"
-	PermCAList    Permission = "ca:list"
-	PermCAInfo    Permission = "ca:info"
+	PermCACreate Permission = "ca:create"
+	PermCADelete Permission = "ca:delete"
+	PermCAList   Permission = "ca:list"
+	PermCAInfo   Permission = "ca:info"
 
 	PermCertIssue  Permission = "cert:issue"
 	PermCertRevoke Permission = "cert:revoke"
@@ -47,8 +50,8 @@ const (
 	PermConfigRead  Permission = "config:read"
 	PermConfigWrite Permission = "config:write"
 
-	PermRAApprove  Permission = "ra:approve"
-	PermRAReject   Permission = "ra:reject"
+	PermRAApprove Permission = "ra:approve"
+	PermRAReject  Permission = "ra:reject"
 
 	PermCrossIssue  Permission = "cross-cert:issue"
 	PermCrossRevoke Permission = "cross-cert:revoke"

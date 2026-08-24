@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package main
 
 import (
@@ -199,8 +202,8 @@ func runCmd(args []string) int {
 			return cmdVersion
 		case "init-config":
 			return cmdInitConfig
-			case "init-full":
-				return cmdInitFull
+		case "init-full":
+			return cmdInitFull
 		case "completion":
 			return cmdCompletion
 		case "batch":

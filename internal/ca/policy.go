@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ca
 
 import (
@@ -10,15 +13,15 @@ import (
 )
 
 type PolicyRule struct {
-	Comment          string   `json:"comment,omitempty"`
-	AllowedCNs       []string `json:"allowed_cns,omitempty"`
-	DeniedCNs        []string `json:"denied_cns,omitempty"`
-	AllowedSANs      []string `json:"allowed_sans,omitempty"`
-	DeniedSANs       []string `json:"denied_sans,omitempty"`
-	AllowedProfiles  []string `json:"allowed_profiles,omitempty"`
-	AllowedKeyTypes  []string `json:"allowed_key_types,omitempty"`
-	AllowedCAs       []string `json:"allowed_cas,omitempty"`
-	MaxValidityDays  int      `json:"max_validity_days,omitempty"`
+	Comment         string   `json:"comment,omitempty"`
+	AllowedCNs      []string `json:"allowed_cns,omitempty"`
+	DeniedCNs       []string `json:"denied_cns,omitempty"`
+	AllowedSANs     []string `json:"allowed_sans,omitempty"`
+	DeniedSANs      []string `json:"denied_sans,omitempty"`
+	AllowedProfiles []string `json:"allowed_profiles,omitempty"`
+	AllowedKeyTypes []string `json:"allowed_key_types,omitempty"`
+	AllowedCAs      []string `json:"allowed_cas,omitempty"`
+	MaxValidityDays int      `json:"max_validity_days,omitempty"`
 }
 
 type Policy struct {

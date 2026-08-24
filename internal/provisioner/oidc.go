@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package provisioner
 
 import (
@@ -29,8 +32,8 @@ const (
 
 // OIDCConfig configures the OIDC provisioner.
 type OIDCConfig struct {
-	IssuerURL   string `json:"issuer_url"`
-	ClientID    string `json:"client_id"`
+	IssuerURL    string `json:"issuer_url"`
+	ClientID     string `json:"client_id"`
 	JWKSEndpoint string `json:"jwks_endpoint,omitempty"` // defaults to IssuerURL + "/.well-known/jwks.json"
 	ClaimMapping struct {
 		Subject string `json:"subject,omitempty"` // JWT claim to use as username (default "email")
@@ -113,10 +116,10 @@ func (p *OIDCProvisioner) Authenticate(r *http.Request) (*AuthResult, error) {
 // ---- JWT verification (stdlib only) ----
 
 type jwksCache struct {
-	url      string
-	ttl      time.Duration
-	mu       sync.RWMutex
-	keys     []jwkKey
+	url       string
+	ttl       time.Duration
+	mu        sync.RWMutex
+	keys      []jwkKey
 	expiresAt time.Time
 }
 
@@ -391,5 +394,3 @@ func claimValue(claims map[string]interface{}, path string) string {
 	}
 	return ""
 }
-
-

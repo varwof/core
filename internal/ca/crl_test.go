@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ca
 
 import (
@@ -60,12 +63,12 @@ func TestGenerateCRLNumberStorePersists(t *testing.T) {
 	d := newTestDB(t)
 
 	cfg := &CRLConfig{
-		DB:          d,
-		CACert:      caCert,
-		CAKey:       caKey,
-		CAName:      "Test CA",
+		DB:           d,
+		CACert:       caCert,
+		CAKey:        caKey,
+		CAName:       "Test CA",
 		ValidityDays: 30,
-		NumberStore: d,
+		NumberStore:  d,
 	}
 
 	// First generation persists number 1.

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package serve
 
 import (
@@ -950,7 +953,8 @@ func (s *Server) crlNumberStore() ca.CRLNumberStore {
 	return d
 }
 
-func (s *Server) apiGenerateCRL(w http.ResponseWriter, r *http.Request, caName string) {	if r.Method != http.MethodPost {
+func (s *Server) apiGenerateCRL(w http.ResponseWriter, r *http.Request, caName string) {
+	if r.Method != http.MethodPost {
 		s.apiErr(w, r, http.StatusMethodNotAllowed, "api.method_not_allowed", "")
 		return
 	}

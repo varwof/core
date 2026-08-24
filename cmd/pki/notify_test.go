@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package main
 
 import (
@@ -19,8 +22,8 @@ import (
 	"time"
 
 	"github.com/varwof/core/internal"
-	"github.com/varwof/engine/db"
 	"github.com/varwof/core/internal/notifier"
+	"github.com/varwof/engine/db"
 )
 
 func newTestDBForNotify(t *testing.T) *db.DB {

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package main
 
 import (
@@ -62,28 +65,28 @@ func cmdReSign(cfg *internal.Config, args []string) error {
 	}
 
 	sc := &ca.SignConfig{
-		DB:                database,
-		CAKey:             issuerKey,
-		CACert:            issuerCert,
-		CAName:            *targetCA,
-		SubjectPubKey:     oldCert.PublicKey,
-		CommonName:        rec.CommonName,
-		SANs:              splitSANsCSV(rec.SAN),
-		Profile:           ca.Profile(*profile),
-		KeyType:           rec.KeyAlgo,
-		Hash:              cfg.Defaults.Hash,
-		Validity:          time.Duration(*validity) * 24 * time.Hour,
-		CRLBaseURL:        cfg.CRL.CRLBaseURL,
-		OCSPURL:           cfg.Defaults.OCSPURL,
-		IssuerURL:         cfg.Defaults.IssuerURL,
-		IssuerAltNames:    cfg.Defaults.IssuerAltNames,
-		SubjectInfoAccess: cfg.Defaults.SubjectInfoAccess,
-		PolicyOIDs:        cfg.Defaults.PolicyOIDs,
-		PolicyMappings:       mustPolicyMappings(cfg.Defaults.PolicyMappings),
+		DB:                    database,
+		CAKey:                 issuerKey,
+		CACert:                issuerCert,
+		CAName:                *targetCA,
+		SubjectPubKey:         oldCert.PublicKey,
+		CommonName:            rec.CommonName,
+		SANs:                  splitSANsCSV(rec.SAN),
+		Profile:               ca.Profile(*profile),
+		KeyType:               rec.KeyAlgo,
+		Hash:                  cfg.Defaults.Hash,
+		Validity:              time.Duration(*validity) * 24 * time.Hour,
+		CRLBaseURL:            cfg.CRL.CRLBaseURL,
+		OCSPURL:               cfg.Defaults.OCSPURL,
+		IssuerURL:             cfg.Defaults.IssuerURL,
+		IssuerAltNames:        cfg.Defaults.IssuerAltNames,
+		SubjectInfoAccess:     cfg.Defaults.SubjectInfoAccess,
+		PolicyOIDs:            cfg.Defaults.PolicyOIDs,
+		PolicyMappings:        mustPolicyMappings(cfg.Defaults.PolicyMappings),
 		RequireExplicitPolicy: cfg.Defaults.RequireExplicitPolicy,
 		InhibitPolicyMapping:  cfg.Defaults.InhibitPolicyMapping,
 		InhibitAnyPolicy:      cfg.Defaults.InhibitAnyPolicy,
-		PolicyFile:        cfg.Policy,
+		PolicyFile:            cfg.Policy,
 	}
 	if sc.Profile == "" {
 		sc.Profile = ca.Profile(rec.Profile)

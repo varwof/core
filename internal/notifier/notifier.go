@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 // Package notifier defines the event notification interface for PKI events.
 //
 // The default implementation (SMTP mailer) is built into the core.

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package serve
 
 import (
@@ -422,4 +425,3 @@ func TestEnableRecordBufferMaxPendingZeroDisablesBackpressure(t *testing.T) {
 		t.Fatal("Add should succeed with backpressure disabled")
 	}
 }
-

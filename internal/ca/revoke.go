@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ca
 
 import (
@@ -40,13 +43,13 @@ func ExtractPrincipalUID(der []byte) (string, error) {
 }
 
 var RevokeReasons = map[string]int{
-	"unspecified":             0,
-	"keyCompromise":           1,
-	"cACompromise":            2,
-	"affiliationChanged":      3,
-	"superseded":              4,
-	"cessationOfOperation":    5,
-	"certificateHold":         6,
+	"unspecified":          0,
+	"keyCompromise":        1,
+	"cACompromise":         2,
+	"affiliationChanged":   3,
+	"superseded":           4,
+	"cessationOfOperation": 5,
+	"certificateHold":      6,
 }
 
 func ParseRevokeReason(s string) (int, error) {

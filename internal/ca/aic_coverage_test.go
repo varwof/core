@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ca
 
 import (
@@ -283,10 +286,10 @@ func TestPrincipal_Empty(t *testing.T) {
 
 func TestParseRevokeReason_Valid(t *testing.T) {
 	reasons := map[string]int{
-		"unspecified":  0,
+		"unspecified":   0,
 		"keyCompromise": 1,
-		"cACompromise": 2,
-		"superseded":   4,
+		"cACompromise":  2,
+		"superseded":    4,
 	}
 	for name, expected := range reasons {
 		r, err := ParseRevokeReason(name)

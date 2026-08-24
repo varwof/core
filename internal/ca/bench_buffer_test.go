@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ca
 
 import (
@@ -55,7 +58,7 @@ func BenchmarkBatchPersist(b *testing.B) {
 			idGen := &atomic.Int64{}
 			tmplBase := x509.Certificate{
 				NotBefore: time.Now(), NotAfter: time.Now().Add(365 * 24 * time.Hour),
-				KeyUsage: x509.KeyUsageDigitalSignature,
+				KeyUsage:    x509.KeyUsageDigitalSignature,
 				ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 			}
 
@@ -79,10 +82,10 @@ func BenchmarkBatchPersist(b *testing.B) {
 
 					record := &db.CertRecord{
 						SerialNumber: cert.SerialNumber.Text(16),
-						CAName: "Bench CA", Status: "active",
-						Subject: cert.Subject.String(),
+						CAName:       "Bench CA", Status: "active",
+						Subject:    cert.Subject.String(),
 						CommonName: tmpl.Subject.CommonName,
-						NotBefore: cert.NotBefore, NotAfter: cert.NotAfter,
+						NotBefore:  cert.NotBefore, NotAfter: cert.NotAfter,
 						CertDER: der, Profile: "tls-client",
 					}
 
@@ -116,7 +119,7 @@ func BenchmarkBatchSigned(b *testing.B) {
 		Subject:      pkix.Name{CommonName: "Bench CA"},
 		NotBefore:    time.Now().Add(-1 * time.Hour),
 		NotAfter:     time.Now().Add(10 * 365 * 24 * time.Hour),
-		IsCA: true, BasicConstraintsValid: true,
+		IsCA:         true, BasicConstraintsValid: true,
 		KeyUsage: x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature,
 	}
 	caDER, _ := x509.CreateCertificate(rand.Reader, caTmpl, caTmpl, &caKey.PublicKey, caKey)
@@ -140,7 +143,7 @@ func BenchmarkBatchSigned(b *testing.B) {
 					SerialNumber: big.NewInt(int64(id)),
 					Subject:      pkix.Name{CommonName: "s" + big.NewInt(int64(id)).String()},
 					NotBefore:    time.Now(), NotAfter: time.Now().Add(365 * 24 * time.Hour),
-					KeyUsage: x509.KeyUsageDigitalSignature,
+					KeyUsage:    x509.KeyUsageDigitalSignature,
 					ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 				}
 				x509.CreateCertificate(rand.Reader, tmpl, caCert, &key.PublicKey, caKey)

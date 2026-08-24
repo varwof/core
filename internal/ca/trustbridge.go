@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ca
 
 import (
@@ -12,10 +15,10 @@ import (
 )
 
 type TrustBridgePolicy struct {
-	Enabled    bool   `json:"enabled"`
-	IssuerCA   string `json:"issuer_ca"`
-	SubjectCA  string `json:"subject_ca"`
-	Validity   int    `json:"validity_days"`
+	Enabled         bool     `json:"enabled"`
+	IssuerCA        string   `json:"issuer_ca"`
+	SubjectCA       string   `json:"subject_ca"`
+	Validity        int      `json:"validity_days"`
 	NameConstraints []string `json:"name_constraints,omitempty"`
 }
 

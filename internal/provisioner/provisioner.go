@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 // Package provisioner implements the Provisioner + SignOption pattern
 // inspired by step-ca. Each Provisioner authenticates a request and
 // returns SignOptions that control certificate issuance parameters.
@@ -89,7 +92,7 @@ type Provisioner interface {
 
 // Registry holds all registered provisioners.
 type Registry struct {
-	mu   sync.RWMutex
+	mu    sync.RWMutex
 	items map[string]Provisioner
 }
 

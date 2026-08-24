@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package provisioner
 
 import (
@@ -501,8 +504,8 @@ func TestOIDCProvisioner_NoAuthHeader(t *testing.T) {
 
 func TestOIDCProvisioner_JWKSFetchFailure(t *testing.T) {
 	p := NewOIDCProvisioner(OIDCConfig{
-		IssuerURL: "https://example.invalid",
-		ClientID:  "test-client",
+		IssuerURL:    "https://example.invalid",
+		ClientID:     "test-client",
 		RoleOverride: "operator",
 	})
 
@@ -737,4 +740,3 @@ func padBytes(b []byte, size int) []byte {
 
 // Use import from standard library
 var _ = strings.TrimSpace
-

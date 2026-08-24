@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ca
 
 import (
@@ -86,12 +89,12 @@ func TestRotatingSignerNeedsRotation(t *testing.T) {
 	key, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	// Expiring soon.
 	expiring := &x509.Certificate{
-		SerialNumber: big.NewInt(1),
-		Subject:      pkix.Name{CommonName: "Expiring CA"},
-		NotBefore:    time.Now().Add(-time.Hour),
-		NotAfter:     time.Now().Add(24 * time.Hour),
+		SerialNumber:          big.NewInt(1),
+		Subject:               pkix.Name{CommonName: "Expiring CA"},
+		NotBefore:             time.Now().Add(-time.Hour),
+		NotAfter:              time.Now().Add(24 * time.Hour),
 		BasicConstraintsValid: true,
-		IsCA:         true,
+		IsCA:                  true,
 	}
 	rs := NewRotatingSigner(expiring, key)
 	if !rs.NeedsRotation(7 * 24 * time.Hour) {
@@ -100,12 +103,12 @@ func TestRotatingSignerNeedsRotation(t *testing.T) {
 
 	// Long-lived.
 	longLived := &x509.Certificate{
-		SerialNumber: big.NewInt(2),
-		Subject:      pkix.Name{CommonName: "Long CA"},
-		NotBefore:    time.Now().Add(-time.Hour),
-		NotAfter:     time.Now().Add(365 * 24 * time.Hour),
+		SerialNumber:          big.NewInt(2),
+		Subject:               pkix.Name{CommonName: "Long CA"},
+		NotBefore:             time.Now().Add(-time.Hour),
+		NotAfter:              time.Now().Add(365 * 24 * time.Hour),
 		BasicConstraintsValid: true,
-		IsCA:         true,
+		IsCA:                  true,
 	}
 	rs2 := NewRotatingSigner(longLived, key)
 	if rs2.NeedsRotation(7 * 24 * time.Hour) {

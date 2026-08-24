@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package serve
 
 import (
@@ -14,8 +17,8 @@ import (
 
 	"github.com/varwof/core/internal"
 	"github.com/varwof/core/internal/ca"
-	"github.com/varwof/engine/db"
 	"github.com/varwof/core/internal/i18n"
+	"github.com/varwof/engine/db"
 )
 
 func newTestServerFull6(t *testing.T) (*Server, http.Handler) {
@@ -61,7 +64,9 @@ func loginAsAdmin6(t *testing.T, ts *httptest.Server) string {
 	t.Helper()
 	body, _ := json.Marshal(map[string]string{"username": "admin", "password": "admin"})
 	resp, err := http.Post(ts.URL+"/api/v1/login", "application/json", bytes.NewReader(body))
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	var r map[string]interface{}
 	json.NewDecoder(resp.Body).Decode(&r)
@@ -86,7 +91,9 @@ func TestAPIUsers_ListV6(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/admin/users", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -108,7 +115,9 @@ func TestAPIUsers_CreateV6(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -130,7 +139,9 @@ func TestAPIUsers_CreateEmptyUsernameV6(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
@@ -151,7 +162,9 @@ func TestAPIUsers_BadJSONV6(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
@@ -173,13 +186,17 @@ func TestAPIUserByID_DeleteV6(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	resp.Body.Close()
 
 	req2, _ := http.NewRequest("DELETE", ts.URL+"/api/v1/admin/users/2", nil)
 	req2.Header.Set("X-Auth-Token", token)
 	resp2, err := http.DefaultClient.Do(req2)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp2.Body.Close()
 	if resp2.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp2.StatusCode)
@@ -199,7 +216,9 @@ func TestAPIUserByID_NotDeleteV6(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/admin/users/1", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Fatalf("expected 405, got %d", resp.StatusCode)
@@ -219,7 +238,9 @@ func TestAPIUserByID_BadIDV6(t *testing.T) {
 	req, _ := http.NewRequest("DELETE", ts.URL+"/api/v1/admin/users/abc", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
@@ -241,7 +262,9 @@ func TestAPITokens_ListV6(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/admin/tokens?user_id=1", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -263,7 +286,9 @@ func TestAPITokens_CreateV6(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -285,7 +310,9 @@ func TestAPITokens_CreateBadUserIDV6(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
@@ -306,7 +333,9 @@ func TestAPITokens_BadJSONV6(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
@@ -326,7 +355,9 @@ func TestAPITokens_MethodNotAllowedV6(t *testing.T) {
 	req, _ := http.NewRequest("DELETE", ts.URL+"/api/v1/admin/tokens", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Fatalf("expected 405, got %d", resp.StatusCode)
@@ -348,13 +379,17 @@ func TestAPITokenByID_DeleteV6(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	resp.Body.Close()
 
 	req2, _ := http.NewRequest("DELETE", ts.URL+"/api/v1/admin/tokens/2", nil)
 	req2.Header.Set("X-Auth-Token", token)
 	resp2, err := http.DefaultClient.Do(req2)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp2.Body.Close()
 	if resp2.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp2.StatusCode)
@@ -374,7 +409,9 @@ func TestAPITokenByID_NotDeleteV6(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/admin/tokens/1", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Fatalf("expected 405, got %d", resp.StatusCode)
@@ -396,7 +433,9 @@ func TestAPIAuditLogV6(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/admin/audit?limit=10&offset=0", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -416,7 +455,9 @@ func TestAPIRARequests_GetV6(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/admin/ra?status=pending", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -438,7 +479,9 @@ func TestAPIRARequests_PostV6(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -459,7 +502,9 @@ func TestAPIRARequests_BadJSONV6(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
@@ -479,7 +524,9 @@ func TestAPIRARequests_MethodNotAllowedV6(t *testing.T) {
 	req, _ := http.NewRequest("DELETE", ts.URL+"/api/v1/admin/ra", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Fatalf("expected 405, got %d", resp.StatusCode)
@@ -501,7 +548,9 @@ func TestAPIRAAction_ApproveV6(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	// RA request 1 does not exist → AddRAApproval SELECT fails → 500
 	if resp.StatusCode != http.StatusInternalServerError {
@@ -522,7 +571,9 @@ func TestAPIRAAction_BadIDV6(t *testing.T) {
 	req, _ := http.NewRequest("POST", ts.URL+"/api/v1/admin/ra/abc/approve", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
@@ -542,7 +593,9 @@ func TestAPIRAAction_MethodNotAllowedV6(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/admin/ra/1/approve", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Fatalf("expected 405, got %d", resp.StatusCode)
@@ -564,7 +617,9 @@ func TestAPIRAAction_RejectV6(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	// RA request 1 does not exist → AddRAApproval SELECT fails → 500
 	if resp.StatusCode != http.StatusInternalServerError {
@@ -589,7 +644,9 @@ func TestAPIRecoverKey_NotFoundV6(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", resp.StatusCode)
@@ -609,7 +666,9 @@ func TestAPIRecoverKey_MethodNotAllowedV6(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/admin/keys/recover", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Fatalf("expected 405, got %d", resp.StatusCode)
@@ -630,7 +689,9 @@ func TestAPIRecoverKey_BadJSONV6(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
@@ -652,7 +713,9 @@ func TestAPIRecoverKey_EmptyFieldsV6(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
@@ -676,7 +739,9 @@ func TestAPILogoutV6(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -690,7 +755,9 @@ func TestAPILogout_MethodNotAllowedV6(t *testing.T) {
 
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/logout", nil)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	// GET /logout returns 401 (no auth) or 405 depending on server
 	if resp.StatusCode != http.StatusMethodNotAllowed && resp.StatusCode != http.StatusUnauthorized {
@@ -712,7 +779,9 @@ func TestAPILogout_WithTokenV6(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -732,7 +801,9 @@ func TestAPIUserInfoV6(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/userinfo", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -745,7 +816,9 @@ func TestAPIUserInfo_NoTokenV6(t *testing.T) {
 	defer ts.Close()
 
 	resp, err := http.Get(ts.URL + "/api/v1/userinfo")
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", resp.StatusCode)
@@ -760,7 +833,9 @@ func TestAPIUserInfo_BadTokenV6(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/userinfo", nil)
 	req.Header.Set("X-Auth-Token", "bad-token-xyz")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", resp.StatusCode)
@@ -780,7 +855,9 @@ func TestAPIUserInfo_BearerTokenV6(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/userinfo", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -795,7 +872,9 @@ func TestAPIUserInfo_BearerBadTokenV6(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/userinfo", nil)
 	req.Header.Set("Authorization", "Bearer bad-token")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", resp.StatusCode)
@@ -810,7 +889,9 @@ func TestAPIUserInfo_BasicAuthV6(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/userinfo", nil)
 	req.SetBasicAuth("admin", "admin")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("expected 200 or 404, got %d", resp.StatusCode)
@@ -825,7 +906,9 @@ func TestAPIUserInfo_BasicAuthBadPasswordV6(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/userinfo", nil)
 	req.SetBasicAuth("admin", "wrong-password")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", resp.StatusCode)
@@ -941,7 +1024,9 @@ func TestRequirePerm_CORSBlockedV6(t *testing.T) {
 	req.Header.Set("Origin", "http://evil.com")
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusForbidden {
 		t.Fatalf("expected 403, got %d", resp.StatusCode)
@@ -964,7 +1049,9 @@ func TestAPIListCerts_CSVV6(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Accept", "text/csv")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -984,7 +1071,9 @@ func TestAPIListCerts_DefaultCAV6(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/certs?ca=test-ca&status=V", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -1004,7 +1093,9 @@ func TestAPIGetCert_NotFoundV6(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/certs/test-ca/0000000000000000", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", resp.StatusCode)
@@ -1025,7 +1116,9 @@ func TestAPIGetCert_NotFoundPEMV6(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Accept", "application/x-pem-file")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", resp.StatusCode)
@@ -1046,7 +1139,9 @@ func TestAPIGetCert_NotFoundDerV6(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Accept", "application/pkix-cert")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", resp.StatusCode)
@@ -1068,7 +1163,9 @@ func TestAPIListCrossCertsV6(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/cross-certs", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -1088,7 +1185,9 @@ func TestAPIListCrossCerts_MethodNotAllowedV6(t *testing.T) {
 	req, _ := http.NewRequest("POST", ts.URL+"/api/v1/cross-certs", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Fatalf("expected 405, got %d", resp.StatusCode)
@@ -1108,7 +1207,9 @@ func TestAPICrossCertIssue_MethodNotAllowedV6(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/cross-certs/issue", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Fatalf("expected 405, got %d", resp.StatusCode)
@@ -1129,7 +1230,9 @@ func TestAPICrossCertIssue_BadJSONV6(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
@@ -1151,7 +1254,9 @@ func TestAPICrossCertIssue_MissingFieldsV6(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
@@ -1173,7 +1278,9 @@ func TestAPICrossCertIssue_IssuerNotFoundV6(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
@@ -1193,7 +1300,9 @@ func TestAPICrossCertRevoke_MethodNotAllowedV6(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/cross-certs/revoke", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Fatalf("expected 405, got %d", resp.StatusCode)
@@ -1214,7 +1323,9 @@ func TestAPICrossCertRevoke_BadJSONV6(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
@@ -1236,7 +1347,9 @@ func TestAPICrossCertRevoke_MissingFieldsV6(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
@@ -1258,7 +1371,9 @@ func TestAPICrossCertRevoke_MissingIssuerV6(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
@@ -1280,7 +1395,9 @@ func TestAPIVersionV6(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/version", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -1408,7 +1525,9 @@ func TestAPILogin_MethodNotAllowedV6(t *testing.T) {
 	defer ts.Close()
 
 	resp, err := http.Get(ts.URL + "/api/v1/login")
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusMethodNotAllowed && resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401 or 405, got %d", resp.StatusCode)
@@ -1421,7 +1540,9 @@ func TestAPILogin_BadJSONV6(t *testing.T) {
 	defer ts.Close()
 
 	resp, err := http.Post(ts.URL+"/api/v1/login", "application/json", strings.NewReader("bad"))
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest && resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 400 or 401, got %d", resp.StatusCode)
@@ -1435,7 +1556,9 @@ func TestAPILogin_MissingFieldsV6(t *testing.T) {
 
 	body, _ := json.Marshal(map[string]string{})
 	resp, err := http.Post(ts.URL+"/api/v1/login", "application/json", bytes.NewReader(body))
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest && resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 400 or 401, got %d", resp.StatusCode)
@@ -1449,7 +1572,9 @@ func TestAPILogin_BadCredentialsV6(t *testing.T) {
 
 	body, _ := json.Marshal(map[string]string{"username": "admin", "password": "wrong"})
 	resp, err := http.Post(ts.URL+"/api/v1/login", "application/json", bytes.NewReader(body))
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", resp.StatusCode)
@@ -1467,7 +1592,9 @@ func TestAPILogout_WithInvalidTokenV6(t *testing.T) {
 	req.Header.Set("X-Auth-Token", "nonexistent-token")
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	// Logout always succeeds or returns 401 for bad token
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusUnauthorized {
@@ -1490,7 +1617,9 @@ func TestAPIAdminDispatch_UnknownV6(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/admin/unknown-endpoint", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200 or empty, got %d", resp.StatusCode)
@@ -1566,7 +1695,9 @@ func TestAPIListCerts_WithCNV6(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/certs?cn=test", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -1597,7 +1728,9 @@ func TestAPICATreeV6(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/ca-tree", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -1617,13 +1750,17 @@ func TestAPICATree_CachedV6(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/ca-tree", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	resp.Body.Close()
 
 	req2, _ := http.NewRequest("GET", ts.URL+"/api/v1/ca-tree", nil)
 	req2.Header.Set("X-Auth-Token", token)
 	resp2, err := http.DefaultClient.Do(req2)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp2.Body.Close()
 	if resp2.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp2.StatusCode)
@@ -1645,7 +1782,9 @@ func TestAPIBatchIssue_MethodNotAllowedV6(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/batch", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Fatalf("expected 405, got %d", resp.StatusCode)
@@ -1666,7 +1805,9 @@ func TestAPIBatchIssue_BadJSONV6(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
@@ -1688,7 +1829,9 @@ func TestAPIBatchIssue_EmptyV6(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -1768,7 +1911,7 @@ func TestAuthFromCert_NoRoleV6(t *testing.T) {
 	srv, _ := newTestServerFull6(t)
 	cert := &x509.Certificate{
 		Subject: pkix.Name{
-			CommonName:       "test-user",
+			CommonName:         "test-user",
 			OrganizationalUnit: []string{"unknown-role"},
 		},
 	}
@@ -1811,7 +1954,7 @@ func TestAuthFromCert_DelegatedAgent_ExpiredTTLV6(t *testing.T) {
 	srv, _ := newTestServerFull6(t)
 	cert := &x509.Certificate{
 		Subject: pkix.Name{
-			CommonName:       "agent-expired",
+			CommonName:         "agent-expired",
 			OrganizationalUnit: []string{"operator", "Delegated-Agent"},
 		},
 	}
@@ -1830,7 +1973,7 @@ func TestAuthFromCert_DelegatedAgent_BadTTLV6(t *testing.T) {
 	srv, _ := newTestServerFull6(t)
 	cert := &x509.Certificate{
 		Subject: pkix.Name{
-			CommonName:       "agent-badtal",
+			CommonName:         "agent-badtal",
 			OrganizationalUnit: []string{"operator", "Delegated-Agent"},
 		},
 	}

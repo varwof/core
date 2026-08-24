@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ca
 
 import (
@@ -81,8 +84,8 @@ func (s *DBSource) FindIssuerCandidates(issuerRaw string) ([]*x509.Certificate, 
 
 // StaticSource is an in-memory CertSource (test-friendly).
 type StaticSource struct {
-	CAs     []*x509.Certificate
-	Roots   []*x509.Certificate
+	CAs   []*x509.Certificate
+	Roots []*x509.Certificate
 }
 
 func (s *StaticSource) FindIssuerCandidates(issuerRaw string) ([]*x509.Certificate, error) {
@@ -133,9 +136,9 @@ type ValidPolicyNode struct {
 }
 
 type PolicyMappingApplied struct {
-	Depth                 int    `json:"depth"`
-	IssuerDomainPolicy    string `json:"issuer_domain_policy"`
-	SubjectDomainPolicy   string `json:"subject_domain_policy"`
+	Depth               int    `json:"depth"`
+	IssuerDomainPolicy  string `json:"issuer_domain_policy"`
+	SubjectDomainPolicy string `json:"subject_domain_policy"`
 }
 
 // PathVerificationResult is the full output of VerifyPath.

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package serve
 
 import (
@@ -19,8 +22,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/varwof/engine/db"
 	"github.com/varwof/core/internal/i18n"
+	"github.com/varwof/engine/db"
 )
 
 type statusRecorder struct {
@@ -399,9 +402,15 @@ func (s *Server) serveStatic(w http.ResponseWriter, r *http.Request) {
 	// Try webFS first (app.js, style.css), fall back to staticFS
 	if data, err := webFS.ReadFile("web" + path); err == nil {
 		ct := "text/plain"
-		if strings.HasSuffix(path, ".js") { ct = "application/javascript; charset=utf-8" }
-		if strings.HasSuffix(path, ".css") { ct = "text/css; charset=utf-8" }
-		if strings.HasSuffix(path, ".svg") { ct = "image/svg+xml" }
+		if strings.HasSuffix(path, ".js") {
+			ct = "application/javascript; charset=utf-8"
+		}
+		if strings.HasSuffix(path, ".css") {
+			ct = "text/css; charset=utf-8"
+		}
+		if strings.HasSuffix(path, ".svg") {
+			ct = "image/svg+xml"
+		}
 		w.Header().Set("Content-Type", ct)
 		w.Write(data)
 		return

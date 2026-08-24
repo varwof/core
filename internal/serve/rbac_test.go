@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package serve
 
 import (
@@ -20,8 +23,8 @@ import (
 
 	"github.com/varwof/core/internal"
 	"github.com/varwof/core/internal/ca"
-	"github.com/varwof/engine/db"
 	"github.com/varwof/core/internal/i18n"
+	"github.com/varwof/engine/db"
 )
 
 func TestAuthFromAIC_UserNotFound(t *testing.T) {

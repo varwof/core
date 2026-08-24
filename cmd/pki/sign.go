@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package main
 
 import (
@@ -15,10 +18,10 @@ import (
 
 	"github.com/varwof/core/internal"
 	"github.com/varwof/core/internal/ca"
-	"github.com/varwof/engine/db"
-	"github.com/varwof/pkcs7"
 	"github.com/varwof/core/internal/signer"
 	"github.com/varwof/core/internal/tsa"
+	"github.com/varwof/engine/db"
+	"github.com/varwof/pkcs7"
 )
 
 func cmdSign(cfg *internal.Config, args []string) error {
@@ -192,8 +195,6 @@ func buildTSAConfig(cfg *internal.Config) (*tsa.TSAConfig, error) {
 	}, nil
 }
 
-
-
 // Auto-issue an ephemeral signer certificate using the named CA.
 func issueSigner(cfg *internal.Config, caName, chainPath, cn, profileName string) (*x509.Certificate, crypto.Signer, []*x509.Certificate, error) {
 	caInfo := cfg.CAs[caName]
@@ -239,24 +240,24 @@ func issueSigner(cfg *internal.Config, caName, chainPath, cn, profileName string
 		}
 	}
 	result, err := ca.Sign(&ca.SignConfig{
-		DB:               database,
-		CAKey:            issuerKey,
-		CACert:           issuerCert,
-		CAName:           caName,
-		SubjectPubKey:    privKey.Public(),
-		CommonName:       cn,
-		Profile:          ca.Profile(profileName),
-		Validity:         signValidity,
-		DefaultCountry:   cfg.Defaults.DefaultCountry,
-		DefaultOrg:       cfg.Defaults.DefaultOrg,
-		CRLBaseURL:       cfg.CRL.CRLBaseURL,
-		OCSPURL:          cfg.Defaults.OCSPURL,
-		IssuerURL:        cfg.Defaults.IssuerURL,
-		IssuerAltNames:   cfg.Defaults.IssuerAltNames,
-		SubjectInfoAccess: cfg.Defaults.SubjectInfoAccess,
-		PolicyOIDs:       cfg.Defaults.PolicyOIDs,
-		PolicyFile:       cfg.Policy,
-		PolicyMappings:   mustPolicyMappings(cfg.Defaults.PolicyMappings),
+		DB:                    database,
+		CAKey:                 issuerKey,
+		CACert:                issuerCert,
+		CAName:                caName,
+		SubjectPubKey:         privKey.Public(),
+		CommonName:            cn,
+		Profile:               ca.Profile(profileName),
+		Validity:              signValidity,
+		DefaultCountry:        cfg.Defaults.DefaultCountry,
+		DefaultOrg:            cfg.Defaults.DefaultOrg,
+		CRLBaseURL:            cfg.CRL.CRLBaseURL,
+		OCSPURL:               cfg.Defaults.OCSPURL,
+		IssuerURL:             cfg.Defaults.IssuerURL,
+		IssuerAltNames:        cfg.Defaults.IssuerAltNames,
+		SubjectInfoAccess:     cfg.Defaults.SubjectInfoAccess,
+		PolicyOIDs:            cfg.Defaults.PolicyOIDs,
+		PolicyFile:            cfg.Policy,
+		PolicyMappings:        mustPolicyMappings(cfg.Defaults.PolicyMappings),
 		RequireExplicitPolicy: cfg.Defaults.RequireExplicitPolicy,
 		InhibitPolicyMapping:  cfg.Defaults.InhibitPolicyMapping,
 		InhibitAnyPolicy:      cfg.Defaults.InhibitAnyPolicy,

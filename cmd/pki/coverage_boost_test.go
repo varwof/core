@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package main
 
 import (
@@ -275,7 +278,7 @@ func TestResolveBasicAuth(t *testing.T) {
 	if err := d.CreateUser(user, db.HashPassword("s3cret", salt), salt, "admin"); err != nil {
 		t.Fatal(err)
 	}
-	header := "Basic " + base64.StdEncoding.EncodeToString([]byte(user + ":s3cret"))
+	header := "Basic " + base64.StdEncoding.EncodeToString([]byte(user+":s3cret"))
 
 	// malformed header
 	if r, _ := resolveBasicAuth("no-space", d); r != nil {
@@ -367,5 +370,3 @@ func TestRevocationCacheInvalidators(t *testing.T) {
 		t.Fatal("expected expired entry evicted")
 	}
 }
-
-

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package serve
 
 import (
@@ -64,15 +67,15 @@ func scopedAdminCert(t *testing.T, d *db.DB, ou, scope string) *x509.Certificate
 	}
 	if d != nil {
 		if err := d.InsertTrustAnchor(&db.TrustAnchor{
-			Name:         "admin-test-root",
-			HashID:       "admin-test-" + fmt.Sprintf("%d", time.Now().UnixNano()),
-			CertDER:      cert.Raw,
-			Subject:      cert.Subject.String(),
-			NotBefore:    cert.NotBefore,
-			NotAfter:     cert.NotAfter,
-			Issuer:       cert.Issuer.String(),
-			Trusted:      true,
-			Source:       "test",
+			Name:            "admin-test-root",
+			HashID:          "admin-test-" + fmt.Sprintf("%d", time.Now().UnixNano()),
+			CertDER:         cert.Raw,
+			Subject:         cert.Subject.String(),
+			NotBefore:       cert.NotBefore,
+			NotAfter:        cert.NotAfter,
+			Issuer:          cert.Issuer.String(),
+			Trusted:         true,
+			Source:          "test",
 			SHA1Fingerprint: db.Fingerprint(cert.Raw),
 		}); err != nil {
 			t.Fatalf("insert admin trust anchor: %v", err)

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ca
 
 import (
@@ -292,8 +295,8 @@ func TestEvaluatePolicyMappings(t *testing.T) {
 	chain := []*x509.Certificate{leaf.cert, sub.cert, root.cert}
 
 	res, err := VerifyPath(chain, nil, VerifyPathOptions{
-		VerifyPolicy:          true,
-		UserInitialPolicySet:  []string{"1.2.3.4.2"},
+		VerifyPolicy:         true,
+		UserInitialPolicySet: []string{"1.2.3.4.2"},
 	})
 	if err != nil {
 		t.Fatalf("verify path: %v", err)

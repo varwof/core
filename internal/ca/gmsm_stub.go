@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 //go:build !gmsm
 
 package ca
@@ -18,7 +21,7 @@ func marshalSM2PrivateKey(_ crypto.PrivateKey) ([]byte, error) {
 	return nil, fmt.Errorf("SM2 not supported: build with -tags gmsm")
 }
 
-func isSM2Key(_ crypto.Signer) bool { return false }
+func isSM2Key(_ crypto.Signer) bool              { return false }
 func exportSM2Key(s crypto.Signer) crypto.Signer { return s }
 
 func createSM2Certificate(_, _ *x509.Certificate, _ crypto.PublicKey, _ crypto.Signer) ([]byte, error) {

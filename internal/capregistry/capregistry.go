@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 // Package capregistry provides a runtime wrapper around the capability register.
 //
 // Purpose: core validates declared capabilities at three points — AIC issuance,
@@ -10,8 +13,8 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	pki "github.com/varwof/types"
 	"github.com/varwof/register"
+	pki "github.com/varwof/types"
 )
 
 // CapabilityRegistry is an atomic wrapper around register.Registry that supports hot-reload.

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ca
 
 import (
@@ -27,16 +30,16 @@ var (
 
 // SubCAConfig holds configuration for creating a new sub-CA.
 type SubCAConfig struct {
-	Name           string        // Unique name for the sub-CA
-	ParentCA       string        // Parent CA name (issuing CA)
-	KeyType        string        // Key type (ecdsa-p256, ecdsa-p384, rsa-2048, etc.)
-	Validity       time.Duration // Certificate validity period
-	MaxPathLen     int           // Path length constraint (0 for end-entity only)
-	KeyUsage       []string      // Key usage extensions
-	Protocol       string        // Protocol identifier (scep, cmp, acme, est)
-	PermittedDomains []string    // Name constraints: permitted domains
-	ExcludedDomains  []string    // Name constraints: excluded domains
-	CRLBaseURL     string        // Base URL for the CRL Distribution Point extension
+	Name             string        // Unique name for the sub-CA
+	ParentCA         string        // Parent CA name (issuing CA)
+	KeyType          string        // Key type (ecdsa-p256, ecdsa-p384, rsa-2048, etc.)
+	Validity         time.Duration // Certificate validity period
+	MaxPathLen       int           // Path length constraint (0 for end-entity only)
+	KeyUsage         []string      // Key usage extensions
+	Protocol         string        // Protocol identifier (scep, cmp, acme, est)
+	PermittedDomains []string      // Name constraints: permitted domains
+	ExcludedDomains  []string      // Name constraints: excluded domains
+	CRLBaseURL       string        // Base URL for the CRL Distribution Point extension
 }
 
 // SubCAResult holds the result of sub-CA creation.
@@ -53,24 +56,24 @@ type SubCAResult struct {
 
 // SubCAMeta holds metadata for an existing sub-CA.
 type SubCAMeta struct {
-	ID            int64
-	Name          string
-	ParentCA      string
-	Cert          *x509.Certificate
-	CertDER       []byte
-	KeyEncrypted  []byte
-	Subject       string
-	NotBefore     time.Time
-	NotAfter      time.Time
-	KeyAlgorithm  string
-	Fingerprint   string
-	Status        string
-	Protocol      string
-	KeyUsage      string
-	MaxPathLen    int
-	CreatedAt     time.Time
-	RevokedAt     *time.Time
-	RevokeReason  *int
+	ID           int64
+	Name         string
+	ParentCA     string
+	Cert         *x509.Certificate
+	CertDER      []byte
+	KeyEncrypted []byte
+	Subject      string
+	NotBefore    time.Time
+	NotAfter     time.Time
+	KeyAlgorithm string
+	Fingerprint  string
+	Status       string
+	Protocol     string
+	KeyUsage     string
+	MaxPathLen   int
+	CreatedAt    time.Time
+	RevokedAt    *time.Time
+	RevokeReason *int
 }
 
 // IssueSubCA creates a new sub-CA certificate signed by the parent CA.

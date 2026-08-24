@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 // Package pkcs12 provides PFX/PKCS#12 export using pure Go.
 package pkcs12
 

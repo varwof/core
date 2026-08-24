@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ca
 
 import (
@@ -267,8 +270,8 @@ func TestAggregatorError(t *testing.T) {
 func TestArchiveCerts_Empty(t *testing.T) {
 	d := newTestDBForCA(t)
 	policy := &ArchivePolicy{
-		Enabled:       true,
-		RetentionDays: 30,
+		Enabled:        true,
+		RetentionDays:  30,
 		ArchiveExpired: true,
 		ArchiveRevoked: true,
 	}

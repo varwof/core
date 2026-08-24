@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package auth
 
 import (
@@ -15,10 +18,10 @@ var (
 )
 
 type Policy struct {
-	Version           string                 `json:"version"`
-	Roles             map[string]RoleDef     `json:"roles"`
-	OUMapping         map[string]string      `json:"ou_mapping"`
-	GatewayNamespaces map[string]GatewayNS   `json:"gateway_namespaces"`
+	Version           string               `json:"version"`
+	Roles             map[string]RoleDef   `json:"roles"`
+	OUMapping         map[string]string    `json:"ou_mapping"`
+	GatewayNamespaces map[string]GatewayNS `json:"gateway_namespaces"`
 	// CapabilityParameters is the parameter defaults map derived by gen-authz from capability.json,
 	// keyed by "scheme:capability_id" (e.g. "varwof/core:cert:issue").
 	// Used at runtime to validate whether AIC/PA declared parameters are within bounds.

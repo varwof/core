@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package main
 
 import (
@@ -39,13 +42,13 @@ func newTestCACert(t *testing.T) (*x509.Certificate, *ecdsa.PrivateKey) {
 		t.Fatal(err)
 	}
 	tmpl := &x509.Certificate{
-		SerialNumber: big.NewInt(1),
-		Subject:      pkix.Name{CommonName: "Test CA"},
-		NotBefore:    time.Now().Add(-time.Hour),
-		NotAfter:     time.Now().Add(10 * 365 * 24 * time.Hour),
-		IsCA:         true,
+		SerialNumber:          big.NewInt(1),
+		Subject:               pkix.Name{CommonName: "Test CA"},
+		NotBefore:             time.Now().Add(-time.Hour),
+		NotAfter:              time.Now().Add(10 * 365 * 24 * time.Hour),
+		IsCA:                  true,
 		BasicConstraintsValid: true,
-		KeyUsage:     x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
+		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
 	}
 	certDER, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
 	if err != nil {
@@ -75,10 +78,10 @@ func newTestEndEntityCert(t *testing.T, parent *x509.Certificate, parentKey *ecd
 
 func TestFieldIndices(t *testing.T) {
 	tests := []struct {
-		n              int
-		wantSerial     int
-		wantRevDate    int
-		wantReason     int
+		n           int
+		wantSerial  int
+		wantRevDate int
+		wantReason  int
 	}{
 		{6, 3, 2, -1},
 		{7, 4, 2, 3},

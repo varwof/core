@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ca
 
 import (
@@ -401,10 +404,10 @@ func newSubCATestCA(t *testing.T) (*db.DB, *x509.Certificate, crypto.Signer) {
 func TestIssueAndVerifySubCA(t *testing.T) {
 	d, parentCert, parentKey := newSubCATestCA(t)
 	cfg := &SubCAConfig{
-		Name:      "sub-ok",
-		ParentCA:  "parent",
-		KeyType:   "ecdsa-p256",
-		Validity:  365 * 24 * time.Hour,
+		Name:       "sub-ok",
+		ParentCA:   "parent",
+		KeyType:    "ecdsa-p256",
+		Validity:   365 * 24 * time.Hour,
 		MaxPathLen: 0,
 	}
 	res, err := IssueSubCA(d, cfg, parentCert, parentKey)
@@ -440,15 +443,15 @@ func TestIssueAndVerifySubCA(t *testing.T) {
 	expiredCert := &x509.Certificate{SerialNumber: big.NewInt(7), IsCA: true, BasicConstraintsValid: true, KeyUsage: x509.KeyUsageCertSign | x509.KeyUsageCRLSign}
 	expiredDER, _ := x509.CreateCertificate(rand.Reader, expiredCert, expiredCert, &parentKey.(*ecdsa.PrivateKey).PublicKey, parentKey)
 	expiredRec := &db.SubCAMeta{
-		Name:        "sub-expired",
-		ParentCA:    "parent",
-		CertDER:     expiredDER,
-		Subject:     "CN=sub-expired",
-		NotBefore:   time.Now().Add(-48 * time.Hour).UTC().Format(time.RFC3339),
-		NotAfter:    time.Now().Add(-24 * time.Hour).UTC().Format(time.RFC3339),
+		Name:         "sub-expired",
+		ParentCA:     "parent",
+		CertDER:      expiredDER,
+		Subject:      "CN=sub-expired",
+		NotBefore:    time.Now().Add(-48 * time.Hour).UTC().Format(time.RFC3339),
+		NotAfter:     time.Now().Add(-24 * time.Hour).UTC().Format(time.RFC3339),
 		KeyAlgorithm: "ecdsa-p256",
-		Fingerprint: "f",
-		Status:      "active",
+		Fingerprint:  "f",
+		Status:       "active",
 	}
 	if err := d.InsertSubCA(expiredRec); err != nil {
 		t.Fatal(err)
@@ -461,10 +464,10 @@ func TestIssueAndVerifySubCA(t *testing.T) {
 func TestGetSubCACertChainAndExport(t *testing.T) {
 	d, parentCert, parentKey := newSubCATestCA(t)
 	cfg := &SubCAConfig{
-		Name:      "sub-chain",
-		ParentCA:  "parent-root",
-		KeyType:   "ecdsa-p256",
-		Validity:  365 * 24 * time.Hour,
+		Name:       "sub-chain",
+		ParentCA:   "parent-root",
+		KeyType:    "ecdsa-p256",
+		Validity:   365 * 24 * time.Hour,
 		MaxPathLen: 0,
 	}
 	if _, err := IssueSubCA(d, cfg, parentCert, parentKey); err != nil {
@@ -587,14 +590,14 @@ func adminCertWithScope(t *testing.T, caCert *x509.Certificate, caKey crypto.Sig
 		})
 	}
 	tmpl := &x509.Certificate{
-		SerialNumber: big.NewInt(42),
-		Subject:      pkix.Name{CommonName: "admin-user"},
-		NotBefore:    time.Now().Add(-time.Hour),
-		NotAfter:     time.Now().Add(time.Hour),
-		KeyUsage:     x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		SerialNumber:    big.NewInt(42),
+		Subject:         pkix.Name{CommonName: "admin-user"},
+		NotBefore:       time.Now().Add(-time.Hour),
+		NotAfter:        time.Now().Add(time.Hour),
+		KeyUsage:        x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 		ExtraExtensions: exts,
-		URIs: []*url.URL{{Scheme: "urn", Opaque: "pki:ca:" + scope}},
+		URIs:            []*url.URL{{Scheme: "urn", Opaque: "pki:ca:" + scope}},
 	}
 	der, err := x509.CreateCertificate(rand.Reader, tmpl, caCert, &key.PublicKey, caKey)
 	if err != nil {

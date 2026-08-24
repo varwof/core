@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ca
 
 import (
@@ -20,10 +23,10 @@ type ChainNode struct {
 }
 
 type VerifyResult struct {
-	Valid          bool        `json:"valid"`
-	Chain          []ChainNode `json:"chain,omitempty"`
-	Verified       bool        `json:"verified"`
-	RootTrustSource string     `json:"root_trust_source,omitempty"`
+	Valid           bool        `json:"valid"`
+	Chain           []ChainNode `json:"chain,omitempty"`
+	Verified        bool        `json:"verified"`
+	RootTrustSource string      `json:"root_trust_source,omitempty"`
 }
 
 func LoadTrustPool(cfgCAs map[string]string, database *db.DB) (*x509.CertPool, error) {

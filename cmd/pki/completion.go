@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package main
 
 import (
@@ -41,7 +44,7 @@ func cmdCompletion(cfg *internal.Config, args []string) error {
 }
 
 func printCompletionUsage() {
-		fmt.Fprintln(os.Stderr, bundle.T(curLang, "cli.completion_usage"))
+	fmt.Fprintln(os.Stderr, bundle.T(curLang, "cli.completion_usage"))
 }
 
 func printBashCompletion() error {

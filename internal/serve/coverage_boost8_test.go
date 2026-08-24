@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package serve
 
 import (
@@ -104,7 +107,9 @@ func TestLogout_WithRealToken(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -119,7 +124,9 @@ func TestLogout_NoToken(t *testing.T) {
 	req, _ := http.NewRequest("POST", ts.URL+"/api/v1/users/logout", strings.NewReader("{}"))
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -141,7 +148,9 @@ func TestUserInfo_WithRealToken(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/users/info", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -161,7 +170,9 @@ func TestUserInfo_InvalidToken(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/users/info", nil)
 	req.Header.Set("X-Auth-Token", "invalid-token-xyz")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", resp.StatusCode)
@@ -174,7 +185,9 @@ func TestUserInfo_NoToken(t *testing.T) {
 	defer ts.Close()
 
 	resp, err := http.Get(ts.URL + "/api/v1/users/info")
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", resp.StatusCode)
@@ -380,7 +393,9 @@ func TestListCerts_WithCerts(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/certs?ca=test-ca", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)

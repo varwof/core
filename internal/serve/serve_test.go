@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package serve
 
 import (
@@ -23,8 +26,8 @@ import (
 
 	"github.com/varwof/core/internal"
 	"github.com/varwof/core/internal/ca"
-	"github.com/varwof/engine/db"
 	"github.com/varwof/core/internal/i18n"
+	"github.com/varwof/engine/db"
 )
 
 var testBundle = i18n.NewBundle()
@@ -55,10 +58,10 @@ func adminTestCert(t *testing.T, ou string, caps ...string) (*x509.Certificate, 
 			CommonName:         "test-admin",
 			OrganizationalUnit: []string{ou},
 		},
-		NotBefore:   time.Now().Add(-1 * time.Hour),
-		NotAfter:    time.Now().Add(time.Hour),
-		KeyUsage:    x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
-		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		NotBefore:       time.Now().Add(-1 * time.Hour),
+		NotAfter:        time.Now().Add(time.Hour),
+		KeyUsage:        x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+		ExtKeyUsage:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 		ExtraExtensions: []pkix.Extension{paExt},
 	}
 	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
@@ -1476,7 +1479,10 @@ func TestHandlerSetters(t *testing.T) {
 	ts := httptest.NewServer(s)
 	defer ts.Close()
 
-	for _, tc := range []struct{ path, ct string; want int }{
+	for _, tc := range []struct {
+		path, ct string
+		want     int
+	}{
 		{"/tsa", "", 201},
 		{"/ocsp", "", 202},
 		{"/", "application/timestamp-query", 201},

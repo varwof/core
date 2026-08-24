@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 // Package secrets resolves CA private key passwords from multiple sources.
 //
 // Precedence chain (first non-empty wins):

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package serve
 
 import (
@@ -233,4 +236,3 @@ func TestServeDANonceReplay(t *testing.T) {
 	}
 	resp2.Body.Close()
 }
-

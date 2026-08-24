@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package serve
 
 import (
@@ -789,9 +792,6 @@ func TestKeepEngineNoopWhenDisabled(t *testing.T) {
 		t.Fatal("KeepEngine must not enable a disabled engine")
 	}
 }
-
-
-
 
 // postJSON posts a JSON body to the test server with the admin token and
 // returns the recorder.

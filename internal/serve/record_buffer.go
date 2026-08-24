@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package serve
 
 import (
@@ -58,7 +61,7 @@ type RecordBuffer struct {
 // maxLatency: maximum wait time before forced flush (recommended 500ms)
 // walPath: WAL file path, empty string = WAL disabled (crash unsafe)
 func NewRecordBuffer(getDB func() *db.DB, threshold int, maxPending int32, maxLatency time.Duration, walPath string) (*RecordBuffer, error) {
-		// Replay existing WAL first (restart recovery)
+	// Replay existing WAL first (restart recovery)
 	if walPath != "" {
 		if err := replayWAL(getDB, walPath); err != nil {
 			slog.Warn("record_buffer: WAL replay failed, continuing", "path", walPath, "error", err)
@@ -159,7 +162,7 @@ func (rb *RecordBuffer) Add(rec *db.CertRecord) bool {
 		return false
 	}
 
-		// json.Marshal outside lock (reduces lock hold time)
+	// json.Marshal outside lock (reduces lock hold time)
 	var line []byte
 	if rb.walBuf != nil {
 		line, _ = json.Marshal(rec)
@@ -225,7 +228,7 @@ func (rb *RecordBuffer) flush() {
 		slog.Info("record_buffer: slow flush", "n", n, "dur_ms", dur.Milliseconds(), "pending", rb.pending.Load())
 	}
 
-		// Flush succeeded: remove flushed records from memory buffer
+	// Flush succeeded: remove flushed records from memory buffer
 	rb.mu.Lock()
 	if len(rb.records) >= n {
 		rb.records = rb.records[n:]
@@ -261,11 +264,11 @@ func (rb *RecordBuffer) run(ctx context.Context) {
 	defer close(rb.done)
 	flushTicker := time.NewTicker(rb.maxLatency)
 	defer flushTicker.Stop()
-		// Checkpoint runs on an independent cycle: WAL grows fast under high throughput, but
-		// checkpoint holds the lock and blocks all writes when WAL is large (merging hundreds of
-		// MB WAL into the main DB file). Running under high load would stall drain → 503 storm.
-		// Only checkpoint when the buffer is idle (pending==0): at that point there are no
-		// records pending persistence, so merging WAL does not block any requests.
+	// Checkpoint runs on an independent cycle: WAL grows fast under high throughput, but
+	// checkpoint holds the lock and blocks all writes when WAL is large (merging hundreds of
+	// MB WAL into the main DB file). Running under high load would stall drain → 503 storm.
+	// Only checkpoint when the buffer is idle (pending==0): at that point there are no
+	// records pending persistence, so merging WAL does not block any requests.
 	ckptTicker := time.NewTicker(checkpointInterval)
 	defer ckptTicker.Stop()
 	for {

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ca
 
 import (
@@ -112,7 +115,7 @@ func TestIssueSubCA(t *testing.T) {
 	pool := x509.NewCertPool()
 	pool.AddCert(rootCert)
 	_, err = result.Cert.Verify(x509.VerifyOptions{
-		Roots: pool,
+		Roots:     pool,
 		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 	})
 	if err != nil {
@@ -160,11 +163,11 @@ func TestGetSubCA(t *testing.T) {
 
 	// Create sub-CA
 	cfg := &SubCAConfig{
-		Name:       "test-sub-ca",
-		ParentCA:   "test-root-ca",
-		KeyType:    "ecdsa-p256",
-		Validity:   5 * 365 * 24 * time.Hour,
-		Protocol:   "scep",
+		Name:     "test-sub-ca",
+		ParentCA: "test-root-ca",
+		KeyType:  "ecdsa-p256",
+		Validity: 5 * 365 * 24 * time.Hour,
+		Protocol: "scep",
 	}
 
 	_, err = IssueSubCA(database, cfg, rootCert, rootKey)
@@ -236,11 +239,11 @@ func TestListSubCAs(t *testing.T) {
 	// Create multiple sub-CAs
 	for _, protocol := range []string{"scep", "cmp", "acme"} {
 		cfg := &SubCAConfig{
-			Name:       "test-" + protocol + "-ca",
-			ParentCA:   "test-root-ca",
-			KeyType:    "ecdsa-p256",
-			Validity:   5 * 365 * 24 * time.Hour,
-			Protocol:   protocol,
+			Name:     "test-" + protocol + "-ca",
+			ParentCA: "test-root-ca",
+			KeyType:  "ecdsa-p256",
+			Validity: 5 * 365 * 24 * time.Hour,
+			Protocol: protocol,
 		}
 
 		_, err := IssueSubCA(database, cfg, rootCert, rootKey)
@@ -310,11 +313,11 @@ func TestRevokeSubCA(t *testing.T) {
 
 	// Create sub-CA
 	cfg := &SubCAConfig{
-		Name:       "test-sub-ca",
-		ParentCA:   "test-root-ca",
-		KeyType:    "ecdsa-p256",
-		Validity:   5 * 365 * 24 * time.Hour,
-		Protocol:   "scep",
+		Name:     "test-sub-ca",
+		ParentCA: "test-root-ca",
+		KeyType:  "ecdsa-p256",
+		Validity: 5 * 365 * 24 * time.Hour,
+		Protocol: "scep",
 	}
 
 	_, err = IssueSubCA(database, cfg, rootCert, rootKey)
@@ -375,9 +378,9 @@ func TestValidateAdminCert(t *testing.T) {
 		Subject: pkix.Name{
 			CommonName: "admin@test.com",
 		},
-		NotBefore: time.Now(),
-		NotAfter:  time.Now().Add(365 * 24 * time.Hour),
-		KeyUsage:  x509.KeyUsageDigitalSignature,
+		NotBefore:   time.Now(),
+		NotAfter:    time.Now().Add(365 * 24 * time.Hour),
+		KeyUsage:    x509.KeyUsageDigitalSignature,
 		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 	}
 

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package main
 
 import (
@@ -24,8 +27,6 @@ import (
 	"github.com/varwof/core/internal"
 	"github.com/varwof/core/internal/ca"
 	"github.com/varwof/core/internal/capregistry"
-	"github.com/varwof/engine/db"
-	"github.com/varwof/engine/engine"
 	"github.com/varwof/core/internal/ocsp"
 	"github.com/varwof/core/internal/provisioner"
 	"github.com/varwof/core/internal/remotesigner"
@@ -33,19 +34,21 @@ import (
 	"github.com/varwof/core/internal/secrets"
 	"github.com/varwof/core/internal/serve"
 	"github.com/varwof/core/internal/tsa"
+	"github.com/varwof/engine/db"
+	"github.com/varwof/engine/engine"
 )
 
 var (
-	httpServer   *http.Server
-	tlsServer    *http.Server
-	fullMux      *serve.Server
-	publicMux    *serve.Server
-	crlStopFn    func()
-	tsaStopFn    func()
-	rbStopFn     func()
-	engineStopFn func()
+	httpServer     *http.Server
+	tlsServer      *http.Server
+	fullMux        *serve.Server
+	publicMux      *serve.Server
+	crlStopFn      func()
+	tsaStopFn      func()
+	rbStopFn       func()
+	engineStopFn   func()
 	rotationStopFn func()
-	currentDB    *db.DB
+	currentDB      *db.DB
 	// tlsVerifyDB is the DB handle used by the HTTPS (mTLS) server's
 	// VerifyPeerCertificate revocation check. It is initialized via
 	// verifyClientCertRevocation at Serve startup and updated to a new DB
@@ -367,13 +370,13 @@ func crlLoop(ctx context.Context, database *db.DB, revSrc ca.RevokedEntriesSourc
 		case <-ctx.Done():
 			return
 		case <-tickCh:
-				// Try distributed lock: only one instance generates CRLs
-				lock := database.NewDistLock()
-				locked, _ := lock.TryLock(ctx, db.LockKeyCRLRenew)
-				if !locked {
-					slog.Debug("crl: skipped (another instance holds the lock)")
-					continue
-				}
+			// Try distributed lock: only one instance generates CRLs
+			lock := database.NewDistLock()
+			locked, _ := lock.TryLock(ctx, db.LockKeyCRLRenew)
+			if !locked {
+				slog.Debug("crl: skipped (another instance holds the lock)")
+				continue
+			}
 			metas, err := database.ListCAMetas()
 			if err != nil {
 				slog.Error("crl: list ca_meta", "error", err)
@@ -483,13 +486,13 @@ func loadOCSPConfig(cfg *internal.Config, database *db.DB) (http.Handler, error)
 		ocspNextUpdate, _ = time.ParseDuration(cfg.OCSP.NextUpdate)
 	}
 	h := ocsp.NewHandler(&ocsp.Config{
-		DB:         database,
-		Engine:     fullMuxEngine,
-		CACert:     issuingCert,
-		CAName:     cfg.Defaults.CA,
-		SignerCert: ocspSignerCert,
-		SignerKey:  ocspSignerKey,
-		NextUpdate: ocspNextUpdate,
+		DB:          database,
+		Engine:      fullMuxEngine,
+		CACert:      issuingCert,
+		CAName:      cfg.Defaults.CA,
+		SignerCert:  ocspSignerCert,
+		SignerKey:   ocspSignerKey,
+		NextUpdate:  ocspNextUpdate,
 		MetricsHook: serve.RecordOCSPResponse,
 		CacheFile:   cfg.OCSP.CacheFile,
 	})
@@ -980,7 +983,7 @@ func startServers(cfg *internal.Config, database *db.DB) error {
 		}
 		tlsCfg := &tls.Config{
 			Certificates: []tls.Certificate{tlsCert},
-			MinVersion: tls.VersionTLS12,
+			MinVersion:   tls.VersionTLS12,
 			CipherSuites: []uint16{
 				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
 				tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
@@ -1283,4 +1286,3 @@ func parseBasicAuth(auth string) (username, password string, ok bool) {
 	}
 	return cs[:s], cs[s+1:], true
 }
-

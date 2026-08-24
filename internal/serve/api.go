@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package serve
 
 import (
@@ -17,9 +20,9 @@ import (
 	"time"
 
 	"github.com/varwof/core/internal/ca"
-	"github.com/varwof/engine/db"
 	"github.com/varwof/core/internal/i18n"
 	"github.com/varwof/core/internal/secrets"
+	"github.com/varwof/engine/db"
 	p12 "software.sslmate.com/src/go-pkcs12"
 )
 

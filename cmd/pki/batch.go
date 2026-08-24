@@ -1,9 +1,12 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package main
 
 import (
 	"crypto/x509"
-	"encoding/pem"
 	"encoding/csv"
+	"encoding/pem"
 	"flag"
 	"fmt"
 	"io"
@@ -127,31 +130,31 @@ func cmdBatch(cfg *internal.Config, args []string) error {
 		}
 
 		signCfg := &ca.SignConfig{
-			DB:                database,
-			CAKey:             issuerKey,
-			CACert:            issuerCert,
-			CAName:            *caName,
-			CommonName:        cn,
-			SubjectPubKey:     privKey.Public(),
-			Profile:           ca.Profile(profile),
-			Hash:              cfg.Defaults.Hash,
-			Validity:          time.Duration(validity) * 24 * time.Hour,
-			CRLBaseURL:        cfg.CRL.CRLBaseURL,
-			OCSPURL:           cfg.Defaults.OCSPURL,
-			IssuerURL:         cfg.Defaults.IssuerURL,
-			IssuerAltNames:    cfg.Defaults.IssuerAltNames,
-			SubjectInfoAccess: cfg.Defaults.SubjectInfoAccess,
-			PolicyOIDs:        cfg.Defaults.PolicyOIDs,
-		PolicyMappings:       mustPolicyMappings(cfg.Defaults.PolicyMappings),
-		RequireExplicitPolicy: cfg.Defaults.RequireExplicitPolicy,
-		InhibitPolicyMapping:  cfg.Defaults.InhibitPolicyMapping,
-		InhibitAnyPolicy:      cfg.Defaults.InhibitAnyPolicy,
-			DefaultOrg:        cfg.Defaults.DefaultOrg,
-			DefaultCountry:    cfg.Defaults.DefaultCountry,
-			DedupCN:           true,
-			MustStaple:        mustStapleStr == "true" || mustStapleStr == "1" || mustStapleStr == "yes",
-			ExtraEKUOIDs:      splitCSV(ekuStr),
-			PolicyFile:        cfg.Policy,
+			DB:                    database,
+			CAKey:                 issuerKey,
+			CACert:                issuerCert,
+			CAName:                *caName,
+			CommonName:            cn,
+			SubjectPubKey:         privKey.Public(),
+			Profile:               ca.Profile(profile),
+			Hash:                  cfg.Defaults.Hash,
+			Validity:              time.Duration(validity) * 24 * time.Hour,
+			CRLBaseURL:            cfg.CRL.CRLBaseURL,
+			OCSPURL:               cfg.Defaults.OCSPURL,
+			IssuerURL:             cfg.Defaults.IssuerURL,
+			IssuerAltNames:        cfg.Defaults.IssuerAltNames,
+			SubjectInfoAccess:     cfg.Defaults.SubjectInfoAccess,
+			PolicyOIDs:            cfg.Defaults.PolicyOIDs,
+			PolicyMappings:        mustPolicyMappings(cfg.Defaults.PolicyMappings),
+			RequireExplicitPolicy: cfg.Defaults.RequireExplicitPolicy,
+			InhibitPolicyMapping:  cfg.Defaults.InhibitPolicyMapping,
+			InhibitAnyPolicy:      cfg.Defaults.InhibitAnyPolicy,
+			DefaultOrg:            cfg.Defaults.DefaultOrg,
+			DefaultCountry:        cfg.Defaults.DefaultCountry,
+			DedupCN:               true,
+			MustStaple:            mustStapleStr == "true" || mustStapleStr == "1" || mustStapleStr == "yes",
+			ExtraEKUOIDs:          splitCSV(ekuStr),
+			PolicyFile:            cfg.Policy,
 		}
 
 		if sanStr != "" {

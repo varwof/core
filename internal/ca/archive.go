@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ca
 
 import (
@@ -9,17 +12,17 @@ import (
 )
 
 type ArchivePolicy struct {
-	Enabled          bool   `json:"enabled"`
-	RetentionDays    int    `json:"retention_days"`     // archive certs after N days from expiry/revocation
-	ExcludeCAs       []string `json:"exclude_cas,omitempty"`
-	ArchiveExpired   bool   `json:"archive_expired"`
-	ArchiveRevoked   bool   `json:"archive_revoked"`
+	Enabled        bool     `json:"enabled"`
+	RetentionDays  int      `json:"retention_days"` // archive certs after N days from expiry/revocation
+	ExcludeCAs     []string `json:"exclude_cas,omitempty"`
+	ArchiveExpired bool     `json:"archive_expired"`
+	ArchiveRevoked bool     `json:"archive_revoked"`
 }
 
 type ArchiveResult struct {
-	Archived     int    `json:"archived"`
-	ExpiredCount int    `json:"expired_count"`
-	RevokedCount int    `json:"revoked_count"`
+	Archived     int `json:"archived"`
+	ExpiredCount int `json:"expired_count"`
+	RevokedCount int `json:"revoked_count"`
 }
 
 func ArchiveCerts(database *db.DB, policy *ArchivePolicy) (*ArchiveResult, error) {

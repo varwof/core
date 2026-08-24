@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package main
 
 import (
@@ -219,12 +222,12 @@ func TestCmdInitCABranches(t *testing.T) {
 func TestRunCmdDispatchMore(t *testing.T) {
 	// backward-compat aliases all resolve and fail fast (exit 1)
 	for _, args := range [][]string{
-		{"init-ca"},     // missing --name
-		{"ca-info"},     // missing --name
-		{"ct-submit"},   // missing --url / --cert
-		{"cross-cert"},  // unknown subcommand
+		{"init-ca"},             // missing --name
+		{"ca-info"},             // missing --name
+		{"ct-submit"},           // missing --url / --cert
+		{"cross-cert"},          // unknown subcommand
 		{"cross-cert", "issue"}, // missing args
-		{"crl-verify"},  // missing --in / --cacert
+		{"crl-verify"},          // missing --in / --cacert
 	} {
 		if code := runCmd(args); code != 1 {
 			t.Fatalf("runCmd(%v) expected exit 1, got %d", args, code)

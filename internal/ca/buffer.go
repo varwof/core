@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ca
 
 import (
@@ -48,7 +51,7 @@ type CertBufferItem struct {
 // It accumulates certificate records pending persistence and triggers batch writes to the external DB periodically or on count threshold.
 type MemoryBuffer struct {
 	mu         sync.Mutex
-	db         *db.DB          // external persistence DB
+	db         *db.DB // external persistence DB
 	cfg        PersistConfig
 	pending    []*CertBufferItem
 	closed     chan struct{}

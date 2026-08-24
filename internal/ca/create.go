@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ca
 
 import (
@@ -19,7 +22,7 @@ type CreateConfig struct {
 	Parent            *x509.Certificate
 	ParentKey         crypto.Signer
 	KeyType           string
-	ReuseKey crypto.Signer
+	ReuseKey          crypto.Signer
 	Validity          time.Duration
 	CRLBaseURL        string
 	PermittedDomains  []string
@@ -55,9 +58,9 @@ func CreateCA(cfg *CreateConfig) (*CreateResult, error) {
 		signer = cfg.ReuseKey
 	} else {
 		signer, err = GenerateKey(cfg.KeyType)
-	if err != nil {
-		return nil, fmt.Errorf("generate key: %w", err)
-	}
+		if err != nil {
+			return nil, fmt.Errorf("generate key: %w", err)
+		}
 	}
 
 	serial, err := randomSerial()
@@ -81,8 +84,8 @@ func CreateCA(cfg *CreateConfig) (*CreateResult, error) {
 			Country:      []string{country},
 			Organization: []string{org},
 		},
-		NotBefore: now,
-		NotAfter:  now.Add(cfg.Validity),
+		NotBefore:      now,
+		NotAfter:       now.Add(cfg.Validity),
 		SubjectKeyId:   []byte{},
 		AuthorityKeyId: []byte{},
 	}

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package main
 
 import (
@@ -12,8 +15,8 @@ import (
 	"time"
 
 	"github.com/varwof/core/internal"
-	"github.com/varwof/engine/db"
 	"github.com/varwof/core/internal/notifier"
+	"github.com/varwof/engine/db"
 )
 
 type eventPayload struct {
@@ -110,15 +113,15 @@ func notifySMTP(cfg *internal.Config, event, msg string) {
 		return
 	}
 	mailer := notifier.NewMailer(notifier.SMTPConfig{
-		Host:              sc.Host,
-		Port:              sc.Port,
-		Username:          sc.Username,
-		Password:          sc.Password,
-		From:              sc.From,
-		To:                sc.To,
-		TLS:               internal.BoolOr(sc.TLS, false),
+		Host:               sc.Host,
+		Port:               sc.Port,
+		Username:           sc.Username,
+		Password:           sc.Password,
+		From:               sc.From,
+		To:                 sc.To,
+		TLS:                internal.BoolOr(sc.TLS, false),
 		InsecureSkipVerify: internal.BoolOr(sc.InsecureSkipVerify, false),
-		Events:            sc.Events,
+		Events:             sc.Events,
 	})
 	subject := fmt.Sprintf("[PKI] %s", event)
 	if err := mailer.Send(event, subject, msg); err != nil {
@@ -155,15 +158,15 @@ func cmdNotifyTestSMTP(cfg *internal.Config, args []string) error {
 	}
 
 	mailer := notifier.NewMailer(notifier.SMTPConfig{
-		Host:              sc.Host,
-		Port:              sc.Port,
-		Username:          sc.Username,
-		Password:          sc.Password,
-		From:              sc.From,
-		To:                sc.To,
-		TLS:               internal.BoolOr(sc.TLS, false),
+		Host:               sc.Host,
+		Port:               sc.Port,
+		Username:           sc.Username,
+		Password:           sc.Password,
+		From:               sc.From,
+		To:                 sc.To,
+		TLS:                internal.BoolOr(sc.TLS, false),
 		InsecureSkipVerify: internal.BoolOr(sc.InsecureSkipVerify, false),
-		Events:            sc.Events,
+		Events:             sc.Events,
 	})
 	subject := fmt.Sprintf("[PKI] Test: %s", *event)
 	if err := mailer.Send(*event, subject, *message); err != nil {

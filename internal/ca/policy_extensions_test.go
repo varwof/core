@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ca
 
 import (
@@ -22,15 +25,15 @@ func TestPolicyMappingsInSubCA(t *testing.T) {
 
 	rep := 1
 	res, err := Sign(&SignConfig{
-		DB:                nil,
-		SkipDB:            true,
-		CAKey:             caKey,
-		CACert:            caCert,
-		SubjectPubKey:     &subKey.PublicKey,
-		Profile:           ProfileSubCA,
-		CommonName:        "Bridge CA",
-		Validity:          365 * 24 * time.Hour,
-		PolicyMappings:    []PolicyMapping{{IssuerDomainPolicy: "1.2.3.4.1", SubjectDomainPolicy: "1.2.3.4.2"}},
+		DB:                    nil,
+		SkipDB:                true,
+		CAKey:                 caKey,
+		CACert:                caCert,
+		SubjectPubKey:         &subKey.PublicKey,
+		Profile:               ProfileSubCA,
+		CommonName:            "Bridge CA",
+		Validity:              365 * 24 * time.Hour,
+		PolicyMappings:        []PolicyMapping{{IssuerDomainPolicy: "1.2.3.4.1", SubjectDomainPolicy: "1.2.3.4.2"}},
 		RequireExplicitPolicy: &rep,
 		InhibitAnyPolicy:      new(int),
 	})
@@ -83,14 +86,14 @@ func TestPolicyMappingsRejectedOnEndEntity(t *testing.T) {
 	}
 
 	_, err = Sign(&SignConfig{
-		DB:            nil,
-		SkipDB:        true,
-		CAKey:         caKey,
-		CACert:        caCert,
-		SubjectPubKey: &eeKey.PublicKey,
-		Profile:       ProfileTLSServer,
-		CommonName:    "end.example.com",
-		Validity:      24 * time.Hour,
+		DB:             nil,
+		SkipDB:         true,
+		CAKey:          caKey,
+		CACert:         caCert,
+		SubjectPubKey:  &eeKey.PublicKey,
+		Profile:        ProfileTLSServer,
+		CommonName:     "end.example.com",
+		Validity:       24 * time.Hour,
 		PolicyMappings: []PolicyMapping{{IssuerDomainPolicy: "1.2.3.4.1", SubjectDomainPolicy: "1.2.3.4.2"}},
 	})
 	if err == nil {
@@ -110,14 +113,14 @@ func TestPolicyConstraintsOnlyInhibitPolicyMapping(t *testing.T) {
 
 	inhibit := 2
 	res, err := Sign(&SignConfig{
-		DB:                  nil,
-		SkipDB:              true,
-		CAKey:               caKey,
-		CACert:              caCert,
-		SubjectPubKey:       &subKey.PublicKey,
-		Profile:             ProfileSubCA,
-		CommonName:          "Policy CA",
-		Validity:            365 * 24 * time.Hour,
+		DB:                   nil,
+		SkipDB:               true,
+		CAKey:                caKey,
+		CACert:               caCert,
+		SubjectPubKey:        &subKey.PublicKey,
+		Profile:              ProfileSubCA,
+		CommonName:           "Policy CA",
+		Validity:             365 * 24 * time.Hour,
 		InhibitPolicyMapping: &inhibit,
 	})
 	if err != nil {

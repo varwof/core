@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package serve
 
 import (
@@ -55,7 +58,9 @@ func TestAPIConfig_PUT_MethodNotAllowed(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/admin/config", nil)
 	req.SetBasicAuth("superadmin", "superadmin")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Fatalf("expected 405, got %d", resp.StatusCode)
@@ -71,7 +76,9 @@ func TestAPILogin_Success(t *testing.T) {
 
 	body, _ := json.Marshal(map[string]string{"username": "admin", "password": "admin"})
 	resp, err := http.Post(ts.URL+"/api/v1/users/login", "application/json", bytes.NewReader(body))
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -90,7 +97,9 @@ func TestAPILogin_BadCredentials(t *testing.T) {
 
 	body, _ := json.Marshal(map[string]string{"username": "admin", "password": "wrong"})
 	resp, err := http.Post(ts.URL+"/api/v1/users/login", "application/json", bytes.NewReader(body))
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", resp.StatusCode)
@@ -116,7 +125,9 @@ func TestAPILogin_EmptyFields(t *testing.T) {
 
 	body, _ := json.Marshal(map[string]string{"username": "", "password": ""})
 	resp, err := http.Post(ts.URL+"/api/v1/users/login", "application/json", bytes.NewReader(body))
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
@@ -129,7 +140,9 @@ func TestAPILogin_InvalidJSON(t *testing.T) {
 	defer ts.Close()
 
 	resp, err := http.Post(ts.URL+"/api/v1/users/login", "application/json", strings.NewReader("not json"))
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
@@ -150,7 +163,9 @@ func TestAPILogout_Success(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/users/logout", nil)
 	req.SetBasicAuth("admin", "admin")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -260,7 +275,9 @@ func TestAPIUserRevokeAll_NoMTLS(t *testing.T) {
 	defer ts.Close()
 
 	resp, err := http.Post(ts.URL+"/api/v1/user/revoke-all", "application/json", strings.NewReader(`{}`))
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", resp.StatusCode)

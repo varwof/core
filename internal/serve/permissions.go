@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 // Package serve — Permission matrix (re-exported from the auth package)
 //
 // The single source of truth is now located at github.com/varwof/core/auth.
@@ -15,10 +18,10 @@ type Permission = auth.Permission
 
 // All 32 permission constants re-exported
 const (
-	PermCACreate  = auth.PermCACreate
-	PermCADelete  = auth.PermCADelete
-	PermCAList    = auth.PermCAList
-	PermCAInfo    = auth.PermCAInfo
+	PermCACreate = auth.PermCACreate
+	PermCADelete = auth.PermCADelete
+	PermCAList   = auth.PermCAList
+	PermCAInfo   = auth.PermCAInfo
 
 	PermCertIssue  = auth.PermCertIssue
 	PermCertRevoke = auth.PermCertRevoke
@@ -42,8 +45,8 @@ const (
 	PermConfigRead  = auth.PermConfigRead
 	PermConfigWrite = auth.PermConfigWrite
 
-	PermRAApprove  = auth.PermRAApprove
-	PermRAReject   = auth.PermRAReject
+	PermRAApprove = auth.PermRAApprove
+	PermRAReject  = auth.PermRAReject
 
 	PermCrossIssue  = auth.PermCrossIssue
 	PermCrossRevoke = auth.PermCrossRevoke

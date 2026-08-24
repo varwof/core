@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package routing
 
 import (
@@ -22,9 +25,9 @@ func TestLiteralMatch(t *testing.T) {
 	}{
 		{"POST", "/api/v1/certs", "cert:issue"},
 		{"GET", "/api/v1/certs", "cert:list"},
-		{"DELETE", "/api/v1/certs", ""},      // no match
-		{"POST", "/api/v1/cert", ""},          // wrong path
-		{"POST", "/api/v1/certs/", ""},        // trailing slash
+		{"DELETE", "/api/v1/certs", ""}, // no match
+		{"POST", "/api/v1/cert", ""},    // wrong path
+		{"POST", "/api/v1/certs/", ""},  // trailing slash
 	}
 	for _, tt := range tests {
 		r := rules.Match(tt.method, tt.path)
@@ -54,10 +57,10 @@ func TestWildcardMatch(t *testing.T) {
 	}{
 		{"GET", "/api/v1/ca/issuing-ca", "ca:*"},
 		{"DELETE", "/api/v1/ca/my-ca", "ca:*"},
-		{"GET", "/api/v1/ca/issuing-ca/revoke", ""},  // single * doesn't match sub-paths
+		{"GET", "/api/v1/ca/issuing-ca/revoke", ""}, // single * doesn't match sub-paths
 		{"GET", "/api/v1/cert/issuing-ca/12345", "cert:list"},
 		{"GET", "/api/v1/cert/issuing-ca/12345/revoke", "cert:list"},
-		{"GET", "/api/v1/certs", ""},  // no * match for /certs
+		{"GET", "/api/v1/certs", ""}, // no * match for /certs
 	}
 	for _, tt := range tests {
 		r := rules.Match(tt.method, tt.path)

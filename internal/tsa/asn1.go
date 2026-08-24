@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 // TSA ASN.1 structures for RFC 3161 Time-Stamp Protocol.
 //
 // ⚠️ ASN.1 FREEZE: This package's ASN.1 structures are frozen.
@@ -69,11 +72,11 @@ type TSTInfo struct {
 	MessageImprint MessageImprint
 	SerialNumber   int
 	GenTime        asn1.RawValue
-	Accuracy       Accuracy            `asn1:"optional"`
-	Ordering       bool                `asn1:"optional,default:false"`
-	Nonce          *big.Int            `asn1:"optional"`
-	TSA            asn1.RawValue       `asn1:"optional,tag:0"`
-	TSTInfoExt     []asn1.RawValue     `asn1:"optional,tag:3"`
+	Accuracy       Accuracy        `asn1:"optional"`
+	Ordering       bool            `asn1:"optional,default:false"`
+	Nonce          *big.Int        `asn1:"optional"`
+	TSA            asn1.RawValue   `asn1:"optional,tag:0"`
+	TSTInfoExt     []asn1.RawValue `asn1:"optional,tag:3"`
 }
 
 type TSTInfoConfig struct {

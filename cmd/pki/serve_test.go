@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package main
 
 import (
@@ -17,9 +20,9 @@ import (
 
 	"github.com/varwof/core/internal"
 	"github.com/varwof/core/internal/ca"
-	"github.com/varwof/engine/db"
 	"github.com/varwof/core/internal/i18n"
 	"github.com/varwof/core/internal/serve"
+	"github.com/varwof/engine/db"
 )
 
 // init registers the revocation-cache invalidation hook so tests exercising
@@ -277,8 +280,6 @@ func TestExpiryLoop(t *testing.T) {
 	}()
 	tickCh <- time.Now()
 }
-
-
 
 func TestReloadConfigNowWithMuxesNoPath(t *testing.T) {
 	// Empty path should return early (no crash)
@@ -578,9 +579,9 @@ func TestRevocationCacheInvalidation(t *testing.T) {
 // would treat the config file itself as routes → empty rules → all 404.
 func TestDefaultRoutesPath(t *testing.T) {
 	cases := []struct {
-		name   string
-		cfg    string
-		want   string
+		name string
+		cfg  string
+		want string
 	}{
 		{"standard pki.json", "/etc/varwof/core/pki.json", "/etc/varwof/core/routes.json"},
 		{"custom naming", "/tmp/pki-bench/pki-bench-off.json", "/tmp/pki-bench/routes.json"},
@@ -616,5 +617,3 @@ func TestEngineConfigNilGuard(t *testing.T) {
 		t.Fatalf("engine config not honored: %+v", cfg2.Engine)
 	}
 }
-
-

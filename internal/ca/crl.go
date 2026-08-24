@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ca
 
 import (
@@ -90,8 +93,8 @@ type CRLConfig struct {
 	ThisUpdate      time.Time
 	LastThisUpdate  time.Time // previous thisUpdate to guarantee monotonicity against clock rollback
 	LastCRLNumber   *big.Int  // cRLNumber of the base CRL (for Delta CRL's Base CRL Number extension)
-	Partition       int // 0-based partition index. -1 means all (generate full CRL)
-	TotalPartitions int // total partition count. 0 or 1 = no partitioning
+	Partition       int       // 0-based partition index. -1 means all (generate full CRL)
+	TotalPartitions int       // total partition count. 0 or 1 = no partitioning
 
 	// RevokedEntriesSource overrides the revoked-entries read path. When nil
 	// (CLI/init-full) the DB is used directly. When set (serve layer with the

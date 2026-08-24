@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ca
 
 import (
@@ -17,19 +20,19 @@ import (
 func TestConsistency_ParsePrincipalUid(t *testing.T) {
 	valid32 := base64.RawURLEncoding.EncodeToString(make([]byte, 32))
 	cases := []string{
-		"varwof:admin@varwof.com:" + valid32,                                    // valid
-		"r:id:" + base64.RawURLEncoding.EncodeToString([]byte{1}),               // keyHash 1 byte (valid lower bound)
-		strings.Repeat("r", 128) + ":id:" + valid32,                             // realm 128 (upper bound valid)
-		"r:" + strings.Repeat("i", 256) + ":" + valid32,                         // identifier 256 (upper bound valid)
-		strings.Repeat("r", 129) + ":id:" + valid32,                             // realm 129 exceeds limit
-		"r:" + strings.Repeat("i", 257) + ":" + valid32,                         // identifier 257 exceeds limit
-		":id:" + valid32,                                                        // empty realm
-		"r::" + valid32,                                                         // empty identifier
-		"r:id:" + base64.RawURLEncoding.EncodeToString(make([]byte, 65)),        // keyHash 65 exceeds limit
-		"r:id:!!!invalid-base64!!!",                                             // invalid base64
-		"r:id",                                                                  // malformed (missing segment)
-		"a:b:c:d",                                                               // extra segments
-		"re:alm:id:" + valid32,                                                  // realm contains colon
+		"varwof:admin@varwof.com:" + valid32,                      // valid
+		"r:id:" + base64.RawURLEncoding.EncodeToString([]byte{1}), // keyHash 1 byte (valid lower bound)
+		strings.Repeat("r", 128) + ":id:" + valid32,               // realm 128 (upper bound valid)
+		"r:" + strings.Repeat("i", 256) + ":" + valid32,           // identifier 256 (upper bound valid)
+		strings.Repeat("r", 129) + ":id:" + valid32,               // realm 129 exceeds limit
+		"r:" + strings.Repeat("i", 257) + ":" + valid32,           // identifier 257 exceeds limit
+		":id:" + valid32, // empty realm
+		"r::" + valid32,  // empty identifier
+		"r:id:" + base64.RawURLEncoding.EncodeToString(make([]byte, 65)), // keyHash 65 exceeds limit
+		"r:id:!!!invalid-base64!!!",                                      // invalid base64
+		"r:id",                                                           // malformed (missing segment)
+		"a:b:c:d",                                                        // extra segments
+		"re:alm:id:" + valid32,                                           // realm contains colon
 	}
 	for _, s := range cases {
 		gotCA, errCA := ParsePrincipalUid(s)

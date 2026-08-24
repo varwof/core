@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package serve
 
 import (
@@ -20,9 +23,9 @@ import (
 	"time"
 
 	"github.com/varwof/core/internal/ca"
-	"github.com/varwof/engine/db"
 	"github.com/varwof/core/internal/provisioner"
 	"github.com/varwof/core/internal/routing"
+	"github.com/varwof/engine/db"
 )
 
 var scopeOID = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 1, 5, 1}

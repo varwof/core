@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package serve
 
 import (
@@ -32,12 +35,12 @@ func generateSelfSignedCertForTest(t *testing.T, cn string) (*x509.Certificate, 
 	t.Helper()
 	key, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	tmpl := &x509.Certificate{
-		SerialNumber: big.NewInt(time.Now().UnixNano()),
-		Subject:      pkix.Name{CommonName: cn, Organization: []string{"Test"}},
-		DNSNames:     []string{cn, "localhost"},
-		NotBefore:    time.Now().Add(-time.Hour),
-		NotAfter:     time.Now().Add(24 * time.Hour),
-		KeyUsage:     x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
+		SerialNumber:          big.NewInt(time.Now().UnixNano()),
+		Subject:               pkix.Name{CommonName: cn, Organization: []string{"Test"}},
+		DNSNames:              []string{cn, "localhost"},
+		NotBefore:             time.Now().Add(-time.Hour),
+		NotAfter:              time.Now().Add(24 * time.Hour),
+		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
 		BasicConstraintsValid: true,
 		IsCA:                  true,
 		MaxPathLen:            1,
@@ -56,7 +59,7 @@ func createCSRPemForTest(t *testing.T, cn string) string {
 	t.Helper()
 	key, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	tmpl := &x509.CertificateRequest{
-		Subject: pkix.Name{CommonName: cn},
+		Subject:  pkix.Name{CommonName: cn},
 		DNSNames: []string{cn},
 	}
 	der, err := x509.CreateCertificateRequest(rand.Reader, tmpl, key)
@@ -167,10 +170,10 @@ func TestK8sSign_WithProfile(t *testing.T) {
 	csrPEM := createCSRPemForTest(t, "k8s-worker")
 	w := httptest.NewRecorder()
 	body, _ := json.Marshal(map[string]interface{}{
-		"csr_pem":        csrPEM,
-		"validity_days":  90,
-		"common_name":    "k8s-worker",
-		"sans":           []string{"DNS:k8s-worker.local", "IP:10.0.0.5"},
+		"csr_pem":       csrPEM,
+		"validity_days": 90,
+		"common_name":   "k8s-worker",
+		"sans":          []string{"DNS:k8s-worker.local", "IP:10.0.0.5"},
 	})
 	r := httptest.NewRequest("POST", "/api/v1/k8s/sign", bytes.NewReader(body))
 	srv.apiK8sSign(w, r)
@@ -209,8 +212,8 @@ func TestK8sSign_WithChain(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	body, _ := json.Marshal(map[string]interface{}{
-		"csr_pem":   csrPEM,
-		"ca_name":   "test-ca",
+		"csr_pem": csrPEM,
+		"ca_name": "test-ca",
 	})
 	r := httptest.NewRequest("POST", "/api/v1/k8s/sign", bytes.NewReader(body))
 	srv.apiK8sSign(w, r)
@@ -731,8 +734,8 @@ func TestCrossCertIssue_SuccessV9(t *testing.T) {
 	})
 
 	body, _ := json.Marshal(map[string]interface{}{
-		"issuer":  "test-ca",
-		"target":  "target-ca",
+		"issuer":   "test-ca",
+		"target":   "target-ca",
 		"validity": 365,
 	})
 	w := httptest.NewRecorder()
@@ -906,11 +909,11 @@ func TestImportCA_CertSuccessV9(t *testing.T) {
 	key, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	serial, _ := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
 	tmpl := &x509.Certificate{
-		SerialNumber: serial,
-		Subject:      pkix.Name{CommonName: "ImportedSubCA"},
-		NotBefore:    time.Now().Add(-time.Hour),
-		NotAfter:     time.Now().Add(10 * 24 * time.Hour),
-		KeyUsage:     x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
+		SerialNumber:          serial,
+		Subject:               pkix.Name{CommonName: "ImportedSubCA"},
+		NotBefore:             time.Now().Add(-time.Hour),
+		NotAfter:              time.Now().Add(10 * 24 * time.Hour),
+		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
 		BasicConstraintsValid: true,
 		IsCA:                  true,
 		MaxPathLen:            0,

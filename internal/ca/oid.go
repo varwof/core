@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ca
 
 import "encoding/asn1"
@@ -27,8 +30,8 @@ var (
 	OIDIdentityExt = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 1}
 
 	// 1.1 AIC (core patent: AIC + natural person binding + capability protocolization)
-	OIDAIC               = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 1, 1}
-	OIDAICAgentIdentity  = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 1, 1, 1}
+	OIDAIC              = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 1, 1}
+	OIDAICAgentIdentity = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 1, 1, 1}
 	// DelegationAuthorization (.1.1.2, principal signature evidence; pre-v1.5 old name UserAuth).
 	OIDAICDelegationAuthorization = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 1, 1, 2}
 	// DelegationDepthControl (.1.1.4, spec v1.7.2 §3.7, FUTURE delegation depth control).
@@ -50,7 +53,6 @@ var (
 	// 1.6 RenewalToken (auto-renewal token, I-D §6)
 	OIDRenewalToken = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 1, 6}
 
-
 	// ── 3.x National/Industry Certification Extensions ──
 	OIDCertificationExt = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 3}
 
@@ -64,14 +66,14 @@ var (
 	OIDCrossBorder = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 3, 3}
 
 	// ── 5.x GM (Chinese National Cryptography) Extensions ──
-	OIDGM         = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 5}
-	OIDSM2Sig     = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 5, 1}
-	OIDSM3Hash    = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 5, 2}
-	OIDSM4Enc     = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 5, 3}
-	OIDSM2SM3Sig  = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 5, 4}
+	OIDGM        = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 5}
+	OIDSM2Sig    = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 5, 1}
+	OIDSM3Hash   = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 5, 2}
+	OIDSM4Enc    = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 5, 3}
+	OIDSM2SM3Sig = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 5, 4}
 
 	// ── 6.x Certificate Transparency Extensions ──
-	OIDCT        = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 6}
-	OIDCTSCT     = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 6, 1}
-	OIDCTLog     = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 6, 2}
+	OIDCT    = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 6}
+	OIDCTSCT = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 6, 1}
+	OIDCTLog = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 6, 2}
 )

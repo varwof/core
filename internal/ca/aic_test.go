@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ca
 
 import (
@@ -150,7 +153,7 @@ func TestBuildAIC_NilCapabilitiesBecomesEmpty(t *testing.T) {
 	cfg := AICConfig{
 		AgentId:      "agent-005",
 		PrincipalUid: PrincipalUid{Version: 1, Realm: "varwof", Identifier: "user@varwof.com", KeyHash: testAICKeyHash()},
-	// V16: capabilities and authorizationConstraints must not both be empty → provide one constraint
+		// V16: capabilities and authorizationConstraints must not both be empty → provide one constraint
 		AuthorizationConstraints: []Capability{
 			{SchemeId: "constraint", CapabilityId: "session:max-1h"},
 		},

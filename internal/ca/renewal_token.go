@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ca
 
 import (
@@ -18,25 +21,25 @@ type NonceStorer interface {
 // RenewalToken is the ASN.1 structure for automatic renewal tokens (I-D §6).
 // 7 fields: version, principalUid, oldCertSerial, newKeyHash, timestamp, nonce, validityPeriod.
 type RenewalToken struct {
-	Version        int                    `asn1:"default:1"`
-	PrincipalUid   PrincipalUid           `asn1:"optional,contextspecific,tag:0"`
-	OldCertSerial  []byte                 `asn1:"octet"`
-	NewKeyHash     []byte                 `asn1:"octet"`
-	Timestamp      time.Time              `asn1:"generalized"`
-	Nonce          []byte                 `asn1:"octet"` // SIZE(16)
-	ValidityPeriod int                    `asn1:"default:300"`
+	Version        int          `asn1:"default:1"`
+	PrincipalUid   PrincipalUid `asn1:"optional,contextspecific,tag:0"`
+	OldCertSerial  []byte       `asn1:"octet"`
+	NewKeyHash     []byte       `asn1:"octet"`
+	Timestamp      time.Time    `asn1:"generalized"`
+	Nonce          []byte       `asn1:"octet"` // SIZE(16)
+	ValidityPeriod int          `asn1:"default:300"`
 }
 
 // RenewalTokenExt is the ASN.1 serialization structure for RenewalToken (used for DER encoding).
 // Identical to RenewalToken (no CertificateIssuerName or other contextual fields).
 type RenewalTokenExt struct {
-	Version        int                    `asn1:"default:1"`
-	PrincipalUid   PrincipalUid           `asn1:"optional,contextspecific,tag:0"`
-	OldCertSerial  []byte                 `asn1:"octet"`
-	NewKeyHash     []byte                 `asn1:"octet"`
-	Timestamp      time.Time              `asn1:"generalized"`
-	Nonce          []byte                 `asn1:"octet"` // SIZE(16)
-	ValidityPeriod int                    `asn1:"default:300"`
+	Version        int          `asn1:"default:1"`
+	PrincipalUid   PrincipalUid `asn1:"optional,contextspecific,tag:0"`
+	OldCertSerial  []byte       `asn1:"octet"`
+	NewKeyHash     []byte       `asn1:"octet"`
+	Timestamp      time.Time    `asn1:"generalized"`
+	Nonce          []byte       `asn1:"octet"` // SIZE(16)
+	ValidityPeriod int          `asn1:"default:300"`
 }
 
 // BuildRenewalToken constructs a RenewalToken X.509v3 extension.

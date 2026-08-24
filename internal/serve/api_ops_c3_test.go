@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package serve
 
 import (
@@ -20,8 +23,8 @@ import (
 	"testing"
 	"time"
 
-	pki "github.com/varwof/types"
 	"github.com/varwof/core/internal/ca"
+	pki "github.com/varwof/types"
 )
 
 // agentProxyC3Body builds an agent-proxy issuance request body with a real user
@@ -109,23 +112,23 @@ func agentProxyC3BodyWithKey(t *testing.T, caCert *x509.Certificate, caKey crypt
 	}
 
 	req := map[string]any{
-		"ca":                       "test-ca",
-		"cn":                       cn,
-		"profile":                  "agent-proxy",
-		"subject":                  "/CN=" + cn + "/OU=gateway:admin",
-		"validity":                 1,
-		"agent_id":                 agentID,
-		"principal_uid":            puid,
-		"user_auth_signature":      base64.StdEncoding.EncodeToString(sig),
-		"user_auth_signature_algo": "ECDSA-SHA256",
-		"user_auth_nonce":          base64.StdEncoding.EncodeToString(nonce),
-		"user_auth_lifetime":       3600,
-		"user_auth_timestamp":      ts.Format(time.RFC3339),
-		"user_auth_reason_code":    "API_ISSUE",
+		"ca":                           "test-ca",
+		"cn":                           cn,
+		"profile":                      "agent-proxy",
+		"subject":                      "/CN=" + cn + "/OU=gateway:admin",
+		"validity":                     1,
+		"agent_id":                     agentID,
+		"principal_uid":                puid,
+		"user_auth_signature":          base64.StdEncoding.EncodeToString(sig),
+		"user_auth_signature_algo":     "ECDSA-SHA256",
+		"user_auth_nonce":              base64.StdEncoding.EncodeToString(nonce),
+		"user_auth_lifetime":           3600,
+		"user_auth_timestamp":          ts.Format(time.RFC3339),
+		"user_auth_reason_code":        "API_ISSUE",
 		"user_auth_reason_description": "user-authorized AIC issuance",
-		"delegation_mode":          delegationMode,
-		"capabilities":             capJSON(caps),
-		"user_cert_pem":            string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: userCert.Raw})),
+		"delegation_mode":              delegationMode,
+		"capabilities":                 capJSON(caps),
+		"user_cert_pem":                string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: userCert.Raw})),
 	}
 	if len(constraints) > 0 {
 		req["authorization_constraints"] = capJSON(constraints)
@@ -263,7 +266,7 @@ func TestServeIssueAgentProxyC3RepresentativePolicy(t *testing.T) {
 		t.Fatal(err)
 	}
 	m["principal_authorization"] = map[string]any{
-		"grants":           []map[string]any{{"scheme_id": "varwof-gateway-v1", "capability_id": "gateway:read"}},
+		"grants":            []map[string]any{{"scheme_id": "varwof-gateway-v1", "capability_id": "gateway:read"}},
 		"delegation_policy": map[string]any{"allowed_mode": 0},
 	}
 	badBody, _ := json.Marshal(m)
@@ -297,7 +300,7 @@ func TestServeIssueAgentProxyC3RepresentativeAllowed(t *testing.T) {
 		t.Fatal(err)
 	}
 	m["principal_authorization"] = map[string]any{
-		"grants":           []map[string]any{{"scheme_id": "varwof-gateway-v1", "capability_id": "gateway:read"}},
+		"grants":            []map[string]any{{"scheme_id": "varwof-gateway-v1", "capability_id": "gateway:read"}},
 		"delegation_policy": map[string]any{"allowed_mode": 1},
 	}
 	okBody, _ := json.Marshal(m)
@@ -390,35 +393,35 @@ func TestServeIssueAgentProxyC3MTLSFallback(t *testing.T) {
 	}
 	ts := time.Now().UTC().Truncate(time.Second)
 	tbs := &pki.DelegationAuthTBS{
-		Version:         1,
-		AgentId:         "mtls-1",
-		PrincipalUid:    pu,
-		Reason:          pki.Reason{ReasonCode: "API_ISSUE", Description: "user-authorized AIC issuance"},
-		Capabilities:    toPKITestCaps([]ca.Capability{{SchemeId: "varwof-gateway-v1", CapabilityId: "gateway:read"}}),
-		DelegationMode:  0,
+		Version:           1,
+		AgentId:           "mtls-1",
+		PrincipalUid:      pu,
+		Reason:            pki.Reason{ReasonCode: "API_ISSUE", Description: "user-authorized AIC issuance"},
+		Capabilities:      toPKITestCaps([]ca.Capability{{SchemeId: "varwof-gateway-v1", CapabilityId: "gateway:read"}}),
+		DelegationMode:    0,
 		RequestedLifetime: 3600,
-		Timestamp:       ts,
-		Nonce:           nonce,
+		Timestamp:         ts,
+		Nonce:             nonce,
 	}
 	tbsDER, _ := asn1.Marshal(*tbs)
 	digest := sha256.Sum256(tbsDER)
 	sig, _ := ecdsa.SignASN1(rand.Reader, userKey, digest[:])
 
 	req := map[string]any{
-		"ca":                       "test-ca",
-		"cn":                       "mtls-agent",
-		"profile":                  "agent-proxy",
-		"subject":                  "/CN=mtls-agent/OU=gateway:admin",
-		"agent_id":                 "mtls-1",
-		"principal_uid":            puid,
-		"user_auth_signature":      base64.StdEncoding.EncodeToString(sig),
-		"user_auth_signature_algo": "ECDSA-SHA256",
-		"user_auth_nonce":          base64.StdEncoding.EncodeToString(nonce),
-		"user_auth_lifetime":       3600,
-		"user_auth_timestamp":      ts.Format(time.RFC3339),
-		"user_auth_reason_code":    "API_ISSUE",
+		"ca":                           "test-ca",
+		"cn":                           "mtls-agent",
+		"profile":                      "agent-proxy",
+		"subject":                      "/CN=mtls-agent/OU=gateway:admin",
+		"agent_id":                     "mtls-1",
+		"principal_uid":                puid,
+		"user_auth_signature":          base64.StdEncoding.EncodeToString(sig),
+		"user_auth_signature_algo":     "ECDSA-SHA256",
+		"user_auth_nonce":              base64.StdEncoding.EncodeToString(nonce),
+		"user_auth_lifetime":           3600,
+		"user_auth_timestamp":          ts.Format(time.RFC3339),
+		"user_auth_reason_code":        "API_ISSUE",
 		"user_auth_reason_description": "user-authorized AIC issuance",
-		"capabilities":             []map[string]any{{"scheme_id": "varwof-gateway-v1", "capability_id": "gateway:read"}},
+		"capabilities":                 []map[string]any{{"scheme_id": "varwof-gateway-v1", "capability_id": "gateway:read"}},
 	}
 	body, _ := json.Marshal(req)
 
@@ -486,7 +489,7 @@ func TestServeIssueAgentProxyB2MaxAgents(t *testing.T) {
 	}
 	puid, _ := m1["principal_uid"].(string)
 	m1["principal_authorization"] = map[string]any{
-		"grants":           []map[string]any{{"scheme_id": "varwof-gateway-v1", "capability_id": "gateway:read"}},
+		"grants":            []map[string]any{{"scheme_id": "varwof-gateway-v1", "capability_id": "gateway:read"}},
 		"delegation_policy": map[string]any{"allowed_mode": 0, "max_agents": 1},
 	}
 	okBody, _ := json.Marshal(m1)
@@ -507,7 +510,7 @@ func TestServeIssueAgentProxyB2MaxAgents(t *testing.T) {
 		t.Fatal(err)
 	}
 	m2["principal_authorization"] = map[string]any{
-		"grants":           []map[string]any{{"scheme_id": "varwof-gateway-v1", "capability_id": "gateway:read"}},
+		"grants":            []map[string]any{{"scheme_id": "varwof-gateway-v1", "capability_id": "gateway:read"}},
 		"delegation_policy": map[string]any{"allowed_mode": 0, "max_agents": 1},
 	}
 	badBody, _ := json.Marshal(m2)
@@ -578,7 +581,7 @@ func TestServeIssueAgentProxyB3MaxSessionHours(t *testing.T) {
 		t.Fatal(err)
 	}
 	m["principal_authorization"] = map[string]any{
-		"grants":           []map[string]any{{"scheme_id": "varwof-gateway-v1", "capability_id": "gateway:read"}},
+		"grants":            []map[string]any{{"scheme_id": "varwof-gateway-v1", "capability_id": "gateway:read"}},
 		"delegation_policy": map[string]any{"allowed_mode": 0, "max_session_hours": 2},
 	}
 	okBody, _ := json.Marshal(m)

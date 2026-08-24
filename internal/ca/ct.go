@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ca
 
 import (
@@ -150,13 +153,13 @@ func VerifySCT(cert *x509.Certificate, sctVersion int, logID string, timestamp u
 	//     CtExtensions extensions;                // 2-byte length + bytes
 	//   } SCTSignedData;
 	var signed bytes.Buffer
-	signed.WriteByte(byte(sctVersion))                       // sct_version
-	signed.WriteByte(sctSigTypeCertTs)                       // signature_type
+	signed.WriteByte(byte(sctVersion)) // sct_version
+	signed.WriteByte(sctSigTypeCertTs) // signature_type
 	var tsBuf [8]byte
-	binary.BigEndian.PutUint64(tsBuf[:], timestamp)          // timestamp
+	binary.BigEndian.PutUint64(tsBuf[:], timestamp) // timestamp
 	signed.Write(tsBuf[:])
 	var entryBuf [2]byte
-	binary.BigEndian.PutUint16(entryBuf[:], sctEntryX509)    // entry_type
+	binary.BigEndian.PutUint16(entryBuf[:], sctEntryX509) // entry_type
 	signed.Write(entryBuf[:])
 	if len(cert.Raw) > 0xFFFFFF {
 		return fmt.Errorf("certificate DER too large for SCT entry: %d bytes", len(cert.Raw))

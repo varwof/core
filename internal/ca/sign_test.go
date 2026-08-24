@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ca
 
 import (
@@ -377,7 +380,8 @@ func TestSignAgentProxyWithPrincipalAuthorization(t *testing.T) {
 	}
 }
 
-func TestSignAgentProxyMissingOU(t *testing.T) {	caCert, caKey := newTestCA(t)
+func TestSignAgentProxyMissingOU(t *testing.T) {
+	caCert, caKey := newTestCA(t)
 	d := newTestDB(t)
 
 	sc := &SignConfig{
@@ -935,15 +939,15 @@ func TestSignIdentityUserWithPrincipalAuth(t *testing.T) {
 		{SchemeId: "varwof-gateway-v1", CapabilityId: "gateway:read"},
 	}}
 	result, err := Sign(&SignConfig{
-		DB:                    testDB,
-		CAKey:                 caKey,
-		CACert:                caCert,
-		CAName:                "test-ca",
-		SubjectPubKey:         key.Public(),
-		Profile:               ProfileIdentityUser,
-		CommonName:            "张三",
-		Subject:               subj,
-		Validity:              365 * 24 * time.Hour,
+		DB:                     testDB,
+		CAKey:                  caKey,
+		CACert:                 caCert,
+		CAName:                 "test-ca",
+		SubjectPubKey:          key.Public(),
+		Profile:                ProfileIdentityUser,
+		CommonName:             "张三",
+		Subject:                subj,
+		Validity:               365 * 24 * time.Hour,
 		PrincipalAuthorization: pa,
 	})
 	if err != nil {

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package serve
 
 import (
@@ -182,10 +185,10 @@ func (s *Server) apiTrustStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	apiOK(w, map[string]interface{}{
-		"total":    total,
-		"trusted":  trusted,
+		"total":     total,
+		"trusted":   trusted,
 		"untrusted": untrusted,
-		"sources":  sources,
+		"sources":   sources,
 	})
 }
 

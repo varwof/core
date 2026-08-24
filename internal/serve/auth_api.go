@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package serve
 
 import (
@@ -17,9 +20,9 @@ type permCheckRequest struct {
 
 // permCheckResponse is the response body for POST /api/v1/permissions/check.
 type permCheckResponse struct {
-	HasPerm  bool     `json:"has_permission"`
-	Role     string   `json:"role,omitempty"`
-	Roles    []string `json:"roles_from_cert,omitempty"`
+	HasPerm bool     `json:"has_permission"`
+	Role    string   `json:"role,omitempty"`
+	Roles   []string `json:"roles_from_cert,omitempty"`
 }
 
 // apiPermissionCheck checks whether a certificate has a specified permission.

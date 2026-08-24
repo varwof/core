@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package tsa
 
 import (
@@ -17,10 +20,10 @@ func randomSerial() int {
 }
 
 type TSAConfig struct {
-	SignerCert  *x509.Certificate
-	SignerKey   crypto.Signer
-	Chain       []*x509.Certificate
-	TSTInfo     *TSTInfoConfig
+	SignerCert *x509.Certificate
+	SignerKey  crypto.Signer
+	Chain      []*x509.Certificate
+	TSTInfo    *TSTInfoConfig
 }
 
 func SignRequest(reqDER []byte, cfg *TSAConfig) ([]byte, error) {

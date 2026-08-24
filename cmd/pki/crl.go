@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package main
 
 import (
@@ -138,8 +141,8 @@ func cmdCRL(cfg *internal.Config, args []string) error {
 			return fmt.Errorf("--delta requires --since <RFC3339> (no last thisUpdate recorded)")
 		}
 		crlDER, err = ca.GenerateDeltaCRL(cfgCRL, &ca.DeltaCRLConfig{
-			Since:          sinceTime,
-			BaseCRLNumber:  cfgCRL.LastCRLNumber,
+			Since:         sinceTime,
+			BaseCRLNumber: cfgCRL.LastCRLNumber,
 		})
 		if err != nil {
 			return fmt.Errorf("generate delta CRL: %w", err)

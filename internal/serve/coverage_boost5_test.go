@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package serve
 
 import (
@@ -408,7 +411,9 @@ func TestAPIDNSACME_Set(t *testing.T) {
 	req, _ := http.NewRequest("PUT", ts.URL+"/api/v1/dns/acme-challenge/example.com", bytes.NewReader(body))
 	req.SetBasicAuth("admin", "admin")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -423,7 +428,9 @@ func TestAPIDNSACME_BadJSON(t *testing.T) {
 	req, _ := http.NewRequest("PUT", ts.URL+"/api/v1/dns/acme-challenge/example.com", strings.NewReader("bad"))
 	req.SetBasicAuth("admin", "admin")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
@@ -557,7 +564,9 @@ func TestAPIUserRevokeAll_NoMTLSV2(t *testing.T) {
 	defer ts.Close()
 
 	resp, err := http.Post(ts.URL+"/api/v1/user/revoke-all", "application/json", strings.NewReader(`{}`))
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", resp.StatusCode)
@@ -692,7 +701,9 @@ func TestAPIWebhooks_MethodNotAllowed(t *testing.T) {
 	req, _ := http.NewRequest("PUT", ts.URL+"/api/v1/webhooks", strings.NewReader(`{"url":"http://test"}`))
 	req.SetBasicAuth("admin", "admin")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Fatalf("expected 405, got %d", resp.StatusCode)
@@ -844,8 +855,8 @@ func TestAPIAsyncSubmit_Valid(t *testing.T) {
 	defer ts.Close()
 
 	body, _ := json.Marshal(map[string]interface{}{
-		"ca":       "test-ca",
-		"profile":  "server",
+		"ca":          "test-ca",
+		"profile":     "server",
 		"common_name": "async-test.example.com",
 	})
 	resp := authedPost(t, ts, "/api/v1/certs/async", "application/json", bytes.NewReader(body))
@@ -864,10 +875,10 @@ func TestAPIIssueCert_Valid(t *testing.T) {
 	defer ts.Close()
 
 	body, _ := json.Marshal(map[string]interface{}{
-		"ca":           "test-ca",
-		"profile":      "server",
-		"common_name":  "issue-test.example.com",
-		"validity":     "30d",
+		"ca":          "test-ca",
+		"profile":     "server",
+		"common_name": "issue-test.example.com",
+		"validity":    "30d",
 	})
 	resp := authedPost(t, ts, "/api/v1/certs", "application/json", bytes.NewReader(body))
 	defer resp.Body.Close()
@@ -979,7 +990,9 @@ func TestRequirePerm_PublicPath(t *testing.T) {
 	defer ts.Close()
 
 	resp, err := http.Get(ts.URL + "/healthz")
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -1012,7 +1025,9 @@ func TestRequirePerm_BadAuth(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/users", nil)
 	req.SetBasicAuth("admin", "wrongpassword")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", resp.StatusCode)
@@ -1027,7 +1042,9 @@ func TestRequirePerm_NoAuth(t *testing.T) {
 	defer ts.Close()
 
 	resp, err := http.Get(ts.URL + "/api/v1/users")
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", resp.StatusCode)

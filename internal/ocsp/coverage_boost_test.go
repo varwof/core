@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ocsp
 
 import (
@@ -79,8 +82,8 @@ func TestExtractNonce_Present(t *testing.T) {
 	}
 
 	type rawTBSRequest struct {
-		Version     int              `asn1:"explicit,tag:0,default:0,optional"`
-		Requestor   asn1.RawValue   `asn1:"explicit,tag:1,optional"`
+		Version     int           `asn1:"explicit,tag:0,default:0,optional"`
+		Requestor   asn1.RawValue `asn1:"explicit,tag:1,optional"`
 		RequestList []asn1.RawValue
 		Extensions  []pkix.Extension `asn1:"explicit,tag:2,optional"`
 	}

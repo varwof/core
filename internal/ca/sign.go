@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ca
 
 import (
@@ -109,28 +112,28 @@ type SignConfig struct {
 	InhibitPolicyMapping *int
 	// InhibitAnyPolicy is the RFC 5280 §4.2.1.14 Inhibit anyPolicy extension's skipCerts
 	// count (0 means anyPolicy is prohibited on this certificate chain). nil means this extension is not generated.
-	InhibitAnyPolicy       *int
-	DedupCN                bool
-	MaxPathLen             int
-	ExtraEKUOIDs           []string
-	MustStaple             bool
-	CRLPartitions          int
-	NotBefore              *time.Time
-	NotAfter               *time.Time
-	PermittedDomains       []string
-	ExcludedDomains        []string
-	PermittedEmails        []string
-	ExcludedEmails         []string
-	PermittedURIs          []string
-	ExcludedURIs           []string
-	PermittedIPRanges      []string
-	ExcludedIPRanges       []string
-	Policy                 *Policy
-	PolicyFile             string
+	InhibitAnyPolicy  *int
+	DedupCN           bool
+	MaxPathLen        int
+	ExtraEKUOIDs      []string
+	MustStaple        bool
+	CRLPartitions     int
+	NotBefore         *time.Time
+	NotAfter          *time.Time
+	PermittedDomains  []string
+	ExcludedDomains   []string
+	PermittedEmails   []string
+	ExcludedEmails    []string
+	PermittedURIs     []string
+	ExcludedURIs      []string
+	PermittedIPRanges []string
+	ExcludedIPRanges  []string
+	Policy            *Policy
+	PolicyFile        string
 	// RequirePolicy (M4 fix): when true and no issuance policy is loaded, Sign()
 	// rejects issuance instead of warn-and-continue. The serve layer derives it
 	// from config enforce_policy. Library consumers may set it explicitly.
-	RequirePolicy bool
+	RequirePolicy          bool
 	AIC                    *AICConfig                    // Agent Identity Certificate configuration
 	PrincipalAuthorization *PrincipalAuthorizationConfig // user authorization
 	Scope                  string                        // admin scope: which CAs this admin can manage (comma-separated)

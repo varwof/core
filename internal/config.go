@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package internal
 
 import (
@@ -19,45 +22,45 @@ import (
 // Config is the top-level configuration for varwof-core.
 // Fields map directly to the JSON config file (see /etc/varwof/core/pki.json).
 type Config struct {
-	DB                string                   `json:"db,omitempty"`                 // SQLite/MySQL DSN (e.g. "/etc/varwof/core/pki.db")
-	Locale            string                   `json:"locale,omitempty"`             // "zh" or "en" (default: auto-detect)
-	TSA               TSAConfig                `json:"tsa,omitempty"`                // Time-Stamp Authority config
-	OCSP              OCSPConfig               `json:"ocsp,omitempty"`               // OCSP responder config
-	CAs               map[string]CAConfig      `json:"cas,omitempty"`                // CA definitions (name → CAConfig)
-	Serve             ServeConfig              `json:"serve,omitempty"`              // HTTP server & TLS listener config
-	Defaults          DefaultsConfig           `json:"defaults,omitempty"`           // Default values for certificate issuance
-	CRL               CRLConfig                `json:"crl,omitempty"`                // CRL generation config
-	Webhook           WebhookConfig            `json:"webhook,omitempty"`            // Webhook notification config
-	KeyEscrow         KeyEscrowConfig          `json:"key_escrow,omitempty"`         // Key escrow (recovery) config
-	CTLog             CTLogConfig              `json:"ct_log,omitempty"`             // Certificate Transparency log config
-	LDAP              ca.LDAPConfig            `json:"ldap,omitempty"`               // LDAP directory integration config
-	Identity          *ca.IdentitySourceConfig `json:"identity,omitempty"`           // Identity-source → certificate automation (identity-user profile)
-	RA                RAConfig                 `json:"ra,omitempty"`                 // Registration Authority workflow config
-	RateLimit         RateLimitConfig          `json:"rate_limit,omitempty"`         // Per-IP rate limiting config
-	PG                db.PGConfig              `json:"pg,omitempty"`                 // PostgreSQL-specific config (pool size, SSL)
-	AutoRenew         AutoRenewConfig          `json:"auto_renew,omitempty"`         // Automatic certificate renewal config
-	Archive           ArchiveConfig            `json:"archive,omitempty"`            // Certificate archival config
-	TrustBridge       TrustBridgeConfig        `json:"trust_bridge,omitempty"`       // Cross-CA trust bridge config
-	SMTP              SMTPConfig               `json:"smtp,omitempty"`               // SMTP notification config
-	Policy            string                   `json:"policy,omitempty"`             // Path to policy JSON file (CN/SAN allow/deny)
+	DB          string                   `json:"db,omitempty"`           // SQLite/MySQL DSN (e.g. "/etc/varwof/core/pki.db")
+	Locale      string                   `json:"locale,omitempty"`       // "zh" or "en" (default: auto-detect)
+	TSA         TSAConfig                `json:"tsa,omitempty"`          // Time-Stamp Authority config
+	OCSP        OCSPConfig               `json:"ocsp,omitempty"`         // OCSP responder config
+	CAs         map[string]CAConfig      `json:"cas,omitempty"`          // CA definitions (name → CAConfig)
+	Serve       ServeConfig              `json:"serve,omitempty"`        // HTTP server & TLS listener config
+	Defaults    DefaultsConfig           `json:"defaults,omitempty"`     // Default values for certificate issuance
+	CRL         CRLConfig                `json:"crl,omitempty"`          // CRL generation config
+	Webhook     WebhookConfig            `json:"webhook,omitempty"`      // Webhook notification config
+	KeyEscrow   KeyEscrowConfig          `json:"key_escrow,omitempty"`   // Key escrow (recovery) config
+	CTLog       CTLogConfig              `json:"ct_log,omitempty"`       // Certificate Transparency log config
+	LDAP        ca.LDAPConfig            `json:"ldap,omitempty"`         // LDAP directory integration config
+	Identity    *ca.IdentitySourceConfig `json:"identity,omitempty"`     // Identity-source → certificate automation (identity-user profile)
+	RA          RAConfig                 `json:"ra,omitempty"`           // Registration Authority workflow config
+	RateLimit   RateLimitConfig          `json:"rate_limit,omitempty"`   // Per-IP rate limiting config
+	PG          db.PGConfig              `json:"pg,omitempty"`           // PostgreSQL-specific config (pool size, SSL)
+	AutoRenew   AutoRenewConfig          `json:"auto_renew,omitempty"`   // Automatic certificate renewal config
+	Archive     ArchiveConfig            `json:"archive,omitempty"`      // Certificate archival config
+	TrustBridge TrustBridgeConfig        `json:"trust_bridge,omitempty"` // Cross-CA trust bridge config
+	SMTP        SMTPConfig               `json:"smtp,omitempty"`         // SMTP notification config
+	Policy      string                   `json:"policy,omitempty"`       // Path to policy JSON file (CN/SAN allow/deny)
 	// EnforcePolicy, when true, makes an unconfigured issuance policy (policy)
 	// a hard error instead of a warn-and-continue (M4 fix). Default false keeps
 	// backward-compatible behavior; deployments that rely on policy restrictions
 	// should set this to fail closed when policy.json is missing/unloaded.
-	EnforcePolicy *bool `json:"enforce_policy,omitempty"`
-	RBAC              RBACConfig               `json:"rbac,omitempty"`               // Role-based access control config
-	AuthorizationFile string                   `json:"authorization_file,omitempty"` // Path to authz.json policy file
-	RoutesFile        string                   `json:"routes_file,omitempty"`        // Path to routes.json per-URL rule file
-	CapabilitySchemes string                   `json:"capability_schemes,omitempty"` // Path to capability schemes dir (register; embedded default if empty)
-	PolicySigning     PolicySigningConfig      `json:"policy_signing,omitempty"`     // Signed policy-file verification config
-	Hierarchy         string                   `json:"hierarchy,omitempty"`          // "simple" | "complex" (CA hierarchy model)
-	KeyBackend        KeyBackendConfig         `json:"key_backend,omitempty"`        // Remote signer delegation config
-	Persist           PersistConfig            `json:"persist,omitempty"`            // Certificate persistence mode config
-	K8sEnabled        *bool                    `json:"k8s_enabled,omitempty"`        // Enable /api/v1/k8s/sign endpoint (default false for security)
-	Aggregator        AggregatorConfig         `json:"aggregator,omitempty"`         // Batch certificate issuance aggregator config
-	RecordBuffer      RecordBufferConfig       `json:"record_buffer,omitempty"`      // RecordBuffer batch persistence config (threshold/max_pending/max_latency/disable)
-	Engine            *EngineConfig            `json:"engine,omitempty"`             // In-memory engine config (nil=disabled, reads/writes fall back to DB)
-	SPIFFE            *SPIFFEConfig            `json:"spiffe,omitempty"`             // SPIFFE identity integration config (nil=disabled)
+	EnforcePolicy     *bool               `json:"enforce_policy,omitempty"`
+	RBAC              RBACConfig          `json:"rbac,omitempty"`               // Role-based access control config
+	AuthorizationFile string              `json:"authorization_file,omitempty"` // Path to authz.json policy file
+	RoutesFile        string              `json:"routes_file,omitempty"`        // Path to routes.json per-URL rule file
+	CapabilitySchemes string              `json:"capability_schemes,omitempty"` // Path to capability schemes dir (register; embedded default if empty)
+	PolicySigning     PolicySigningConfig `json:"policy_signing,omitempty"`     // Signed policy-file verification config
+	Hierarchy         string              `json:"hierarchy,omitempty"`          // "simple" | "complex" (CA hierarchy model)
+	KeyBackend        KeyBackendConfig    `json:"key_backend,omitempty"`        // Remote signer delegation config
+	Persist           PersistConfig       `json:"persist,omitempty"`            // Certificate persistence mode config
+	K8sEnabled        *bool               `json:"k8s_enabled,omitempty"`        // Enable /api/v1/k8s/sign endpoint (default false for security)
+	Aggregator        AggregatorConfig    `json:"aggregator,omitempty"`         // Batch certificate issuance aggregator config
+	RecordBuffer      RecordBufferConfig  `json:"record_buffer,omitempty"`      // RecordBuffer batch persistence config (threshold/max_pending/max_latency/disable)
+	Engine            *EngineConfig       `json:"engine,omitempty"`             // In-memory engine config (nil=disabled, reads/writes fall back to DB)
+	SPIFFE            *SPIFFEConfig       `json:"spiffe,omitempty"`             // SPIFFE identity integration config (nil=disabled)
 }
 
 // SPIFFEConfig configures optional SPIFFE identity integration for AIC certificates.
@@ -140,16 +143,16 @@ type KeyEscrowConfig struct {
 
 // CTLogConfig configures Certificate Transparency log submission.
 type CTLogConfig struct {
-	URL       string       `json:"url,omitempty"`     // CT log server URL
-	APIKey    string       `json:"api_key,omitempty"` // CT log API key (optional)
+	URL       string       `json:"url,omitempty"`        // CT log server URL
+	APIKey    string       `json:"api_key,omitempty"`    // CT log API key (optional)
 	PublicKey string       `json:"public_key,omitempty"` // CT log public key (base64 DER SPKI or PEM). Required for real SCT signature verification (H11); without it verification degrades to structural checks with a warning.
-	Logs      []CTLogEntry `json:"logs,omitempty"`    // Additional CT log entries
+	Logs      []CTLogEntry `json:"logs,omitempty"`       // Additional CT log entries
 }
 
 // CTLogEntry defines a single CT log server endpoint.
 type CTLogEntry struct {
-	URL       string `json:"url"`               // CT log server URL
-	APIKey    string `json:"api_key,omitempty"` // CT log API key (optional)
+	URL       string `json:"url"`                  // CT log server URL
+	APIKey    string `json:"api_key,omitempty"`    // CT log API key (optional)
 	PublicKey string `json:"public_key,omitempty"` // CT log public key (base64 DER SPKI or PEM). Required for real SCT signature verification (H11).
 }
 
@@ -304,7 +307,7 @@ type DefaultsConfig struct {
 	// Org is the legacy alias for DefaultOrg (config key "org"). When both
 	// are present, Org wins so that init-full's generated "defaults.org"
 	// keeps working. Deprecated: use default_org in new configs.
-	Org               string   `json:"org,omitempty"`
+	Org string `json:"org,omitempty"`
 	// Realm is the namespace identifier for PrincipalUid (e.g. "example.com").
 	// When empty, defaults to "example.com" (RFC 2606 reserved domain).
 	// Used as the Realm field in PrincipalUid when no explicit principal_uid is provided.

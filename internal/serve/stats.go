@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package serve
 
 import (
@@ -9,14 +12,14 @@ import (
 
 // DashboardStats is the complete PKI statistics response.
 type DashboardStats struct {
-	Summary       SummaryStats        `json:"summary"`
-	PerCA         []CAStats           `json:"per_ca,omitempty"`
-	Expiry        ExpiryBuckets       `json:"expiry"`
-	Trends        TrendStats          `json:"trends,omitempty"`
-	KeyTypes      map[string]int      `json:"key_types,omitempty"`
-	Profiles      map[string]int      `json:"profiles,omitempty"`
-	NearestExpiry *NearestExpiry      `json:"nearest_expiry,omitempty"`
-	UpdatedAt     string              `json:"updated_at"`
+	Summary       SummaryStats   `json:"summary"`
+	PerCA         []CAStats      `json:"per_ca,omitempty"`
+	Expiry        ExpiryBuckets  `json:"expiry"`
+	Trends        TrendStats     `json:"trends,omitempty"`
+	KeyTypes      map[string]int `json:"key_types,omitempty"`
+	Profiles      map[string]int `json:"profiles,omitempty"`
+	NearestExpiry *NearestExpiry `json:"nearest_expiry,omitempty"`
+	UpdatedAt     string         `json:"updated_at"`
 }
 
 type SummaryStats struct {

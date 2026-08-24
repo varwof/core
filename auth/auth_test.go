@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package auth
 
 import (
@@ -211,7 +214,7 @@ func TestPolicy_PatternMatching(t *testing.T) {
 		},
 	}
 	tests := []struct {
-		cap string
+		cap  string
 		want bool
 	}{
 		{"ca:create", true},

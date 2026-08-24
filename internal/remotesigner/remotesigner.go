@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 // Package remotesigner provides a crypto.Signer that delegates signing
 // to a remote pki-hsm-proxy instance over HTTP.
 package remotesigner

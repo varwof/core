@@ -1,9 +1,13 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package tsa
 
 import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/json"
@@ -11,7 +15,6 @@ import (
 	"math/big"
 	"net/http"
 	"net/http/httptest"
-	"crypto/tls"
 	"os"
 	"path/filepath"
 	"sync/atomic"
@@ -303,7 +306,7 @@ func TestIssueCertViaAPI(t *testing.T) {
 
 	newKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	csrTmpl := &x509.CertificateRequest{
-		Subject:  pkix.Name{CommonName: "Test TSA"},
+		Subject:   pkix.Name{CommonName: "Test TSA"},
 		PublicKey: newKey.Public(),
 	}
 	csrDER, _ := x509.CreateCertificateRequest(rand.Reader, csrTmpl, newKey)

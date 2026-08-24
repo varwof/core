@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package serve
 
 import (
@@ -13,8 +16,8 @@ import (
 
 	"github.com/varwof/core/internal"
 	"github.com/varwof/core/internal/ca"
-	"github.com/varwof/engine/db"
 	"github.com/varwof/core/internal/i18n"
+	"github.com/varwof/engine/db"
 )
 
 func newTestServerFull7(t *testing.T) (*Server, *db.DB, http.Handler) {
@@ -62,7 +65,9 @@ func loginAsAdmin7(t *testing.T, ts *httptest.Server) string {
 	t.Helper()
 	body, _ := json.Marshal(map[string]string{"username": "admin", "password": "admin"})
 	resp, err := http.Post(ts.URL+"/api/v1/login", "application/json", bytes.NewReader(body))
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	var r map[string]interface{}
 	json.NewDecoder(resp.Body).Decode(&r)
@@ -154,7 +159,9 @@ func TestGatewayList(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/gateway/list", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -174,7 +181,9 @@ func TestGatewayList_MethodNotAllowed(t *testing.T) {
 	req, _ := http.NewRequest("POST", ts.URL+"/api/v1/gateway/list", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Fatalf("expected 405, got %d", resp.StatusCode)
@@ -194,7 +203,9 @@ func TestGatewayRegister_MethodNotAllowed(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/gateway/register", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Fatalf("expected 405, got %d", resp.StatusCode)
@@ -210,7 +221,9 @@ func TestGatewayRegister_NoMTLS(t *testing.T) {
 	req, _ := http.NewRequest("POST", ts.URL+"/api/v1/gateway/register", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", resp.StatusCode)
@@ -256,7 +269,9 @@ func TestGatewayHeartbeat_MethodNotAllowed(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/gateway/heartbeat", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Fatalf("expected 405, got %d", resp.StatusCode)
@@ -272,7 +287,9 @@ func TestGatewayHeartbeat_NoMTLS(t *testing.T) {
 	req, _ := http.NewRequest("POST", ts.URL+"/api/v1/gateway/heartbeat", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", resp.StatusCode)
@@ -334,7 +351,9 @@ func TestGatewayDisconnectAgent_MethodNotAllowed(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/gateway/disconnect-agent", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Fatalf("expected 405, got %d", resp.StatusCode)
@@ -354,7 +373,9 @@ func TestGatewayDisconnectUser_MethodNotAllowed(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/gateway/disconnect-user", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Fatalf("expected 405, got %d", resp.StatusCode)
@@ -451,7 +472,9 @@ func TestTrustList(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/trust", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -471,7 +494,9 @@ func TestTrustList_WithFilters(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/trust?trusted=true&source=manual&page=1&size=10&hash_id=test", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -491,7 +516,9 @@ func TestTrustGet_NotFound(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/trust/nonexistent", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", resp.StatusCode)
@@ -511,7 +538,9 @@ func TestTrustDelete_NotFound(t *testing.T) {
 	req, _ := http.NewRequest("DELETE", ts.URL+"/api/v1/trust/nonexistent", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", resp.StatusCode)
@@ -531,7 +560,9 @@ func TestTrustStats(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/trust/stats", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -551,7 +582,9 @@ func TestTrustImport_MethodNotAllowed(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/trust/import", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Fatalf("expected 405, got %d", resp.StatusCode)
@@ -572,7 +605,9 @@ func TestTrustImport_BadJSON(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
@@ -594,7 +629,9 @@ func TestTrustImport_EmptyRequest(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusInternalServerError {
 		t.Fatalf("expected 500, got %d", resp.StatusCode)
@@ -620,7 +657,9 @@ func TestTrustImport_WithPEM(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -646,7 +685,9 @@ func TestTrustImport_WithRebase(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -668,7 +709,9 @@ func TestWebhookSubs_MethodNotAllowed(t *testing.T) {
 	req, _ := http.NewRequest("PUT", ts.URL+"/api/v1/webhooks", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Fatalf("expected 405, got %d", resp.StatusCode)
@@ -688,7 +731,9 @@ func TestWebhookSubs_List(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/webhooks", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -708,7 +753,9 @@ func TestWebhookSubs_Delete_NotFound(t *testing.T) {
 	req, _ := http.NewRequest("DELETE", ts.URL+"/api/v1/webhooks?id=99999", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", resp.StatusCode)
@@ -728,7 +775,9 @@ func TestWebhookSubs_Delete_NoID(t *testing.T) {
 	req, _ := http.NewRequest("DELETE", ts.URL+"/api/v1/webhooks", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
@@ -748,7 +797,9 @@ func TestWebhookSubs_Delete_BadID(t *testing.T) {
 	req, _ := http.NewRequest("DELETE", ts.URL+"/api/v1/webhooks?id=abc", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
@@ -769,7 +820,9 @@ func TestWebhookSubs_Create_BadJSON(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
@@ -791,7 +844,9 @@ func TestWebhookSubs_Create_EmptyURL(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
@@ -813,7 +868,9 @@ func TestWebhookSubs_Create_WrongContentType(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "text/plain")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusUnsupportedMediaType {
 		t.Fatalf("expected 415, got %d", resp.StatusCode)
@@ -835,7 +892,9 @@ func TestConfig_Get(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/config", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -855,7 +914,9 @@ func TestConfig_MethodNotAllowed(t *testing.T) {
 	req, _ := http.NewRequest("DELETE", ts.URL+"/api/v1/config", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Fatalf("expected 405, got %d", resp.StatusCode)
@@ -876,7 +937,9 @@ func TestConfig_Update_BadJSON(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
@@ -898,7 +961,9 @@ func TestConfig_Update_EmptyConfig(t *testing.T) {
 	req.Header.Set("X-Auth-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
@@ -920,7 +985,9 @@ func TestAsyncStatus_NotFound(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/v1/certs/async/nonexistent", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", resp.StatusCode)
@@ -942,7 +1009,9 @@ func TestStatsSSE(t *testing.T) {
 	req, _ := http.NewRequest("GET", ts.URL+"/api/stats/stream", nil)
 	req.Header.Set("X-Auth-Token", token)
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)

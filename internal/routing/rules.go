@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 // Package routing implements JSON-configured URL-level authorization for varwof-core.
 //
 // It replaces the hardcoded switch-case in mux.go with a configurable route table.
@@ -18,13 +21,13 @@ import (
 
 // RouteRule defines a single authorization rule for an API endpoint.
 type RouteRule struct {
-	Method      string   `json:"method"`                // HTTP method: GET/POST/PUT/DELETE/PATCH/* (wildcard)
-	Path        string   `json:"path"`                  // URL path pattern: /api/v1/cert/{ca}/{serial}
-	Permission  string   `json:"permission"`            // Required permission: cert:issue, cert:revoke, etc.
-	Description string   `json:"description,omitempty"` // Human-readable description (for audit/docs)
-	CAScope     bool     `json:"ca_scope,omitempty"`    // Enable CA scope check (enterprise mode)
+	Method      string   `json:"method"`                 // HTTP method: GET/POST/PUT/DELETE/PATCH/* (wildcard)
+	Path        string   `json:"path"`                   // URL path pattern: /api/v1/cert/{ca}/{serial}
+	Permission  string   `json:"permission"`             // Required permission: cert:issue, cert:revoke, etc.
+	Description string   `json:"description,omitempty"`  // Human-readable description (for audit/docs)
+	CAScope     bool     `json:"ca_scope,omitempty"`     // Enable CA scope check (enterprise mode)
 	RequireRole []string `json:"require_role,omitempty"` // Additional role whitelist (above permission)
-	AllowAIC    *bool    `json:"allow_aic,omitempty"`   // Allow AIC agent access (nil = true)
+	AllowAIC    *bool    `json:"allow_aic,omitempty"`    // Allow AIC agent access (nil = true)
 	MaxValidity string   `json:"max_validity,omitempty"` // Max cert validity for issuance (e.g. "720h", "30d")
 }
 

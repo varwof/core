@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ca
 
 import (
@@ -21,16 +24,16 @@ import (
 // whole envelope carries an HMAC so tampering or a wrong password is detected
 // before any secret key material is processed.
 type ColdBackupEnvelope struct {
-	Version        int    `json:"version"`
-	CAName         string `json:"ca_name"`
-	CreatedAt      string `json:"created_at"`
-	CertPEM        string `json:"cert_pem"`
-	EncryptedKey   string `json:"encrypted_key"`    // base64(PBES2 DER)
-	CertSHA256     string `json:"cert_sha256"`      // hex
-	KeyFP          string `json:"key_fingerprint"`  // hex SHA-256 of public key
-	MAC            string `json:"mac"`              // base64(HMAC-SHA256 over canonical fields)
-	MACSalt        string `json:"mac_salt,omitempty"` // base64(16B salt), M11+
-	MACIterations  int    `json:"mac_iterations,omitempty"` // PBKDF2 iterations, M11+
+	Version       int    `json:"version"`
+	CAName        string `json:"ca_name"`
+	CreatedAt     string `json:"created_at"`
+	CertPEM       string `json:"cert_pem"`
+	EncryptedKey  string `json:"encrypted_key"`            // base64(PBES2 DER)
+	CertSHA256    string `json:"cert_sha256"`              // hex
+	KeyFP         string `json:"key_fingerprint"`          // hex SHA-256 of public key
+	MAC           string `json:"mac"`                      // base64(HMAC-SHA256 over canonical fields)
+	MACSalt       string `json:"mac_salt,omitempty"`       // base64(16B salt), M11+
+	MACIterations int    `json:"mac_iterations,omitempty"` // PBKDF2 iterations, M11+
 }
 
 // coldBackupMACIterations is the PBKDF2-SHA256 iteration count used to derive

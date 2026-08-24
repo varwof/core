@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ca
 
 import (
@@ -13,11 +16,11 @@ import (
 )
 
 var (
-	oidPBES2       = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 5, 13}
-	oidPBKDF2      = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 5, 12}
-	oidAES256CBC   = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 1, 42}
-	oidHMACSHA256  = asn1.ObjectIdentifier{1, 2, 840, 113549, 2, 9}
-	nullRaw        = asn1.RawValue{Class: 0, Tag: 5, Bytes: nil}
+	oidPBES2      = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 5, 13}
+	oidPBKDF2     = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 5, 12}
+	oidAES256CBC  = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 1, 42}
+	oidHMACSHA256 = asn1.ObjectIdentifier{1, 2, 840, 113549, 2, 9}
+	nullRaw       = asn1.RawValue{Class: 0, Tag: 5, Bytes: nil}
 )
 
 type encryptedPrivateKeyInfo struct {
@@ -38,8 +41,8 @@ type pbes2Params struct {
 type pbkdf2Params struct {
 	Salt           []byte
 	IterationCount int
-	KeyLength      int           `asn1:"optional"`
-	PRF            pbkdf2PRF     `asn1:"optional"`
+	KeyLength      int       `asn1:"optional"`
+	PRF            pbkdf2PRF `asn1:"optional"`
 }
 
 type pbkdf2PRF struct {

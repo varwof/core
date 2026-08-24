@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package main
 
 import (
@@ -50,7 +53,10 @@ func trustBridgeIssue(cfg *internal.Config, database *db.DB, args []string) erro
 		Validity:  validity,
 	}}
 
-	results, err := ca.BridgeTrustPEMs(database, bridges, map[string]struct{ Cert string; Key string }{
+	results, err := ca.BridgeTrustPEMs(database, bridges, map[string]struct {
+		Cert string
+		Key  string
+	}{
 		issuerCA: {Cert: cfg.CAs[issuerCA].Cert, Key: cfg.CAs[issuerCA].Key},
 	})
 	if err != nil {

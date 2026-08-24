@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ca
 
 import (
@@ -10,24 +13,24 @@ import (
 )
 
 type AutoRenewPolicy struct {
-	Enabled        bool          `json:"enabled"`
-	Interval       time.Duration `json:"interval"`
-	WindowDays     int           `json:"window_days"`
-	DefaultValidity int          `json:"default_validity_days"`
-	Profiles       []string      `json:"profiles,omitempty"`     // only auto-renew these profiles (empty = all)
-	ExcludeCAs     []string      `json:"exclude_cas,omitempty"`  // skip these CAs
-	NotifyOnly     bool          `json:"notify_only"`            // dry-run: notify but don't renew
-	MaxRenewals    int           `json:"max_renewals"`           // max per run (0 = unlimited)
+	Enabled         bool          `json:"enabled"`
+	Interval        time.Duration `json:"interval"`
+	WindowDays      int           `json:"window_days"`
+	DefaultValidity int           `json:"default_validity_days"`
+	Profiles        []string      `json:"profiles,omitempty"`    // only auto-renew these profiles (empty = all)
+	ExcludeCAs      []string      `json:"exclude_cas,omitempty"` // skip these CAs
+	NotifyOnly      bool          `json:"notify_only"`           // dry-run: notify but don't renew
+	MaxRenewals     int           `json:"max_renewals"`          // max per run (0 = unlimited)
 }
 
 type AutoRenewResult struct {
-	Serial       string `json:"serial"`
-	CAName       string `json:"ca_name"`
-	CommonName   string `json:"common_name"`
-	OldNotAfter  string `json:"old_not_after"`
-	NewSerial    string `json:"new_serial,omitempty"`
-	Action       string `json:"action"` // renewed, skipped, error, notify
-	Error        string `json:"error,omitempty"`
+	Serial      string `json:"serial"`
+	CAName      string `json:"ca_name"`
+	CommonName  string `json:"common_name"`
+	OldNotAfter string `json:"old_not_after"`
+	NewSerial   string `json:"new_serial,omitempty"`
+	Action      string `json:"action"` // renewed, skipped, error, notify
+	Error       string `json:"error,omitempty"`
 }
 
 type AutoRenewCallback func(caName, serial string, validityDays int) (newSerial string, err error)

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package main
 
 import (
@@ -35,18 +38,18 @@ var fullInitSubCAs = []struct {
 
 // serviceCertDef defines service certificates to be auto-issued during init-full.
 type serviceCertDef struct {
-	Name       string   // directory name
-	CN         string   // CommonName
-	Profile    string   // certificate profile
-	SANs       []string // SAN (used for server certificates)
-	SubCAName  string   // issuing sub-CA name (must exist in fullInitSubCAs)
-	SubDir     string   // sub-directory (e.g., ocsp issues ocsp-signer)
-	CAScope    string   // admin scope: which CAs this admin can manage
+	Name      string   // directory name
+	CN        string   // CommonName
+	Profile   string   // certificate profile
+	SANs      []string // SAN (used for server certificates)
+	SubCAName string   // issuing sub-CA name (must exist in fullInitSubCAs)
+	SubDir    string   // sub-directory (e.g., ocsp issues ocsp-signer)
+	CAScope   string   // admin scope: which CAs this admin can manage
 }
 
 func cmdInitFull(cfg *internal.Config, args []string) error {
 	fs := flag.NewFlagSet("init-full", flag.ExitOnError)
-	rootName := fs.String("root", "",  bundle.T(curLang, "cli.flag_root_name"))
+	rootName := fs.String("root", "", bundle.T(curLang, "cli.flag_root_name"))
 	defaultKeyType := fs.String("default-key-type", "ecdsa-p384", bundle.T(curLang, "cli.flag_root_key_type"))
 	valDays := fs.Int("root-validity", 7300, bundle.T(curLang, "cli.flag_root_validity"))
 	org := fs.String("org", "", bundle.T(curLang, "cli.flag_org"))
@@ -57,26 +60,26 @@ func cmdInitFull(cfg *internal.Config, args []string) error {
 	importRootCert := fs.String("import-root-cert", "", "Path to existing Root CA cert PEM (skip root creation)")
 	importRootKey := fs.String("import-root-key", "", "Path to existing Root CA key PEM (skip root creation)")
 	domain := fs.String("domain", "", "Domain for server certificates (SAN)")
-		configOut := fs.String("config-out", "", "Path to generated config file")
-		adminNames := fs.String("admin-names", "", "Admin real names: John(superadmin),Jane(operator)...")
-		skipServiceCerts := fs.Bool("skip-service-certs", false, "Skip automatic service certificate issuance")
-		authzFile := fs.String("authorization-file", "", "Path to authz.json policy (default: write built-in authz.json to --out-dir)")
-		fs.Parse(args)
-		authzPath := *authzFile
-		if *org == "" {
+	configOut := fs.String("config-out", "", "Path to generated config file")
+	adminNames := fs.String("admin-names", "", "Admin real names: John(superadmin),Jane(operator)...")
+	skipServiceCerts := fs.Bool("skip-service-certs", false, "Skip automatic service certificate issuance")
+	authzFile := fs.String("authorization-file", "", "Path to authz.json policy (default: write built-in authz.json to --out-dir)")
+	fs.Parse(args)
+	authzPath := *authzFile
+	if *org == "" {
 		return fmt.Errorf("--org is required (e.g. --org MyCorp)")
-		}
-		if *domain == "" {
+	}
+	if *domain == "" {
 		return fmt.Errorf("--domain is required (e.g. --domain mycorp.com)")
-		}
-		// Derive root CA name from org if not explicitly set
-		if *rootName == "" {
+	}
+	// Derive root CA name from org if not explicitly set
+	if *rootName == "" {
 		*rootName = *org + " Root CA"
-		}
+	}
 
-		// Parse --admin-names: "John(admin),Jane(operator)" → replace default role certs
-		// superadmin is the full-featured certificate required for bootstrapping (the only role with all PA grants under cert-first).
-		adminCerts := []serviceCertDef{
+	// Parse --admin-names: "John(admin),Jane(operator)" → replace default role certs
+	// superadmin is the full-featured certificate required for bootstrapping (the only role with all PA grants under cert-first).
+	adminCerts := []serviceCertDef{
 		{"superadmin", "superadmin@" + *domain, "m-superadmin", nil, "management", "users", ""},
 		{"admin", "admin@" + *domain, "m-admin", nil, "management", "users", ""},
 		{"operator", "operator@" + *domain, "m-operator", nil, "management", "users", ""},
@@ -271,14 +274,14 @@ func cmdInitFull(cfg *internal.Config, args []string) error {
 	}
 
 	if !*skipServiceCerts {
-					// Infrastructure certs (always issued)
-			infraCerts := []serviceCertDef{
-				{"ocsp", "ocsp." + *domain, "ocsp-signer", nil, "tls", "ocsp", ""},
-				{"api", *domain, "tls-server", []string{"DNS:" + *domain}, "tls", "api", ""},
-				{"gateway", "gateway." + *domain, "tls-server", []string{"DNS:gateway." + *domain}, "tls", "gateway", ""},
-				{"tsa-signer", "tsa." + *domain, "timestamp", nil, "tsa", "tsa", ""},
-			}
-			// Combine: infra + admins
+		// Infrastructure certs (always issued)
+		infraCerts := []serviceCertDef{
+			{"ocsp", "ocsp." + *domain, "ocsp-signer", nil, "tls", "ocsp", ""},
+			{"api", *domain, "tls-server", []string{"DNS:" + *domain}, "tls", "api", ""},
+			{"gateway", "gateway." + *domain, "tls-server", []string{"DNS:gateway." + *domain}, "tls", "gateway", ""},
+			{"tsa-signer", "tsa." + *domain, "timestamp", nil, "tsa", "tsa", ""},
+		}
+		// Combine: infra + admins
 		serviceCerts := append(infraCerts, adminCerts...)
 		for _, s := range serviceCerts {
 			subDir := filepath.Join(*baseDir, s.SubCAName)
@@ -302,10 +305,10 @@ func cmdInitFull(cfg *internal.Config, args []string) error {
 	if *configOut == "" {
 		*configOut = filepath.Join(*baseDir, "pki.json")
 	}
-		if err := generateConfig(*baseDir, *configOut, *domain, *org, authzPath); err != nil {
-			return fmt.Errorf("generate config: %w", err)
-		}
-		fmt.Println("  config file:", *configOut)
+	if err := generateConfig(*baseDir, *configOut, *domain, *org, authzPath); err != nil {
+		return fmt.Errorf("generate config: %w", err)
+	}
+	fmt.Println("  config file:", *configOut)
 
 	// ---- Initial CRLs ----
 	// Generate initial empty CRLs for each issuing CA to prevent healthz from reporting
@@ -368,17 +371,17 @@ func cmdInitFull(cfg *internal.Config, args []string) error {
 	fmt.Println("  └── service certs: ocsp, tsa-signer, api, superadmin + admin + roles")
 	fmt.Println()
 	fmt.Println(bundle.T(curLang, "cli.init_full_usage_title"))
-				fmt.Println("  cd " + *baseDir + " && pki serve")
-		fmt.Println("  pki issue --ca " + *org + " TLS CA" + " --cn my-server --san DNS:my-server." + *domain + " --profile tls-server")
+	fmt.Println("  cd " + *baseDir + " && pki serve")
+	fmt.Println("  pki issue --ca " + *org + " TLS CA" + " --cn my-server --san DNS:my-server." + *domain + " --profile tls-server")
 	fmt.Println()
-		if *encPassword != "" {
-			fmt.Println()
-			fmt.Println("  ⚠ Keys encrypted with --encrypt-keys.")
-			fmt.Println("  Set PKI_KEY_PASSWORD env var or add password to each CA in pki.json")
-			fmt.Println("  before running pki serve.")
-			fmt.Println("    export PKI_KEY_PASSWORD=" + *encPassword)
-			fmt.Println("    cd " + *baseDir + " && pki serve")
-		}
+	if *encPassword != "" {
+		fmt.Println()
+		fmt.Println("  ⚠ Keys encrypted with --encrypt-keys.")
+		fmt.Println("  Set PKI_KEY_PASSWORD env var or add password to each CA in pki.json")
+		fmt.Println("  before running pki serve.")
+		fmt.Println("    export PKI_KEY_PASSWORD=" + *encPassword)
+		fmt.Println("    cd " + *baseDir + " && pki serve")
+	}
 	return nil
 }
 
@@ -445,7 +448,7 @@ func issueServiceCert(database *db.DB, cfg *internal.Config, baseDir string, org
 func generateConfig(baseDir, configPath, domain, org, authzPath string) error {
 	absBase, _ := filepath.Abs(baseDir)
 	cfg := map[string]any{
-		"db": filepath.Join(absBase, "pki.db"),
+		"db":                 filepath.Join(absBase, "pki.db"),
 		"authorization_file": authzPath,
 		"defaults": map[string]any{
 			"org":        org,
@@ -515,10 +518,10 @@ func generateConfig(baseDir, configPath, domain, org, authzPath string) error {
 			"signer_key":  filepath.Join(absBase, "tls", "ocsp", "private", "ocsp.key"),
 		},
 		"crl": map[string]any{
-			"addr":          ":8081",
-			"crl_base_url":  "http://" + domain + "/crl",
-			"validity_days": 30,
-			"output_dir":    filepath.Join(absBase, "crl"),
+			"addr":           ":8081",
+			"crl_base_url":   "http://" + domain + "/crl",
+			"validity_days":  30,
+			"output_dir":     filepath.Join(absBase, "crl"),
 			"renew_interval": "24h",
 		},
 		"gateway": map[string]any{
@@ -559,12 +562,12 @@ func pemEncode(typ string, der []byte) []byte {
 }
 
 type caCreateOpts struct {
-	name, displayName, profile, keyType     string
-	validity, maxPathLen                    int
-	certPath, keyPath, password string
-	parentName, parentKeyPath  string
-	subject                    string
-	nameConstraints            *ca.NameConstraints
+	name, displayName, profile, keyType string
+	validity, maxPathLen                int
+	certPath, keyPath, password         string
+	parentName, parentKeyPath           string
+	subject                             string
+	nameConstraints                     *ca.NameConstraints
 }
 
 func createCA(database *db.DB, cfg *internal.Config, o caCreateOpts) error {

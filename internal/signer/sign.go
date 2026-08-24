@@ -1,7 +1,9 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package signer
 
 import (
-	"hash"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/ed25519"
@@ -9,6 +11,7 @@ import (
 	"crypto/x509"
 	"encoding/asn1"
 	"fmt"
+	"hash"
 	"math/big"
 	"os"
 	"time"
@@ -17,10 +20,10 @@ import (
 )
 
 type Config struct {
-	Cert   *x509.Certificate
-	Key    crypto.Signer
-	Chain  []*x509.Certificate
-	Hash   crypto.Hash
+	Cert  *x509.Certificate
+	Key   crypto.Signer
+	Chain []*x509.Certificate
+	Hash  crypto.Hash
 }
 
 const embeddedSigMagic = "PKISIG\x00"

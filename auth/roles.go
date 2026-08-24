@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package auth
 
 import (
@@ -26,9 +29,10 @@ const (
 
 // ExtractRoles extracts roles under the specified namespace from the certificate Subject OU.
 // Examples:
-//   cert OU = ["admin", "gateway:admin", "gateway:mysql-prod"]
-//   ExtractRoles(cert, NSCore)    → ["admin"]
-//   ExtractRoles(cert, NSGateway) → ["gateway:admin", "gateway:mysql-prod"]
+//
+//	cert OU = ["admin", "gateway:admin", "gateway:mysql-prod"]
+//	ExtractRoles(cert, NSCore)    → ["admin"]
+//	ExtractRoles(cert, NSGateway) → ["gateway:admin", "gateway:mysql-prod"]
 func ExtractRoles(cert *x509.Certificate, ns RoleNamespace) []string {
 	if cert == nil {
 		return nil
@@ -53,9 +57,10 @@ func ExtractRoles(cert *x509.Certificate, ns RoleNamespace) []string {
 // HasRole checks whether the roles list matches any role in the allowed list.
 // Supports exact matching and wildcard `*` (used in extracted roles).
 // Examples:
-//   HasRole(["gateway:admin"], ["gateway:admin"])              → true
-//   HasRole(["gateway:*"], ["gateway:mysql-prod"])              → true (* matches all)
-//   HasRole(["gateway:mysql-prod"], ["gateway:admin"])          → false
+//
+//	HasRole(["gateway:admin"], ["gateway:admin"])              → true
+//	HasRole(["gateway:*"], ["gateway:mysql-prod"])              → true (* matches all)
+//	HasRole(["gateway:mysql-prod"], ["gateway:admin"])          → false
 func HasRole(roles []string, allowed []string) bool {
 	for _, role := range roles {
 		if role == string(NSGateway)+"*" || role == string(NSWeb)+"*" {

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package ocsp
 
 import (
@@ -25,18 +28,18 @@ import (
 var oidOCSPNonce = asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 48, 1, 2}
 
 const (
-	ocspStatusMalformed  = 1
-	ocspStatusInternal   = 2
-	ocspStatusTryLater   = 3
+	ocspStatusMalformed   = 1
+	ocspStatusInternal    = 2
+	ocspStatusTryLater    = 3
 	ocspStatusSigRequired = 5
-	ocspStatusUnauth     = 6
+	ocspStatusUnauth      = 6
 )
 
 type Config struct {
-	DB     *db.DB
-	Engine func() *engine.Engine // optional memory engine getter; when non-nil and returns non-nil, status reads prefer it and fall back to DB
-	CACert *x509.Certificate
-	CAName string
+	DB         *db.DB
+	Engine     func() *engine.Engine // optional memory engine getter; when non-nil and returns non-nil, status reads prefer it and fall back to DB
+	CACert     *x509.Certificate
+	CAName     string
 	SignerCert *x509.Certificate
 	SignerKey  crypto.Signer
 	NextUpdate time.Duration
@@ -227,8 +230,8 @@ func auditOCSPQuery(database *db.DB, r *http.Request, serial, status string) {
 }
 
 type rawTBSRequest struct {
-	Version     int              `asn1:"explicit,tag:0,default:0,optional"`
-	Requestor   asn1.RawValue    `asn1:"explicit,tag:1,optional"`
+	Version     int           `asn1:"explicit,tag:0,default:0,optional"`
+	Requestor   asn1.RawValue `asn1:"explicit,tag:1,optional"`
 	RequestList []asn1.RawValue
 	Extensions  []pkix.Extension `asn1:"explicit,tag:2,optional"`
 }

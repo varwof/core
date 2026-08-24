@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package main
 
 import (
@@ -86,9 +89,9 @@ func cmdVerifyPath(cfg *internal.Config, args []string) error {
 	rejected := res.RejectReason != ""
 	if *jsonOut {
 		out := map[string]any{
-			"valid":          res.Valid,
+			"valid":           res.Valid,
 			"root_is_trusted": res.RootIsTrusted,
-			"reject_reason":  res.RejectReason,
+			"reject_reason":   res.RejectReason,
 		}
 		if res.Policy != nil {
 			out["policy"] = res.Policy

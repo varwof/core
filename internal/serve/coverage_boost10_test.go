@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jijie Wei (varwof)
+// SPDX-License-Identifier: AGPL-3.0
+
 package serve
 
 import (
@@ -20,10 +23,10 @@ import (
 	"time"
 
 	"github.com/varwof/core/internal/ca"
-	"github.com/varwof/engine/db"
 	"github.com/varwof/core/internal/provisioner"
 	"github.com/varwof/core/internal/routing"
 	"github.com/varwof/core/internal/tsa"
+	"github.com/varwof/engine/db"
 )
 
 // ─── Pure functions ───────────────────────────────────────────────
@@ -396,8 +399,8 @@ func TestReplayWAL(t *testing.T) {
 	rec := db.CertRecord{
 		SerialNumber: "WAL1", CAName: "test-ca", Status: "V",
 		Subject: "CN=wal-cert", CommonName: "wal-cert",
-		NotBefore:   time.Now(), NotAfter: time.Now().Add(time.Hour),
-		CertDER:     []byte{0x30, 0x00}, Fingerprint: "fp-wal1",
+		NotBefore: time.Now(), NotAfter: time.Now().Add(time.Hour),
+		CertDER: []byte{0x30, 0x00}, Fingerprint: "fp-wal1",
 	}
 	recJSON, _ := json.Marshal(rec)
 	p2 := filepath.Join(dir, "data.wal")
