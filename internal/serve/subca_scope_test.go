@@ -40,15 +40,17 @@ func scopedAdminCert(t *testing.T, d *db.DB, ou, scope string) *x509.Certificate
 		t.Fatal(err)
 	}
 	tmpl := &x509.Certificate{
-		SerialNumber: big.NewInt(time.Now().UnixNano()),
+		SerialNumber:          big.NewInt(time.Now().UnixNano()),
 		Subject: pkix.Name{
 			CommonName:         ou + "@test",
 			OrganizationalUnit: []string{ou},
 		},
-		NotBefore:   time.Now().Add(-time.Hour),
-		NotAfter:    time.Now().Add(365 * 24 * time.Hour),
-		KeyUsage:    x509.KeyUsageDigitalSignature,
-		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		NotBefore:             time.Now().Add(-time.Hour),
+		NotAfter:              time.Now().Add(365 * 24 * time.Hour),
+		BasicConstraintsValid: true,
+		IsCA:                  true,
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 	}
 	if scope != "" {
 		u, _ := url.Parse("urn:pki:ca:" + scope)
