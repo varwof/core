@@ -1,6 +1,7 @@
 # Varwof PKI
 
 > ⚠️ **技术预览版** — 核心加密原语已通过 OpenSSL 互操作性验证，正持续进行 RFC 合规补全。
+> **不可用于生产环境**。API 和功能可能在正式发布前发生变更。
 
 [![License](https://img.shields.io/badge/license-AGPL%203.0-blue.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/go-1.26-blue)](https://go.dev)

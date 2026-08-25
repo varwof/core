@@ -1,6 +1,7 @@
 # Varwof PKI
 
 > ⚠️ **Technical Preview** — Core cryptographic primitives verified for OpenSSL interoperability; RFC compliance ongoing.
+> **Not for production use.** APIs and features may change before official release.
 
 [![License](https://img.shields.io/badge/license-AGPL%203.0-blue.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/go-1.26-blue)](https://go.dev)
