@@ -25,6 +25,7 @@ pki.exe
 # binaries (build outputs, not source)
 /pki-core
 /k8s-issuer/k8s-issuer
+/bin/
 
 # SQLite DSN accidentally created as filename (go-sqlite3 pragma)
 *?_pragma=journal_mode*_pragma=busy_timeout*
