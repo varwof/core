@@ -1,20 +1,21 @@
-# pki · 内网 PKI 瑞士军刀
+# pki · Private PKI Swiss Army Knife
 
-> ⚠️ **技术预览版** — 核心加密原语已通过 OpenSSL 互操作性验证，正持续进行 RFC 合规补全。
-> 欢迎提交 Issue 共同完善。
+> ⚠️ **Technical Preview** — Core cryptographic primitives verified for OpenSSL interoperability; RFC compliance ongoing.
 
 [![License](https://img.shields.io/badge/license-AGPL%203.0-blue.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/go-1.26-blue)](https://go.dev)
 [![Go Reference](https://pkg.go.dev/badge/github.com/varwof/core)](https://pkg.go.dev/github.com/varwof/core)
 [![Build](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/varwof/core/actions)
 
-**单二进制，纯 Go，一分钟跑起你的私有 CA。** 不需要 OpenSSL 包装器，不需要 Python 服务，不需要复杂的多工具协作。
+**Single binary, pure Go, private CA up in one minute.** No OpenSSL wrappers, no Python services, no complex multi-tool orchestration.
 
-> **纯 Go 实现**：全部功能均为纯 Go 实现，无需任何外部依赖（无需 openssl、sqlite3 等命令行工具）。
-> **系统要求**：无特殊要求。仅需一个 Go 编译的单一二进制文件。
-> **目标用户**：个人开发者、小团队、K8s 开发集群，需要内网 HTTPS 证书且不想被商业 CA 收费折腾的人。
+[中文](README_CN.md)
 
-**Language**: Go 1.26 — **Database**: SQLite (**recommended**, pure Go, no CGO) — **Binary size**: ~20MB
+> **Pure Go**: all features implemented in pure Go, no external dependencies.
+> **System Requirements**: none. Just a single Go-compiled binary.
+> **Target Users**: individual developers, small teams, K8s dev clusters.
+
+**Language**: Go 1.26 — **Database**: SQLite (recommended, pure Go) — **Binary**: ~20MB
 
 ---
 
@@ -22,72 +23,65 @@
 
 | Category | Capabilities |
 |----------|-------------|
-| **CA** | init-ca (root/sub), ca-list, ca-info, name constraints, **Remote Signer** (HSM delegation) |
+| **CA** | init-ca (root/sub), ca-list, ca-info, name constraints, Remote Signer (HSM delegation) |
 | **Issue** | CSR or auto keygen, 9 profiles, batch CSV, renew, encrypted private key |
 | **Revoke** | CLI revocation, OCSP real-time, CRL periodic generation |
 | **TSA** | RFC 3161 timestamp, configurable Policy QIs |
 | **OCSP** | RFC 6960 responder, LRU cache |
-| **Code sign** | PKCS#7 detached/embedded, CAdES-T (real TSA), PAdES-B PDF sign, verify |
-| **RFC 5280** | 20B serial, AIA caIssuers, Name Constraints (DNS/Email/URI/IP), CRL InvalidityDate, IssuerAltName, SubjectInfoAccess, CertificatePolicies |
-| **PFX** | PKCS#12 export (pure Go, AES-256-CBC + SHA-256) |
-| **SM2** | SM2 key gen + cert issue + OpenSSL verify (build -tags gmsm) |
-| **Multi-DB** | SQLite (**recommended**), PostgreSQL (community), MySQL/MariaDB (community) |
-| **Modular** | pki serve {tsa,ocsp,crl,api,dns} independent deployment |
-| **DNS** | Built-in DNS server for ACME DNS-01, DoH, DoT |
-| **i18n** | Bilingual EN/ZH UI and CLI messages |
+| **Code sign** | PKCS#7 detached/embedded, CAdES-T, PAdES-B PDF sign, verify |
+| **RFC 5280** | 20B serial, AIA caIssuers, Name Constraints, CRL InvalidityDate |
+| **Multi-DB** | SQLite (recommended), PostgreSQL, MySQL/MariaDB |
+| **RBAC** | Users (4 roles), API tokens, audit log with Merkle chain |
 | **ACME v2** | RFC 8555, HTTP-01, auto-issuance |
 | **SCEP** | RFC 8894, GetCACert, PKCSReq |
-| **K8s** | cert-manager External Issuer（已提取为独立仓库 `pki-k8s-issuer`） |
-| **RBAC** | Users (4 roles), API tokens (SHA-256 hashed at rest), audit log with Merkle chain |
-| **RA workflow** | M-of-N multi-level approval |
-| **LDAP** | Directory auto-fill for certificate Subject |
-| **Webhook** | Issue/revoke/expiry event push |
-| **CT** | Certificate Transparency log submission |
-| **Key escrow** | RSA-OAEP + AES-256-GCM backup & recovery |
-| **Encryption** | PBKDF2 + AES-256-CBC private key encryption |
-| **DB backup** | Online VACUUM INTO snapshot |
-| **Hot reload** | Auto-poll config changes (`--reload`) |
-| **Rate limit** | Per-IP token bucket |
-| **Web UI** | Built-in dashboard |
 | **REST API** | JSON API for all operations |
 | **Health** | `/healthz`, `/readyz` endpoints |
-| **Shell completion** | bash, zsh, fish |
-| **Deploy** | `pki deploy --target nginx/apache/k8s-secret` config generator |
 
-## Hardware support
-
-Private keys can be protected by **PicoKeys Pico HSM** (RP2350/ESP32-S3) via `key_backend` config.
-See [pki-hsm-proxy](https://github.com/varwof/pki-hsm-proxy) for the HSM proxy component and [PicoKeys](https://www.picokeys.com/) for hardware details.
-
-Features: ECC P-256/P-384/P-521, Ed25519, RSA 2048/4096, PKCS#11, hardware key generation,
-physical press-to-confirm signing, 128 keypairs capacity, 16 isolated key domains.
-
-## Quick start
+## Quick Start
 
 ```bash
-# Build
 go build -o /usr/local/bin/pki ./cmd/pki/
 
-# Initialize root CA
 pki init-ca --name root --profile root-ca --out-dir /etc/varwof/core/root
-
-# Initialize issuing CA
 pki init-ca --name issuing --profile sub-ca \
   --parent root --parent-key /etc/varwof/core/root/private/ca.key
 
-# Start all services (TSA + OCSP + Web UI + ACME + SCEP)
 pki serve
 
-# Issue a certificate
 pki issue --cn server.example.com \
   --san "DNS:server.example.com,IP:10.0.0.1" \
   --profile tls-server --out-dir /etc/varwof/core/certs
+```
 
-# Code sign a binary
-pki sign myapp.bin --embed
+## Installation
 
-# Revoke a certificate
-pki revoke --serial $(openssl x509 -in cert.pem -noout -serial | cut -d= -f2) --reason keyCompromise
+```bash
+go build -o /usr/local/bin/pki ./cmd/pki/
+```
+
+## Architecture
+
+```mermaid
+graph TB
+    subgraph varwof["varwof Ecosystem"]
+        core["core<br/>PKI CA<br/>:4430/:4433"]
+        tcp["gateway-tcp<br/>TCP L4"]
+        http["gateway-http<br/>HTTP L7"]
+        udp["gateway-udp<br/>UDP L3"]
+        gwcore["gateway-core<br/>Security Engine"]
+        client["client<br/>CLI"]
+        types["types<br/>Shared Types"]
+        reg["register<br/>Capability Registry"]
+        eng["engine<br/>In-Memory"]
+    end
+    client -->|mTLS| core
+    tcp --> gwcore
+    http --> gwcore
+    udp --> gwcore
+    gwcore -->|mTLS API| core
+    core --> eng
+    core --> types
+    core --> reg
 ```
 
 ## Documentation
@@ -96,97 +90,17 @@ pki revoke --serial $(openssl x509 -in cert.pem -noout -serial | cut -d= -f2) --
 |---|---|---|
 | Getting Started | [`docs/GettingStarted_EN.md`](docs/GettingStarted_EN.md) | [`docs/GettingStarted_CN.md`](docs/GettingStarted_CN.md) |
 | Configuration | [`docs/Configuration_EN.md`](docs/Configuration_EN.md) | [`docs/Configuration_CN.md`](docs/Configuration_CN.md) |
-| Feature Overview | [`docs/FeatureOverview_EN.md`](docs/FeatureOverview_EN.md) | [`docs/FeatureOverview_CN.md`](docs/FeatureOverview_CN.md) |
 | API Reference | [`docs/API.md`](docs/API.md) | — |
-| Deployment | — | [`docs/Deployment_CN.md`](docs/Deployment_CN.md) |
-| End-to-End Demo | — | [`docs/EndToEndDemo_CN.md`](docs/EndToEndDemo_CN.md) |
-| Migration | — | [`docs/Migration_CN.md`](docs/Migration_CN.md) |
-| Release Guide | [`docs/ReleaseGuide_EN.md`](docs/ReleaseGuide_EN.md) | [`docs/ReleaseGuide_CN.md`](docs/ReleaseGuide_CN.md) |
-| RFC Deviations | [`docs/RFC_DEVIATIONS.md`](docs/RFC_DEVIATIONS.md) | — |
-| Project Pitch | [`docs/PITCH.md`](docs/PITCH.md) | — |
 | OpenAPI Spec | [`docs/openapi.yaml`](docs/openapi.yaml) | — |
-| Architecture | [`../dev-docs/core/arch/architecture.md`](../dev-docs/core/arch/architecture.md) | — |
-| Changelog | [`../dev-docs/core/changelogs/changelog.md`](../dev-docs/core/changelogs/changelog.md) | — |
-| Bug Fixes | [`../dev-docs/core/changelogs/bug-fixes.md`](../dev-docs/core/changelogs/bug-fixes.md) | — |
-| Coverage Report | [`../dev-docs/core/reports/coverage-report.md`](../dev-docs/core/reports/coverage-report.md) | — |
-| Archived Plan | — | [`../dev-docs/core/archived/PLAN.md`](../dev-docs/core/archived/PLAN.md) |
 
-> **RFC Compliance**: pki has undergone per-clause compliance review against
-> RFC 5280, 3161, 6960, 8555, 8894, 3628, and 6125.
-> [View the full compliance table](../dev-docs/core/rfc/COMPLIANCE.md).
+core is the **core CA engine** of the varwof ecosystem, providing complete PKI lifecycle management. This project is a member of the [Open Invention Network](https://openinventionnetwork.com/).
 
-## Configuration
+## Links
 
-Search order: `./pki.json` → `~/.config/pki/pki.json` → `/etc/varwof/core/pki.json`
-Override: `--config <path>`
-
-```jsonc
-{
-  "db": "/var/lib/pki/pki.db",
-  "serve": { "addr": ":4430", "tls_addr": ":4433" },
-  "cas": {
-    "root":    { "cert": "/etc/varwof/core/root/ca.pem", "key": "/etc/varwof/core/root/private/ca.key" },
-    "issuing": { "cert": "/etc/varwof/core/issuing/ca.pem", "key": "/etc/varwof/core/issuing/private/ca.key", "chain": "/etc/varwof/core/root/ca.pem" }
-  },
-  "defaults": { "ca": "issuing", "profile": "tls-server", "key_type": "ecdsa-p256" },
-  "rbac": { "enabled": true, "jwt_secret": "CHANGE_ME" },
-  "ra": { "required_approvals": 2 }
-}
-```
-
-See `pki init-config` for a full annotated config file.
-
-## Architecture
-
-```
-pki binary
- ├─ serve :4430/:4433
- │   ├─ TSA (RFC 3161) / OCSP (RFC 6960) [LRU cache]
- │   ├─ ACME v2 / SCEP
- │   ├─ JSON REST API [RBAC + rate limit]
- │   ├─ Web UI
- │   └─ Static files
- ├─ issue / renew / batch → certificate issuance [LDAP auto-fill]
- ├─ sign / pades / export → code signing + PAdES PDF + PFX
- ├─ user / token / audit → RBAC & audit
- ├─ ra submit/approve → approval workflow
- └─ db / key / recover → operations
-        │
-        ▼
-   SQLite database
-```
-
-## Key types
-
-| Algorithm | Signing | Hash |
-|-----------|---------|------|
-| ECDSA P-256 | ✓ | SHA-256 |
-| ECDSA P-384 | ✓ | SHA-384 |
-| RSA 2048 | ✓ | SHA-256 |
-| RSA 4096 | ✓ | SHA-384 |
-| Ed25519 | ✓ | None (intrinsic) |
-
-## License
-
-[AGPL-3.0](LICENSE) © 2026 varwof
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
-
-## Project Structure
-
-```
-core/
-├── cmd/pki/              # 入口命令
-├── internal/             # 内部包（ca/config/db/tsa/ocsp/signer/pkcs7/...）
-├── auth/                 # 授权策略
-├── docs/                 # 用户文档
-├── dev-docs/             # 开发/内部文档（脚本 + RFC 参考）
-├── deploy/               # 部署文件
-├── README.md
-├── CLAUDE.md
-├── AGENT.md
-├── CONTRIBUTING.md
-└── go.mod
-```
+| | |
+|---|---|
+| Homepage | https://varwof.com |
+| Community | https://varwof.org |
+| IETF Draft | [draft-wei-aic-identity-cert](https://datatracker.ietf.org/doc/draft-wei-aic-identity-cert/) |
+| License | AGPL-3.0 |
+| Member | [Open Invention Network](https://openinventionnetwork.com/) |
