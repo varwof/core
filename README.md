@@ -1,4 +1,4 @@
-# pki · Private PKI Swiss Army Knife
+# Varwof PKI
 
 > ⚠️ **Technical Preview** — Core cryptographic primitives verified for OpenSSL interoperability; RFC compliance ongoing.
 
@@ -7,7 +7,7 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/varwof/core)](https://pkg.go.dev/github.com/varwof/core)
 [![Build](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/varwof/core/actions)
 
-**Single binary, pure Go, private CA up in one minute.** No OpenSSL wrappers, no Python services, no complex multi-tool orchestration.
+**Single binary, pure Go, private CA up in one minute.**
 
 [中文](README_CN.md)
 
@@ -15,7 +15,7 @@
 > **System Requirements**: none. Just a single Go-compiled binary.
 > **Target Users**: individual developers, small teams, K8s dev clusters.
 
-**Language**: Go 1.26 — **Database**: SQLite (recommended, pure Go) — **Binary**: ~20MB
+**Language**: Go 1.26 — **Database**: SQLite (recommended, pure Go)
 
 ---
 
@@ -23,17 +23,16 @@
 
 | Category | Capabilities |
 |----------|-------------|
-| **CA** | init-ca (root/sub), ca-list, ca-info, name constraints, Remote Signer (HSM delegation) |
-| **Issue** | CSR or auto keygen, 9 profiles, batch CSV, renew, encrypted private key |
-| **Revoke** | CLI revocation, OCSP real-time, CRL periodic generation |
-| **TSA** | RFC 3161 timestamp, configurable Policy QIs |
-| **OCSP** | RFC 6960 responder, LRU cache |
-| **Code sign** | PKCS#7 detached/embedded, CAdES-T, PAdES-B PDF sign, verify |
-| **RFC 5280** | 20B serial, AIA caIssuers, Name Constraints, CRL InvalidityDate |
+| **CA** | init-ca (root/sub), ca-list, ca-info, sub-ca create |
+| **Issue** | CSR or auto keygen, 9 profiles, batch CSV, renew |
+| **Revoke** | CLI revocation, OCSP real-time, CRL generation |
+| **TSA** | RFC 3161 timestamp |
+| **OCSP** | RFC 6960 responder |
+| **Code sign** | PKCS#7 detached/embedded, CAdES-T, verify |
+| **Cross-cert** | Cross-certificate issue/list/revoke |
+| **Trust bridge** | Cross-sign CA, federate trust anchors |
 | **Multi-DB** | SQLite (recommended), PostgreSQL, MySQL/MariaDB |
-| **RBAC** | Users (4 roles), API tokens, audit log with Merkle chain |
-| **ACME v2** | RFC 8555, HTTP-01, auto-issuance |
-| **SCEP** | RFC 8894, GetCACert, PKCSReq |
+| **RBAC** | Users (4 roles), API tokens, audit log |
 | **REST API** | JSON API for all operations |
 | **Health** | `/healthz`, `/readyz` endpoints |
 
