@@ -31,10 +31,10 @@ func TestValidateAdminCertFlow(t *testing.T) {
 	issuingCA, _ := os.ReadFile("/etc/varwof/core/keys/issuing-ca.pem")
 	pool.AppendCertsFromPEM(issuingCA)
 
-	if err := ValidateAdminCertWithTarget(cert, pool, "Agent CA"); err != nil {
-		t.Fatalf("ValidateAdminCertWithTarget Agent CA: %v", err)
+	if err := ValidateAdminCertWithTarget(cert, pool, "People CA"); err != nil {
+		t.Fatalf("ValidateAdminCertWithTarget People CA: %v", err)
 	}
-	fmt.Printf("[OK] scope=Agent CA 匹配\n")
+	fmt.Printf("[OK] scope=People CA 匹配\n")
 
 	// scope mismatch
 	if err := ValidateAdminCertWithTarget(cert, pool, "Other CA"); err == nil {
@@ -52,7 +52,7 @@ func TestValidateAdminCertFlow(t *testing.T) {
 	// Extract scope
 	scope := ExtractAdminScope(cert)
 	fmt.Printf("[OK] 提取 scope: %q\n", scope)
-	if scope != "Agent CA" {
-		t.Fatalf("expected Agent CA, got %q", scope)
+	if scope != "People CA" {
+		t.Fatalf("expected People CA, got %q", scope)
 	}
 }

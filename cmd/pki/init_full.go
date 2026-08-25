@@ -28,7 +28,7 @@ var fullInitSubCAs = []struct {
 }{
 	{"management", "Management", "ecdsa-p256", "Management client certs (admin/operator/auditor/readonly)"},
 	{"tls", "TLS", "ecdsa-p256", "TLS/OCSP/gateway service certs"},
-	{"agent", "Agent", "ecdsa-p256", "AI Agent certs (AIC extension)"},
+	{"people", "People", "ecdsa-p256", "People certs (human client + AIC agent)"},
 	{"codesign", "CodeSign", "rsa-4096", "Code signing certs"},
 	{"tsa", "TSA", "rsa-4096", "Timestamp signing certs"},
 	{"hr", "HR", "ecdsa-p256", "HR department certs"},
@@ -318,7 +318,7 @@ func cmdInitFull(cfg *internal.Config, args []string) error {
 	crlIssuers := []struct{ dir, caName string }{
 		{filepath.Join(*baseDir, "management"), *org + " Management CA"},
 		{filepath.Join(*baseDir, "tls"), *org + " TLS CA"},
-		{filepath.Join(*baseDir, "agent"), *org + " Agent CA"},
+		{filepath.Join(*baseDir, "people"), *org + " People CA"},
 		{filepath.Join(*baseDir, "codesign"), *org + " CodeSign CA"},
 		{filepath.Join(*baseDir, "tsa"), *org + " TSA CA"},
 		{filepath.Join(*baseDir, "hr"), *org + " HR CA"},
@@ -455,7 +455,7 @@ func generateConfig(baseDir, configPath, domain, org, authzPath string) error {
 			"country":    "CN",
 			"domain":     domain,
 			"hash":       "sha256",
-			"ca":         org + " TLS CA",
+			"ca":         org + " People CA",
 			"ocsp_url":   "http://ocsp." + domain + "/ocsp",
 			"issuer_url": "http://" + domain + "/pki",
 		},
@@ -482,9 +482,9 @@ func generateConfig(baseDir, configPath, domain, org, authzPath string) error {
 				"cert": filepath.Join(absBase, "tls", "certs", "ca.pem"),
 				"key":  filepath.Join(absBase, "tls", "private", "ca.key"),
 			},
-			org + " Agent CA": map[string]any{
-				"cert": filepath.Join(absBase, "agent", "certs", "ca.pem"),
-				"key":  filepath.Join(absBase, "agent", "private", "ca.key"),
+			org + " People CA": map[string]any{
+				"cert": filepath.Join(absBase, "people", "certs", "ca.pem"),
+				"key":  filepath.Join(absBase, "people", "private", "ca.key"),
 			},
 			org + " CodeSign CA": map[string]any{
 				"cert": filepath.Join(absBase, "codesign", "certs", "ca.pem"),
