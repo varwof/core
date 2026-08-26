@@ -306,8 +306,8 @@ func BuildAIC(cfg AICConfig) (pkix.Extension, error) {
 	if len(cfg.Capabilities) > 256 {
 		return pkix.Extension{}, errCapOverflow
 	}
-	if len(cfg.AuthorizationConstraints) > 8 {
-		return pkix.Extension{}, fmt.Errorf("aic: authorizationConstraints count %d exceeds max 8", len(cfg.AuthorizationConstraints))
+	if len(cfg.AuthorizationConstraints) > 32 {
+		return pkix.Extension{}, fmt.Errorf("aic: authorizationConstraints count %d exceeds max 32", len(cfg.AuthorizationConstraints))
 	}
 
 	ext := AIC{

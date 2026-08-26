@@ -86,7 +86,7 @@ done
 # Binaries
 build_bin "types"     "aic"        "aic"
 build_bin "register"  "gen-authz"  "gen-authz"
-build_bin "core"      "pki"        "pki"
+build_bin "core"      "pki"        "varwof"
 build_bin "gateway"   "http"       "gateway-http"
 build_bin "gateway"   "tcp"        "gateway-tcp"
 build_bin "gateway"   "udp"        "gateway-udp"
