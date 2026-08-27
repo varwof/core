@@ -253,8 +253,8 @@ func TestLoadPolicy_EmptyRules(t *testing.T) {
 
 func TestDefaultPolicyPath(t *testing.T) {
 	got := DefaultPolicyPath("/etc/pki")
-	if got != "/etc/pki/policy.json" {
-		t.Fatalf("expected /etc/pki/policy.json, got %s", got)
+	if filepath.ToSlash(got) != "/etc/pki/policy.json" {
+		t.Fatalf("expected /etc/pki/policy.json, got %s", filepath.ToSlash(got))
 	}
 }
 

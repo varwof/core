@@ -591,8 +591,8 @@ func TestDefaultRoutesPath(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			got := defaultRoutesPath(tc.cfg)
-			if got != tc.want {
-				t.Fatalf("defaultRoutesPath(%q) = %q, want %q", tc.cfg, got, tc.want)
+			if filepath.ToSlash(got) != tc.want {
+				t.Fatalf("defaultRoutesPath(%q) = %q, want %q", tc.cfg, filepath.ToSlash(got), tc.want)
 			}
 		})
 	}

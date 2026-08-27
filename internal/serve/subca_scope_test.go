@@ -19,6 +19,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -26,6 +27,8 @@ import (
 )
 
 var scopeExtOID = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 1, 5, 1}
+
+var scopedCertCounter int64
 
 // scopedAdminCert builds a structurally-valid admin entity cert (DigitalSignature
 // KU + ClientAuth EKU + role OU) with the given management scope (SAN URI +
@@ -35,12 +38,13 @@ var scopeExtOID = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 1, 5, 1}
 // certs chain to the PKI's trust roots.
 func scopedAdminCert(t *testing.T, d *db.DB, ou, scope string) *x509.Certificate {
 	t.Helper()
+	id := atomic.AddInt64(&scopedCertCounter, 1)
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		t.Fatal(err)
 	}
 	tmpl := &x509.Certificate{
-		SerialNumber:          big.NewInt(time.Now().UnixNano()),
+		SerialNumber:          big.NewInt(id),
 		Subject: pkix.Name{
 			CommonName:         ou + "@test",
 			OrganizationalUnit: []string{ou},
@@ -70,7 +74,7 @@ func scopedAdminCert(t *testing.T, d *db.DB, ou, scope string) *x509.Certificate
 	if d != nil {
 		if err := d.InsertTrustAnchor(&db.TrustAnchor{
 			Name:            "admin-test-root",
-			HashID:          "admin-test-" + fmt.Sprintf("%d", time.Now().UnixNano()),
+			HashID:          "admin-test-" + fmt.Sprintf("%d", id),
 			CertDER:         cert.Raw,
 			Subject:         cert.Subject.String(),
 			NotBefore:       cert.NotBefore,

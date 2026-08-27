@@ -314,10 +314,18 @@ func stripConfigFlag(args []string) []string {
 	return out
 }
 
+var logFile *os.File
+
 func initLogFormat(format, dest string, verbose bool) {
 	level := slog.LevelInfo
 	if verbose {
 		level = slog.LevelDebug
+	}
+
+	// Close any previously opened log file to release the handle (matters on Windows).
+	if logFile != nil {
+		logFile.Close()
+		logFile = nil
 	}
 
 	// Resolve the output writer. Defaults to stderr; supports file: and syslog.
@@ -339,6 +347,7 @@ func initLogFormat(format, dest string, verbose bool) {
 			slog.Warn("log: cannot open log file, falling back to stderr", "path", path, "error", err)
 		} else {
 			w = f
+			logFile = f
 		}
 	default:
 		slog.Warn("log: unknown log_dest, falling back to stderr", "dest", dest)
