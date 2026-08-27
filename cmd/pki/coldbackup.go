@@ -118,15 +118,16 @@ func shredFile(path string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
 	fi, err := f.Stat()
 	if err != nil {
+		f.Close()
 		return err
 	}
 	size := fi.Size()
 	patterns := [][]byte{{0x00}, {0xff}, {0x00}}
 	for _, pat := range patterns {
 		if _, err := f.Seek(0, 0); err != nil {
+			f.Close()
 			return err
 		}
 		buf := make([]byte, 4096)
@@ -136,13 +137,16 @@ func shredFile(path string) error {
 				n = int(size - written)
 			}
 			if _, err := f.Write(buf[:n]); err != nil {
+				f.Close()
 				return err
 			}
 			written += int64(n)
 		}
 		if err := f.Sync(); err != nil {
+			f.Close()
 			return err
 		}
 	}
+	f.Close()
 	return os.Remove(path)
 }

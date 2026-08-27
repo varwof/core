@@ -2250,10 +2250,16 @@ func TestCLIRecoverWithConfigPath(t *testing.T) {
 	d.StoreEscrowedKey("testca", "EEFF0011", encBlob)
 	d.Close()
 
-	// Write a config file with admin key path
-	cfgContent := fmt.Sprintf(`{"db":"%s","key_escrow":{"admin_public_key":"%s"}}`, dbPath, adminKeyPath)
+	// Write a config file with admin key path (use forward slashes for valid JSON on Windows)
+	cfgMap := map[string]any{
+		"db": filepath.ToSlash(dbPath),
+		"key_escrow": map[string]any{
+			"admin_public_key": filepath.ToSlash(adminKeyPath),
+		},
+	}
+	cfgJSON, _ := json.Marshal(cfgMap)
 	cfgPath := filepath.Join(dir, "config.json")
-	os.WriteFile(cfgPath, []byte(cfgContent), 0644)
+	os.WriteFile(cfgPath, cfgJSON, 0644)
 
 	outPath := filepath.Join(dir, "rec.key")
 	loaded, _ := internal.LoadConfig(cfgPath)

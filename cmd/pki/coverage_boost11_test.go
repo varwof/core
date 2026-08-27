@@ -366,11 +366,15 @@ func TestReloadConfigNowWithMuxesRunning(t *testing.T) {
 	stopTSARenewal()
 	stopAuditSaltRetirement()
 	stopRecordBuffer()
+	stopEngine()
 	if httpServer != nil {
 		httpServer.Close()
 	}
 	if tlsServer != nil {
 		tlsServer.Close()
+	}
+	if currentDB != nil {
+		currentDB.Close()
 	}
 	httpServer, tlsServer, fullMux, publicMux = nil, nil, nil, nil
 	crlStopFn, tsaStopFn, rbStopFn, currentDB = nil, nil, nil, nil
@@ -427,11 +431,15 @@ func TestReloadKeepEngineOnSameDB(t *testing.T) {
 	stopTSARenewal()
 	stopAuditSaltRetirement()
 	stopRecordBuffer()
+	stopEngine()
 	if httpServer != nil {
 		httpServer.Close()
 	}
 	if tlsServer != nil {
 		tlsServer.Close()
+	}
+	if currentDB != nil {
+		currentDB.Close()
 	}
 	httpServer, tlsServer, fullMux, publicMux = nil, nil, nil, nil
 	crlStopFn, tsaStopFn, rbStopFn, currentDB = nil, nil, nil, nil
@@ -488,11 +496,15 @@ func TestReloadRebuildsEngineOnChangedDB(t *testing.T) {
 	stopTSARenewal()
 	stopAuditSaltRetirement()
 	stopRecordBuffer()
+	stopEngine()
 	if httpServer != nil {
 		httpServer.Close()
 	}
 	if tlsServer != nil {
 		tlsServer.Close()
+	}
+	if currentDB != nil {
+		currentDB.Close()
 	}
 	httpServer, tlsServer, fullMux, publicMux = nil, nil, nil, nil
 	crlStopFn, tsaStopFn, rbStopFn, currentDB = nil, nil, nil, nil
