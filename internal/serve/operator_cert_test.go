@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -30,11 +31,14 @@ import (
 
 var scopeOID = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 1, 5, 1}
 
+var mgmtCertSerial int64
+
 // signManagementCert signs an entity management certificate (OU → operator,
 // DigitalSignature KU, scope via SAN URI + OID) under the given CA.
 func signManagementCert(t *testing.T, caCert *x509.Certificate, caKey crypto.Signer,
 	cn, ou, scope string, notAfter time.Time) *x509.Certificate {
 	t.Helper()
+	id := atomic.AddInt64(&mgmtCertSerial, 1)
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		t.Fatal(err)
@@ -42,7 +46,7 @@ func signManagementCert(t *testing.T, caCert *x509.Certificate, caKey crypto.Sig
 	scopeExt := pkix.Extension{Id: scopeOID, Value: []byte(scope)}
 	uri, _ := url.Parse("urn:pki:ca:" + scope)
 	tmpl := &x509.Certificate{
-		SerialNumber:    big.NewInt(time.Now().UnixNano()),
+		SerialNumber:    big.NewInt(id),
 		Subject:         pkix.Name{CommonName: cn, OrganizationalUnit: []string{ou}},
 		NotBefore:       time.Now().Add(-time.Hour),
 		NotAfter:        notAfter,
