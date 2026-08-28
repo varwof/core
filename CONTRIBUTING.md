@@ -57,7 +57,14 @@ deploy/         — Docker, systemd, scripts
 docs/ + dev-docs/            — Documentation
 ```
 
-## Developer Certificate of Origin
+## Contributor License Agreement
 
-By contributing, you agree to the [Developer Certificate of Origin](https://developercertificate.org/).
-Each commit must include a `Signed-off-by` line (`git commit -s`).
+By submitting a pull request, you agree to sign the
+[Individual CLA](https://github.com/varwof/.github/blob/main/CLA-INDIVIDUAL.md)
+(or [Corporate CLA](https://github.com/varwof/.github/blob/main/CLA-CORPORATE.md)
+for employer-sponsored contributions). The CLA Assistant bot will prompt
+you to sign when you open your first pull request; signing once covers all
+Varwof repositories.
+
+By contributing, you agree that your contributions are licensed under the
+AGPL-3.0 license, as described in [LICENSE](LICENSE).
