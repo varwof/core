@@ -17,30 +17,42 @@
 
 **语言**: Go 1.26 — **数据库**: SQLite（推荐，纯 Go）
 
+## 性能
+
+| 指标 | 结果 |
+|---|---|
+| 签名吞吐 | ~11,000 req/s（受签名计算限制的上限） |
+| 企业负载 | 稳定支撑 833 AIC/s，p99 **5 ms**，内存约 800 MB 稳定，无背压、无 503 |
+
+完整基准报告：[基准与测试](docs/bench/README_CN.md)。
+
 ## 快速开始
 
 ```bash
-go build -o /usr/local/bin/pki ./cmd/pki/
-pki init-ca --name root --profile root-ca --out-dir /etc/varwof/core/root
-pki init-ca --name issuing --profile sub-ca --parent root --parent-key /etc/varwof/core/root/private/ca.key
-pki serve
-pki issue --cn server.example.com --san "DNS:server.example.com,IP:10.0.0.1" --profile tls-server
+go build -o /usr/local/bin/varwof ./cmd/pki/
+varwof init-ca --name root --profile root-ca --out-dir /etc/varwof/core/root
+varwof init-ca --name issuing --profile sub-ca --parent root --parent-key /etc/varwof/core/root/private/ca.key
+varwof serve
+varwof issue --cn server.example.com --san "DNS:server.example.com,IP:10.0.0.1" --profile tls-server
 ```
 
 ## 安装
 
 ```bash
-go build -o /usr/local/bin/pki ./cmd/pki/
+go build -o /usr/local/bin/varwof ./cmd/pki/
 ```
 
 ## 文档
 
 | 文档 | 链接 |
 |------|------|
-| 快速开始 | [`docs/GettingStarted_CN.md`](docs/GettingStarted_CN.md) |
-| 配置参考 | [`docs/Configuration_CN.md`](docs/Configuration_CN.md) |
-| API 参考 | [`docs/API.md`](docs/API.md) |
+| 快速开始 | [`docs/core/zh/quickstart.md`](docs/core/zh/quickstart.md) |
+| 配置参考 | [`docs/core/zh/configuration.md`](docs/core/zh/configuration.md) |
+| 部署 | [`docs/core/zh/deployment.md`](docs/core/zh/deployment.md) |
+| 命令参考 | [`docs/core/zh/commands.md`](docs/core/zh/commands.md) |
+| API 参考 | [`docs/core/zh/api.md`](docs/core/zh/api.md) |
 | OpenAPI Spec | [`docs/openapi.yaml`](docs/openapi.yaml) |
+| 基准与性能 | [`docs/bench/README_CN.md`](docs/bench/README_CN.md) |
 
 core 是 varwof 生态的**核心 CA 引擎**。本项目是 [Open Invention Network](https://openinventionnetwork.com/) 成员。
 

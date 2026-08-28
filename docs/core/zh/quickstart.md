@@ -14,26 +14,27 @@
 ```bash
 git clone https://github.com/varwof/core.git
 cd core
-go build -o pki ./cmd/pki/
+go build -o varwof ./cmd/pki/
 ```
 
 ### 通过 go install
 
 ```bash
 go install github.com/varwof/core/cmd/pki@latest
+mv "$(go env GOPATH)/bin/pki" /usr/local/bin/varwof
 ```
 
 ### 验证
 
 ```bash
-pki version
+varwof version
 # varwof 1.1.1 linux/amd64 go1.26.x
 ```
 
 ## 生成配置
 
 ```bash
-pki init-config > pki.json
+varwof init-config > pki.json
 ```
 
 编辑 `pki.json` 以设置组织名称、域名和数据库路径。默认数据库为 SQLite，路径为 `/etc/varwof/core/pki.db`。
@@ -57,7 +58,7 @@ pki init-config > pki.json
 ## 初始化根 CA
 
 ```bash
-pki ca init \
+varwof ca init \
   --name "Root CA" \
   --key-type ecdsa-p256 \
   --validity 8760d \
@@ -72,7 +73,7 @@ pki ca init \
 ## 初始化签发 CA
 
 ```bash
-pki ca init \
+varwof ca init \
   --name "Issuing CA" \
   --profile sub-ca \
   --parent "Root CA" \
@@ -86,7 +87,7 @@ pki ca init \
 ## 启动服务器
 
 ```bash
-pki serve --config pki.json
+varwof serve --config pki.json
 ```
 
 服务器默认在 `:8443` 上启动。验证方式：
@@ -98,7 +99,7 @@ curl http://localhost:8443/healthz
 ## 签发证书
 
 ```bash
-pki issue \
+varwof issue \
   --ca "Issuing CA" \
   --cn server.example.com \
   --san DNS:server.example.com,DNS:www.example.com \
@@ -121,7 +122,7 @@ openssl x509 -in certs/server.pem -text -noout
 ## 使用私钥加密签发
 
 ```bash
-pki issue \
+varwof issue \
   --ca "Issuing CA" \
   --cn client.example.com \
   --san DNS:client.example.com \
@@ -137,13 +138,13 @@ pki issue \
 ## 吊销证书
 
 ```bash
-pki revoke --serial <serial> --ca "Issuing CA" --reason key-compromise
+varwof revoke --serial <serial> --ca "Issuing CA" --reason key-compromise
 ```
 
 ## 生成 CRL
 
 ```bash
-pki crl --ca "Issuing CA" --out crl.pem
+varwof crl --ca "Issuing CA" --out crl.pem
 ```
 
 ## 后续步骤

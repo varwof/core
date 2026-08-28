@@ -37,18 +37,27 @@
 | **REST API** | JSON API for all operations |
 | **Health** | `/healthz`, `/readyz` endpoints |
 
+## Performance
+
+| Metric | Result |
+|---|---|
+| Signing throughput | ~11,000 req/s (signing-bound ceiling) |
+| Enterprise workload | 833 AIC/s sustained, p99 **5 ms**, ~800 MB stable RAM, no backpressure, no 503 |
+
+Full benchmark reports: [Bench & Test](docs/bench/README.md).
+
 ## Quick Start
 
 ```bash
-go build -o /usr/local/bin/pki ./cmd/pki/
+go build -o /usr/local/bin/varwof ./cmd/pki/
 
-pki init-ca --name root --profile root-ca --out-dir /etc/varwof/core/root
-pki init-ca --name issuing --profile sub-ca \
+varwof init-ca --name root --profile root-ca --out-dir /etc/varwof/core/root
+varwof init-ca --name issuing --profile sub-ca \
   --parent root --parent-key /etc/varwof/core/root/private/ca.key
 
-pki serve
+varwof serve
 
-pki issue --cn server.example.com \
+varwof issue --cn server.example.com \
   --san "DNS:server.example.com,IP:10.0.0.1" \
   --profile tls-server --out-dir /etc/varwof/core/certs
 ```
@@ -56,7 +65,7 @@ pki issue --cn server.example.com \
 ## Installation
 
 ```bash
-go build -o /usr/local/bin/pki ./cmd/pki/
+go build -o /usr/local/bin/varwof ./cmd/pki/
 ```
 
 ## Architecture
@@ -88,10 +97,13 @@ graph TB
 
 | Document | EN | CN |
 |---|---|---|
-| Getting Started | [`docs/GettingStarted_EN.md`](docs/GettingStarted_EN.md) | [`docs/GettingStarted_CN.md`](docs/GettingStarted_CN.md) |
-| Configuration | [`docs/Configuration_EN.md`](docs/Configuration_EN.md) | [`docs/Configuration_CN.md`](docs/Configuration_CN.md) |
-| API Reference | [`docs/API.md`](docs/API.md) | — |
+| Quick Start | [`docs/core/en/quickstart.md`](docs/core/en/quickstart.md) | [`docs/core/zh/quickstart.md`](docs/core/zh/quickstart.md) |
+| Configuration | [`docs/core/en/configuration.md`](docs/core/en/configuration.md) | [`docs/core/zh/configuration.md`](docs/core/zh/configuration.md) |
+| Deployment | [`docs/core/en/deployment.md`](docs/core/en/deployment.md) | [`docs/core/zh/deployment.md`](docs/core/zh/deployment.md) |
+| Commands | [`docs/core/en/commands.md`](docs/core/en/commands.md) | [`docs/core/zh/commands.md`](docs/core/zh/commands.md) |
+| API Reference | [`docs/core/en/api.md`](docs/core/en/api.md) | [`docs/core/zh/api.md`](docs/core/zh/api.md) |
 | OpenAPI Spec | [`docs/openapi.yaml`](docs/openapi.yaml) | — |
+| Bench & Performance | [`docs/bench/README.md`](docs/bench/README.md) | [`docs/bench/README_CN.md`](docs/bench/README_CN.md) |
 
 core is the **core CA engine** of the varwof ecosystem, providing complete PKI lifecycle management. This project is a member of the [Open Invention Network](https://openinventionnetwork.com/).
 

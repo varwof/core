@@ -14,26 +14,27 @@ This guide walks you through installing Varwof Core, initializing a CA, and issu
 ```bash
 git clone https://github.com/varwof/core.git
 cd core
-go build -o pki ./cmd/pki/
+go build -o varwof ./cmd/pki/
 ```
 
 ### Via go install
 
 ```bash
 go install github.com/varwof/core/cmd/pki@latest
+mv "$(go env GOPATH)/bin/pki" /usr/local/bin/varwof
 ```
 
 ### Verify
 
 ```bash
-pki version
+varwof version
 # varwof 1.1.1 linux/amd64 go1.26.x
 ```
 
 ## Generate Configuration
 
 ```bash
-pki init-config > pki.json
+varwof init-config > pki.json
 ```
 
 Edit `pki.json` to set your organization name, domain, and database path. The default database is SQLite at `/etc/varwof/core/pki.db`.
@@ -57,7 +58,7 @@ Key fields to change:
 ## Initialize a Root CA
 
 ```bash
-pki ca init \
+varwof ca init \
   --name "Root CA" \
   --key-type ecdsa-p256 \
   --validity 8760d \
@@ -72,7 +73,7 @@ This creates:
 ## Initialize an Issuing CA
 
 ```bash
-pki ca init \
+varwof ca init \
   --name "Issuing CA" \
   --profile sub-ca \
   --parent "Root CA" \
@@ -86,7 +87,7 @@ pki ca init \
 ## Start the Server
 
 ```bash
-pki serve --config pki.json
+varwof serve --config pki.json
 ```
 
 The server starts on `:8443` by default. Verify with:
@@ -98,7 +99,7 @@ curl http://localhost:8443/healthz
 ## Issue a Certificate
 
 ```bash
-pki issue \
+varwof issue \
   --ca "Issuing CA" \
   --cn server.example.com \
   --san DNS:server.example.com,DNS:www.example.com \
@@ -121,7 +122,7 @@ openssl x509 -in certs/server.pem -text -noout
 ## Issue with Private Key Encryption
 
 ```bash
-pki issue \
+varwof issue \
   --ca "Issuing CA" \
   --cn client.example.com \
   --san DNS:client.example.com \
@@ -137,13 +138,13 @@ The private key is encrypted with PBES2 (PKCS#8).
 ## Revoke a Certificate
 
 ```bash
-pki revoke --serial <serial> --ca "Issuing CA" --reason key-compromise
+varwof revoke --serial <serial> --ca "Issuing CA" --reason key-compromise
 ```
 
 ## Generate CRL
 
 ```bash
-pki crl --ca "Issuing CA" --out crl.pem
+varwof crl --ca "Issuing CA" --out crl.pem
 ```
 
 ## Next Steps
