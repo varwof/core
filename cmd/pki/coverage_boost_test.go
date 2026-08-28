@@ -253,17 +253,16 @@ func TestResolveAPIToken(t *testing.T) {
 	if err != nil || res == nil {
 		t.Fatalf("resolveAPIToken: %v", err)
 	}
-	if res.Username != "apiuser" || res.Role != "admin" {
+	// Cert-first: API tokens always resolve to operator (never to the stored
+	// account role), and carry no CA scope permission — scope is derived from
+	// the account's bound operator certificate at authentication time.
+	if res.Username != "apiuser" || res.Role != "operator" {
 		t.Fatalf("unexpected: %+v", res)
 	}
-	foundScope := false
 	for _, p := range res.Permissions {
 		if strings.HasPrefix(p, "cas:scope:") {
-			foundScope = true
+			t.Fatalf("token must not inject CA scope permission, got %v", res.Permissions)
 		}
-	}
-	if !foundScope {
-		t.Fatalf("expected ca scope permission, got %v", res.Permissions)
 	}
 
 	if res2, _ := resolveAPIToken("nope", d); res2 != nil {

@@ -38,11 +38,14 @@
 #                    must set the smallest scope per role/CA instead.
 #
 # Security notes (mint policy):
-#   * Management (m-*) certificates are minted ONLY by the superadmin role,
-#     and ONLY when the mTLS certificate is paired with a live account
-#     credential (cert + username/password). operator and every other role are
-#     hard-excluded from the management sub-CA. The operator's management-mint
-#     capability is deprecated and will be removed.
+#   * superadmin is CERTIFICATE-ONLY: its authority comes strictly from the
+#     mTLS management certificate (OU=SuperAdmin). Username/password and API
+#     tokens always resolve to the operator role and can never reach a
+#     superadmin-level capability.
+#   * Management (m-*) certificates are minted ONLY by the superadmin role
+#     (mTLS in hand); operator and every other role are hard-excluded from the
+#     management sub-CA. The operator's management-mint capability is
+#     deprecated and will be removed.
 #   * Private keys stay under management/users/private/ (0600 after deploy);
 #     the public cert files under management/users/certs/ must never be used
 #     as --key material. helpers.py always pairs certs/certs with private/keys.
@@ -204,7 +207,7 @@ mint_extras() {
     [ -s "$c" ] && continue
     log "  mint role cert: $r"
     resp="$PKI_DIR/issue-$r.json"
-    code="$(api "${SUPER_BASIC[@]}" --cert "$SUPER_CERT" --key "$SUPER_KEY" -X POST \
+    code="$(api --cert "$SUPER_CERT" --key "$SUPER_KEY" -X POST \
       -H 'Content-Type: application/json' \
       -d "{\"ca\":\"$ADMIN_CA\",\"cn\":\"$r@$DOMAIN\",\"profile\":\"m-$r\",\"key_type\":\"ecdsa-p256\",\"ca_scope\":\"*\"}" \
       -o "$resp" -w '%{http_code}' "$BASE/api/v1/certs" || true)"
@@ -271,20 +274,26 @@ behavior_checks() {
   printf '  %-48s %-5s %s\n' "admin      PUT  /api/v1/admin/config (403)" "$c_cfg" "" | tee -a "$LOG"
   printf '  %-48s %-5s %s\n' "readonly   GET  /healthz (public 200)" "$c_pub" "" | tee -a "$LOG"
 
-  # P0: management sub-CA hard-exclusion + cert+account double-factor.
-  local mb p0_oper p0_nocct p0_acc p0_cfg
+  # P0/P1: management sub-CA hard-exclusion + certificate-only superadmin.
+  # superadmin authority comes ONLY from the mTLS certificate: username/password
+  # and API tokens always resolve to the operator role and can never reach a
+  # superadmin-level capability (management mint, superadmin-only endpoints).
+  local mb p0_oper p0_super p0_acct_mint p0_acct_cfg p0_cfg
   mb='{"ca":"'"$ADMIN_CA"'","cn":"p0-probe@'"$DOMAIN"'","profile":"m-superadmin","ca_scope":"*"}'
   opc="$(cert_for operator)"; opk="$(key_for operator)"
   p0_oper="$(api --cert "$opc" --key "$opk" -X POST -H 'Content-Type: application/json' -d "$mb" -o /dev/null -w '%{http_code}' "$BASE/api/v1/certs" || true)"
   mb2='{"ca":"'"$ADMIN_CA"'","cn":"p0-probe2@'"$DOMAIN"'","profile":"m-revoker","ca_scope":"*"}'
-  p0_nocct="$(api --cert "$SUPER_CERT" --key "$SUPER_KEY" -X POST -H 'Content-Type: application/json' -d "$mb2" -o /dev/null -w '%{http_code}' "$BASE/api/v1/certs" || true)"
-  p0_acc="$(api "${SUPER_BASIC[@]}" --cert "$SUPER_CERT" --key "$SUPER_KEY" -X POST -H 'Content-Type: application/json' -d "$mb2" -o /dev/null -w '%{http_code}' "$BASE/api/v1/certs" || true)"
-  printf '  %-48s %-5s %s\n' "P0 operator mint m-superadmin (403)" "$p0_oper" "" | tee -a "$LOG"
-  printf '  %-48s %-5s %s\n' "P0 superadmin mint no account  (403)" "$p0_nocct" "" | tee -a "$LOG"
-  printf '  %-48s %-5s %s\n' "P0 superadmin mint + account   (200)" "$p0_acc" "" | tee -a "$LOG"
+  p0_super="$(api --cert "$SUPER_CERT" --key "$SUPER_KEY" -X POST -H 'Content-Type: application/json' -d "$mb2" -o /dev/null -w '%{http_code}' "$BASE/api/v1/certs" || true)"
+  p0_acct_mint="$(api --cert "$opc" --key "$opk" -u "$SUPER_USER:$SUPER_PASS" -X POST -H 'Content-Type: application/json' -d "$mb2" -o /dev/null -w '%{http_code}' "$BASE/api/v1/certs" || true)"
+  p0_acct_cfg="$(api --cert "$opc" --key "$opk" -u "$SUPER_USER:$SUPER_PASS" -X PUT -H 'Content-Type: application/json' -d '{}' -o /dev/null -w '%{http_code}' "$BASE/api/v1/admin/config" || true)"
+  printf '  %-48s %-5s %s\n' "P0 operator cert mint m-superadmin (403)" "$p0_oper" "" | tee -a "$LOG"
+  printf '  %-48s %-5s %s\n' "P0 superadmin cert mint (no acc) (200)" "$p0_super" "" | tee -a "$LOG"
+  printf '  %-48s %-5s %s\n' "P0 operator+superadmin-pass mint (403)" "$p0_acct_mint" "" | tee -a "$LOG"
+  printf '  %-48s %-5s %s\n' "P0 operator+superadmin-pass admin cfg (403)" "$p0_acct_cfg" "" | tee -a "$LOG"
   [ "$p0_oper" = "403" ] || { warn "P0 FAIL: operator minted a management cert (http=$p0_oper)!"; FAIL=$((FAIL+1)); }
-  [ "$p0_nocct" = "403" ] || { warn "P0 FAIL: superadmin mint without account credential (http=$p0_nocct)!"; FAIL=$((FAIL+1)); }
-  [ "$p0_acc" = "200" ] || { warn "P0 FAIL: superadmin+account mint rejected (http=$p0_acc)"; FAIL=$((FAIL+1)); }
+  [ "$p0_super" = "200" ] || { warn "P0 FAIL: superadmin certificate mint rejected (http=$p0_super)"; FAIL=$((FAIL+1)); }
+  [ "$p0_acct_mint" = "403" ] || { warn "P0 FAIL: account credential elevated a non-superadmin cert (http=$p0_acct_mint)!"; FAIL=$((FAIL+1)); }
+  [ "$p0_acct_cfg" = "403" ] || { warn "P0 FAIL: account credential reached a superadmin endpoint (http=$p0_acct_cfg)!"; FAIL=$((FAIL+1)); }
 }
 
 # ---------------------------------------------------------------------------

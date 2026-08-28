@@ -140,28 +140,6 @@ func isManagementProfile(p ca.Profile) bool {
 	return false
 }
 
-// hasValidAccountAuth reports whether the request carries a live account
-// credential (Basic auth or token) validated against the user store. Cert-first
-// mTLS alone never counts here: management operations require the certificate
-// to be paired with a username/password (account) association.
-func (s *Server) hasValidAccountAuth(r *http.Request) bool {
-	if u, err := s.authByBasic(r); err == nil && u != nil {
-		return true
-	}
-	if tok := r.Header.Get("X-Auth-Token"); tok != "" {
-		if u, err := s.authByToken(tok); err == nil && u != nil {
-			return true
-		}
-	}
-	if auth := r.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
-		if u, err := s.authByToken(strings.TrimPrefix(auth, "Bearer ")); err == nil && u != nil {
-			return true
-		}
-	}
-	return false
-}
-
-// apiIssueCert handles POST /api/v1/certs
 func (s *Server) apiIssueCert(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		s.apiErr(w, r, http.StatusMethodNotAllowed, "api.method_not_allowed", "")
@@ -197,21 +175,21 @@ func (s *Server) apiIssueCert(w http.ResponseWriter, r *http.Request) {
 	// Minting management (m-*) certificates is restricted to the superadmin
 	// role; every other role (operator and friends) is hard-excluded from the
 	// management sub-CA and confined to the other (non-management) regions.
-	// Superadmin must additionally pair the mTLS certificate with a live
-	// account credential (cert + username/password association): a bare
-	// certificate is never enough for management mint.
+	// The superadmin role is certificate-only: a live mTLS client certificate
+	// (OU=SuperAdmin) must be in hand. Username/password and API tokens never
+	// reach superadmin and are rejected here even if a stamp claims otherwise.
 	// NOTE(deprecated): the operator's management-mint capability is planned
 	// for removal; this gate is the fail-closed front-line for it.
 	if isManagementProfile(effProfile) {
+		if r.TLS == nil || len(r.TLS.PeerCertificates) == 0 {
+			s.apiErr(w, r, http.StatusUnauthorized, "api.auth_required",
+				"management sub-CA profile mint requires an mTLS certificate")
+			return
+		}
 		u, _ := r.Context().Value(userCtxKey).(*AuthUser)
 		if u == nil || u.Role != "superadmin" {
 			s.apiErr(w, r, http.StatusForbidden, "api.management_mint_denied",
-				"management sub-CA profile mint is reserved to superadmin")
-			return
-		}
-		if !s.hasValidAccountAuth(r) {
-			s.apiErr(w, r, http.StatusForbidden, "api.management_mint_requires_account",
-				"minting management certificates requires username/password account association")
+				"management sub-CA profile mint is reserved to superadmin (certificate-only)")
 			return
 		}
 	}

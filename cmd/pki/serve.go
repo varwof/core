@@ -1222,21 +1222,15 @@ func resolveAPIToken(token string, database *db.DB) (*provisioner.AuthResult, er
 	if err != nil {
 		return nil, nil
 	}
-	user, err := database.GetUserByUsername(info.Username)
-	var caScopes string
-	if err == nil {
-		caScopes = user.CAScopes
-	}
-	perms := getRolePerms(info.Role, database)
-	result := &provisioner.AuthResult{
+	// Cert-first: API tokens resolve to operator; permission vectors come only
+	// from a management certificate, and the effective CA scope is derived
+	// downstream from the account's bound operator certificate.
+	perms := getRolePerms("operator", database)
+	return &provisioner.AuthResult{
 		Username:    info.Username,
-		Role:        info.Role,
+		Role:        "operator",
 		Permissions: perms,
-	}
-	if caScopes != "" {
-		result.Permissions = append(result.Permissions, "cas:scope:"+caScopes)
-	}
-	return result, nil
+	}, nil
 }
 
 func resolveBasicAuth(authHeader string, database *db.DB) (*provisioner.AuthResult, error) {
@@ -1266,10 +1260,10 @@ func resolveBasicAuth(authHeader string, database *db.DB) (*provisioner.AuthResu
 		}
 		serve.RememberBasicAuth(cacheKey)
 	}
-	perms := getRolePerms(user.Role, database)
+	perms := getRolePerms("operator", database)
 	return &provisioner.AuthResult{
 		Username:    user.Username,
-		Role:        user.Role,
+		Role:        "operator",
 		Permissions: perms,
 	}, nil
 }
