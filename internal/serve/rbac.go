@@ -15,6 +15,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -159,6 +160,7 @@ func (s *Server) requirePerm(perm Permission, next http.HandlerFunc) http.Handle
 		// Enterprise mode: CA scope check
 		if s.getConfig().RBAC.PermissionMode == "enterprise" {
 			if !checkCAScope(user, r, perm, s.getConfig()) {
+				slog.Warn("ca_scope_denied(requirePerm)", "role", user.Role, "scopes", user.CAScopes, "perm", perm, "path", r.URL.Path)
 				s.apiErr(w, r, http.StatusForbidden, "api.ca_scope_denied", "permission denied for this CA")
 				return
 			}
@@ -332,6 +334,13 @@ func (s *Server) authResultToUser(r *provisioner.AuthResult) (*AuthUser, error) 
 		Role:         r.Role,
 		Permissions:  perms,
 		CertIdentity: r.CertIdentity,
+	}
+	// Cert-bound scopes from the provisioner (cert-first mTLS) are authoritative
+	// and take precedence over the account fallback: the certificate crypto-binds
+	// its CA scope regardless of any DB account row.
+	if len(r.CAScopes) > 0 {
+		au.CAScopes = r.CAScopes
+		return au, nil
 	}
 	if r.Username == "" {
 		return au, nil

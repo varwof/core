@@ -922,7 +922,7 @@ func applyProfile(tmpl *x509.Certificate, sc *SignConfig) error {
 	// 8 profiles differ only in OU (RBAC role), KU/EKU are identical, merged into a common branch.
 
 	case ProfileMSuperAdmin, ProfileMAdmin, ProfileMOperator, ProfileMAuditor,
-		ProfileMReadonly, ProfileMConsole, ProfileMAutoRenew, ProfileMReporter:
+		ProfileMRevoker, ProfileMReadonly, ProfileMConsole, ProfileMAutoRenew, ProfileMReporter:
 		applyManagementProfile(tmpl, sc)
 		// OID scope: specifies which CAs this management certificate can operate on
 		// (consistent with dual-write SAN URI; any m-* profile carrying scope is written,
@@ -987,6 +987,7 @@ var managementProfileOU = map[Profile]string{
 	ProfileMSuperAdmin: "SuperAdmin",
 	ProfileMAdmin:      "admin",
 	ProfileMOperator:   "operator",
+	ProfileMRevoker:    "revoker",
 	ProfileMAuditor:    "auditor",
 	ProfileMReadonly:   "readonly",
 	ProfileMConsole:    "console",

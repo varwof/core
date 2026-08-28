@@ -204,6 +204,25 @@ func (s *Server) getRouteRules() *routing.RouteRules {
 	return s.routeRules.Load()
 }
 
+// loadRouteRules populates the authorization rule set. When the configuration
+// declares routes_file, that file is authoritative (per-URL authorization body).
+// On any load failure it falls back to the embedded default rules so a broken
+// file can never fail open. This closes the gap where routes_file was a dead
+// config key and serve always used the embedded rules.
+func (s *Server) loadRouteRules(cfg *internal.Config) {
+	if cfg != nil && cfg.RoutesFile != "" {
+		if rr, err := routing.LoadFile(cfg.RoutesFile); err == nil {
+			s.routeRules.Store(rr)
+			slog.Info("serve: loaded route rules from file", "path", cfg.RoutesFile, "rules", rr.Count())
+			return
+		} else {
+			slog.Error("serve: failed to load route rules file, falling back to embedded default",
+				"path", cfg.RoutesFile, "error", err)
+		}
+	}
+	s.routeRules.Store(LoadDefaultRouteRules())
+}
+
 // NewFull creates a full Server with TSA and OCSP handlers, async job queue,
 // and rate limiter support. Used by the main serve command.
 func NewFull(cfg *internal.Config, database *db.DB, b *i18n.Bundle, tsaH, ocspH http.Handler) *Server {
@@ -215,7 +234,7 @@ func NewFull(cfg *internal.Config, database *db.DB, b *i18n.Bundle, tsaH, ocspH 
 	s.tsaH.Store(&h)
 	h2 := ocspH
 	s.ocspH.Store(&h2)
-	s.routeRules.Store(LoadDefaultRouteRules())
+	s.loadRouteRules(cfg)
 	s.rebuildIdentitySource()
 	return s
 }
@@ -226,7 +245,7 @@ func NewPublic(cfg *internal.Config, database *db.DB, b *i18n.Bundle) *Server {
 	s := &Server{publicOnly: true, bundle: b}
 	s.cfgPtr.Store(cfg)
 	s.dbPtr.Store(database)
-	s.routeRules.Store(LoadDefaultRouteRules())
+	s.loadRouteRules(cfg)
 	s.rebuildIdentitySource()
 	return s
 }
@@ -974,16 +993,23 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.NotFound(w, r)
 }
 
+// Reload refreshes runtime state (route rules, identity source) after config
+// changes. The route rule set is re-read from the (possibly updated) config,
+// honoring routes_file.
 func (s *Server) Reload(cfg *internal.Config, database *db.DB, tsaH, ocspH http.Handler) {
 	s.cfgPtr.Store(cfg)
 	s.dbPtr.Store(database)
-	h := tsaH
-	s.tsaH.Store(&h)
-	h2 := ocspH
-	s.ocspH.Store(&h2)
-	if s.getRouteRules() == nil {
-		s.routeRules.Store(LoadDefaultRouteRules())
+	// Only swap handlers if they are provided, so a partial Reload (e.g. identity
+	// refresh) does not null out the TSA/OCSP handlers.
+	if tsaH != nil {
+		h := tsaH
+		s.tsaH.Store(&h)
 	}
+	if ocspH != nil {
+		h := ocspH
+		s.ocspH.Store(&h)
+	}
+	s.loadRouteRules(cfg)
 	s.rebuildIdentitySource()
 }
 
@@ -1034,6 +1060,7 @@ func (s *Server) requireRouteAuth(rule *routing.RouteRule, params map[string]str
 			subCAManage := strings.Contains(r.URL.Path, "/sub-ca/")
 			if !(subCAManage && user.Role == "superadmin") {
 				if !checkCAScope(user, r, Permission(rule.Permission), s.getConfig()) {
+					slog.Warn("ca_scope_denied(routes)", "role", user.Role, "scopes", user.CAScopes, "perm", rule.Permission, "path", r.URL.Path)
 					s.apiErr(w, r, http.StatusForbidden, "api.ca_scope_denied",
 						"permission denied for this CA")
 					return

@@ -16,6 +16,7 @@
     "/api/v1/version",
     "/api/v1/dns-query",
     "/api/v1/permissions/roles",
+    "/metrics",
     "/pki/*"
   ],
   "rules": [

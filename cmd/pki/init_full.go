@@ -62,6 +62,7 @@ func cmdInitFull(cfg *internal.Config, args []string) error {
 	domain := fs.String("domain", "", "Domain for server certificates (SAN)")
 	configOut := fs.String("config-out", "", "Path to generated config file")
 	adminNames := fs.String("admin-names", "", "Admin real names: John(superadmin),Jane(operator)...")
+	adminScope := fs.String("admin-scope", "", "CA scope embedded in all management/role certificates (e.g. '*' for full tree). Required for cert-first auth in enterprise permission mode; empty keeps current backward-compatible behavior (scope-less certs, only usable in simple mode).")
 	skipServiceCerts := fs.Bool("skip-service-certs", false, "Skip automatic service certificate issuance")
 	authzFile := fs.String("authorization-file", "", "Path to authz.json policy (default: write built-in authz.json to --out-dir)")
 	fs.Parse(args)
@@ -80,12 +81,12 @@ func cmdInitFull(cfg *internal.Config, args []string) error {
 	// Parse --admin-names: "John(admin),Jane(operator)" → replace default role certs
 	// superadmin is the full-featured certificate required for bootstrapping (the only role with all PA grants under cert-first).
 	adminCerts := []serviceCertDef{
-		{"superadmin", "superadmin@" + *domain, "m-superadmin", nil, "management", "users", ""},
-		{"admin", "admin@" + *domain, "m-admin", nil, "management", "users", ""},
-		{"operator", "operator@" + *domain, "m-operator", nil, "management", "users", ""},
-		{"auditor", "auditor@" + *domain, "m-auditor", nil, "management", "users", ""},
-		{"readonly", "readonly@" + *domain, "m-readonly", nil, "management", "users", ""},
-		{"auto-renew", "auto-renew@" + *domain, "m-auto-renew", nil, "management", "users", ""},
+		{"superadmin", "superadmin@" + *domain, "m-superadmin", nil, "management", "users", *adminScope},
+		{"admin", "admin@" + *domain, "m-admin", nil, "management", "users", *adminScope},
+		{"operator", "operator@" + *domain, "m-operator", nil, "management", "users", *adminScope},
+		{"auditor", "auditor@" + *domain, "m-auditor", nil, "management", "users", *adminScope},
+		{"readonly", "readonly@" + *domain, "m-readonly", nil, "management", "users", *adminScope},
+		{"auto-renew", "auto-renew@" + *domain, "m-auto-renew", nil, "management", "users", *adminScope},
 	}
 	if *adminNames != "" {
 		adminCerts = nil
@@ -119,7 +120,7 @@ func cmdInitFull(cfg *internal.Config, args []string) error {
 				return fmt.Errorf("unknown admin role: %s (need superadmin|admin|operator|auditor|readonly|auto-renew)", role)
 			}
 			certName := "user-" + role + "-" + name
-			adminCerts = append(adminCerts, serviceCertDef{certName, name, profile, nil, "management", "users", ""})
+			adminCerts = append(adminCerts, serviceCertDef{certName, name, profile, nil, "management", "users", *adminScope})
 		}
 	}
 

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/varwof/core/auth"
@@ -65,6 +66,7 @@ func (p *MTLSProvisioner) Authenticate(r *http.Request) (*AuthResult, error) {
 			return result, err
 		}
 		result.CertIdentity = NewCertIdentityFromCert(cert)
+		result.CAScopes = caScopesFromCert(cert)
 		return result, nil
 	}
 
@@ -113,8 +115,27 @@ func (p *MTLSProvisioner) Authenticate(r *http.Request) (*AuthResult, error) {
 		Username:     username,
 		Role:         role,
 		Permissions:  paPerms,
+		CAScopes:     caScopesFromCert(cert),
 		CertIdentity: NewCertIdentityFromCert(cert),
 	}, nil
+}
+
+// caScopesFromCert extracts the CA scopes embedded in a management
+// certificate (SAN urn:pki:ca:* URIs plus the OID 1.3.6.1.4.1.66257.1.5.1
+// extension), merged and de-duplicated by ca.ExtractAdminScope.
+func caScopesFromCert(cert *x509.Certificate) []string {
+	scopes := ca.ExtractAdminScope(cert)
+	if scopes == "" {
+		return nil
+	}
+	var out []string
+	for _, p := range strings.Split(scopes, ",") {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // delegatedSessionAllowed mirrors serve.Server.agentSessionAllowed for the
@@ -205,6 +226,7 @@ func gatewayForwardedCertUser(r *http.Request) (*AuthResult, error) {
 		Username:     username,
 		Role:         role,
 		Permissions:  perms,
+		CAScopes:     caScopesFromCert(cert),
 		CertIdentity: NewCertIdentityFromCert(cert),
 	}, nil
 }

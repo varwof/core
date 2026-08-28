@@ -39,7 +39,12 @@ type AuthResult struct {
 	Username    string
 	Role        string
 	Permissions []string // grant patterns (e.g. "ca:*", "cert:issue")
-	Options     []SignOption
+	// CAScopes carries the effective CA scopes bound to the authentication.
+	// For cert-first mTLS this is extracted from the client certificate
+	// (SAN urn:pki:ca:* URIs + OID scope extension). Without it, enterprise
+	// permission-mode checks have no scope to authorize against.
+	CAScopes []string
+	Options  []SignOption
 	// CertIdentity records the client certificate identity snapshot bound to this authentication.
 	// nil means no certificate (e.g. token/Basic login). Sourced from the same origin as mTLS
 	// direct connection, ensuring Web sessions and certificate identity are not disconnected.
