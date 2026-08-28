@@ -11,6 +11,8 @@ authorization verification results for security audits and compliance.
 | [RBAC Verification Report 2026-08-28](en/rbac-verification-2026-08-28.md) | Full measured matrix (378×2 checks) across simple/enterprise modes plus P0 probes and reproduction steps |
 | [Deployment Hardening](en/deployment-hardening.md) | Pre-flight/maintenance checklist: authorization, TLS, keys, limits, audit, ops |
 | [Private Key Hygiene](en/private-key-hygiene.md) | Key classes, permissions, the cert-vs-key trap, at-rest encryption, rotation, backup, anti-pattern checklist |
+| [Threat Model & Risk Register](en/threat-model.md) | Assets, trust boundaries, attack surface; R-ID register of fixed/accepted risks; STRIDE mapping |
+| [Audit Logging & Compliance](en/audit-compliance.md) | Audit model & queries, Merkle chain integrity, PII masking, SOC2/PCI/NIST/ISO evidence |
 
 ## Reading path
 
