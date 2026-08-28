@@ -59,7 +59,7 @@ POST /api/v1/certs  { profile: "m-*" }
 1. **DB 里的角色字段不再授权**。即使账户在 `rbac_users.role` 中被配置为 `superadmin`，
    通过 Basic / Token 认证得到的实际角色仍是 `operator`。
 2. **账户密码无法提升任何权限**。实测：operator 证书 + superadmin 账户密码
-   （`alice:VarwofAdmin#2026!`）请求管理签发 → `403`；请求 superadmin 专属端点
+   （`alice:<RBAC_ADMIN_PASS>`）请求管理签发 → `403`；请求 superadmin 专属端点
    （`PUT /api/v1/admin/config`）→ `403`。
 3. **作用域不随账号注入**。账号声明的 CA 作用域不会作为授权依据进入；只有绑定操作员证书派生。
 4. 密码的合法用途仅限：**身份归属、审计线索、操作员证书绑定匹配**。

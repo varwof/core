@@ -65,7 +65,7 @@ These are **deliberate security boundaries** — hard limits of every account cr
    `rbac_users.role` is configured as `superadmin`, Basic/Token authentication
    still yields effective role `operator`.
 2. **An account password cannot elevate anything.** Measured: operator cert +
-   superadmin account password (`alice:VarwofAdmin#2026!`) requesting a
+   the superadmin account password (`alice:<RBAC_ADMIN_PASS>`) requesting a
    management mint → `403`; requesting a superadmin-only endpoint
    (`PUT /api/v1/admin/config`) → `403`.
 3. **Scope is not injected by the account.** Account-declared CA scopes are not

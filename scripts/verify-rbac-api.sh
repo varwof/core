@@ -86,8 +86,11 @@ BASE="https://127.0.0.1:$HTTPS"
 SUPER_CERT="$MGMT_USERS/certs/user-superadmin-alice.pem"
 SUPER_KEY="$MGMT_USERS/private/user-superadmin-alice.key"
 SUPER_USER="alice"
-SUPER_PASS="${RBAC_ADMIN_PASS:-VarwofAdmin#2026!}"
-SUPER_BASIC=(-u "$SUPER_USER:$SUPER_PASS")
+SUPER_PASS="${RBAC_ADMIN_PASS:-}"
+if [ -z "$SUPER_PASS" ]; then
+  echo "error: RBAC_ADMIN_PASS is required (superadmin account password, kept out of the repo)" >&2
+  exit 1
+fi
 LOG="$PKI_DIR/verify.log"
 PY="$PKI_DIR/helpers.py"
 ADMIN_NAMES="alice(superadmin),bob(admin),carol(operator),dave(auditor),erin(readonly),frank(auto-renew)"
