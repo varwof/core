@@ -12,7 +12,7 @@ import (
 )
 
 // TestConsistency_ParsePrincipalUid verifies that the two independent implementations
-// of ParsePrincipalUid (varwof-core and pki-types) have consistent boundary behavior,
+// of ParsePrincipalUid (varwof-core and types) have consistent boundary behavior,
 // preventing dual-copy drift.
 // Background: 2026-08-07 review found varwof-core once missed realm/identifier length
 // validation, caused by manual synchronization between two PrincipalUid implementations.

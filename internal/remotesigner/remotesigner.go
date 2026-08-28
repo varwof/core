@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 
 // Package remotesigner provides a crypto.Signer that delegates signing
-// to a remote pki-hsm-proxy instance over HTTP.
+// to a remote hsm-proxy instance over HTTP.
 package remotesigner
 
 import (
@@ -22,7 +22,7 @@ import (
 	"time"
 )
 
-// RemoteSigner implements crypto.Signer by delegating to a pki-hsm-proxy endpoint.
+// RemoteSigner implements crypto.Signer by delegating to a hsm-proxy endpoint.
 type RemoteSigner struct {
 	endpoint string // e.g. "https://127.0.0.1:8445"
 	keyAlias string // key alias on the HSM

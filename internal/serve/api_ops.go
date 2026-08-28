@@ -1659,7 +1659,7 @@ func verifyRSASignature(cert *x509.Certificate, digest, sig []byte) error {
 }
 
 // resolveDAUserCert resolves the DA signer (user) certificate:
-//  1. Request body user_cert_pem (populated by pki-client, DA signer certificate)
+//  1. Request body user_cert_pem (populated by client, DA signer certificate)
 //  2. mTLS peer cert (can be used as user certificate only when SPKI matches principal_uid.keyHash)
 //
 // Both must satisfy SPKI == keyHash (if keyHash is non-empty) to prevent certificate mismatch/forgery.

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 跨平台证书验证脚本 — OpenSSL / NSS / Java Keytool
-# 验证当前 pki-core 签发的证书链、CRL、OCSP 在三个平台的一致性。
+# 验证当前 core 签发的证书链、CRL、OCSP 在三个平台的一致性。
 set -euo pipefail
 PASS=0; FAIL=0
 ok()   { PASS=$((PASS+1)); echo "  ✅ $1"; }

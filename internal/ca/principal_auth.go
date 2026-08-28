@@ -109,7 +109,7 @@ func ParsePrincipalAuthorizationExtension(exts []pkix.Extension) (*PrincipalAuth
 }
 
 // GrantIds returns the full permission identifiers (scheme:capabilityId) for all Grants.
-// Aligned with pki-types Capability.FullID() spec: matching/authorization decisions use the full identifier.
+// Aligned with types Capability.FullID() spec: matching/authorization decisions use the full identifier.
 func (pa *PrincipalAuthorization) GrantIds() []string {
 	if pa == nil {
 		return nil

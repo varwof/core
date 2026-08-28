@@ -778,7 +778,7 @@ func (s *Server) authFromAIC(aic *ca.AIC, pa *ca.PrincipalAuthorization) (*AuthU
 	// PA grants (authoritative) serve as matching templates, AIC capabilities (agent declarations)
 	// as candidates. Result = AIC capabilities covered by PA grants (full ID intersection,
 	// wildcard supported). Matching is uniformly based on FullID (schemeId:capabilityId),
-	// consistent with the pki-types specification.
+	// consistent with the types specification.
 	var paIds []string
 	for _, g := range pa.Grants {
 		paIds = append(paIds, g.FullID())

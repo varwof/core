@@ -5,7 +5,7 @@
 //
 // The default implementation (SMTP mailer) is built into the core.
 // Channel-specific implementations (Slack, DingTalk, Feishu, WeChat Work)
-// have been extracted to the pki-webhook satellite project.
+// have been extracted to the webhook satellite project.
 package notifier
 
 // Notifier is the interface for sending event notifications.

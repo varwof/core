@@ -30,7 +30,7 @@ import (
 // agentProxyC3Body builds an agent-proxy issuance request body with a real user
 // signature. It signs a user certificate (same CA as newTestServer), computes
 // principal_uid.keyHash, signs DelegationAuthTBS with the user private key
-// (consistent with pki-client fillDelegationAuthEvidence and CA-side
+// (consistent with client fillDelegationAuthEvidence and CA-side
 // verifyDelegationAuthTBS reconstruction), and includes user_cert_pem.
 // delegationMode determines TBS and the request's delegation_mode (default 0).
 // Returns the body JSON bytes and the user private key.
@@ -79,7 +79,7 @@ func agentProxyC3BodyWithKey(t *testing.T, caCert *x509.Certificate, caKey crypt
 		t.Fatal(err)
 	}
 
-	// Sign DelegationAuthTBS (same construction as pki-client / CA verification).
+	// Sign DelegationAuthTBS (same construction as client / CA verification).
 	if ts.IsZero() {
 		ts = time.Now().UTC().Truncate(time.Second)
 	}
@@ -134,7 +134,7 @@ func agentProxyC3BodyWithKey(t *testing.T, caCert *x509.Certificate, caKey crypt
 		req["authorization_constraints"] = capJSON(constraints)
 	}
 	// Matching PrincipalAuthorization grants (AIC caps ⊆ PA grants):
-	// Consistent with pki-client behavior, avoids false positives from sign.go subset check.
+	// Consistent with client behavior, avoids false positives from sign.go subset check.
 	grants := make([]map[string]any, 0, len(caps))
 	for _, c := range caps {
 		grants = append(grants, map[string]any{"scheme_id": c.SchemeId, "capability_id": c.CapabilityId})

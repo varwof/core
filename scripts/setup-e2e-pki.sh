@@ -3,13 +3,13 @@
 # setup-e2e-pki.sh — One-shot e2e PKI environment setup (reproducible)
 #
 # Steps:
-#   1. Build varwof core and pki-client binaries
+#   1. Build varwof core and client binaries
 #   2. init-full to create fresh PKI (CA hierarchy + superadmin + authz.json)
 #   3. Patch config: HTTPS mTLS listener (tls_addr/tls_client_ca), API cert IP SAN,
 #      capability_schemes registry std/database-v1 (SELECT/INSERT/UPDATE/DELETE),
 #      authz roles (db-reader/db-writer/db-ops + OU mapping)
-#   4. Start pki-core serve in background (setsid)
-#   5. Issue matrix user certs + AIC certs via pki-client
+#   4. Start core serve in background (setsid)
+#   5. Issue matrix user certs + AIC certs via client
 #
 # Usage: scripts/setup-e2e-pki.sh
 #
@@ -20,7 +20,7 @@
 #   E2E_HTTPS    Core HTTPS port (default 9447)
 #   E2E_HTTP     Core HTTP port (default 9448)
 #   PKI_BIN      varwof binary (default /tmp/varwof, auto-built)
-#   PKI_CLIENT   pki-client binary (default /tmp/pki-client, auto-built)
+#   PKI_CLIENT   client binary (default /tmp/client, auto-built)
 #
 set -euo pipefail
 
@@ -31,7 +31,7 @@ E2E_DOMAIN="${E2E_DOMAIN:-e2e.varwof.test}"
 E2E_HTTPS="${E2E_HTTPS:-9447}"
 E2E_HTTP="${E2E_HTTP:-9448}"
 PKI_BIN="${PKI_BIN:-/tmp/varwof}"
-PKI_CLIENT="${PKI_CLIENT:-/tmp/pki-client}"
+PKI_CLIENT="${PKI_CLIENT:-/tmp/client}"
 CERTDIR="$E2E_WORKDIR/certs"
 CAPSCHEMES="$E2E_WORKDIR/capschemes"
 
@@ -48,10 +48,10 @@ case "$E2E_WORKDIR" in
   *) die "E2E_WORKDIR must be under /tmp (current: $E2E_WORKDIR)" ;;
 esac
 
-log "== 1. Build varwof core and pki-client =="
+log "== 1. Build varwof core and client =="
 (cd "$ROOT" && go build -o "$PKI_BIN" ./cmd/pki)
-(cd "$ROOT" && go build -o "$PKI_CLIENT" ./client 2>/dev/null || go build -o "$PKI_CLIENT" github.com/varwof/pki-client 2>/dev/null || echo "pki-client not in this repo, using /tmp/pki-client")
-ok "varwof=$PKI_BIN pki-client=$PKI_CLIENT"
+(cd "$ROOT" && go build -o "$PKI_CLIENT" ./client 2>/dev/null || go build -o "$PKI_CLIENT" github.com/varwof/pki-client 2>/dev/null || echo "client not in this repo, using /tmp/pki-client")
+ok "varwof=$PKI_BIN client=$PKI_CLIENT"
 
 log "== 2. init-full: create PKI hierarchy =="
 "$PKI_BIN" init-full --org "$E2E_ORG" --domain "$E2E_DOMAIN" \
@@ -123,7 +123,7 @@ json.dump(a, open(p, "w"), ensure_ascii=False, indent=2)
 PY
 ok "config + authz patched"
 
-log "== 4. Start pki-core serve (HTTPS mTLS :$E2E_HTTPS) =="
+log "== 4. Start core serve (HTTPS mTLS :$E2E_HTTPS) =="
 setsid "$PKI_BIN" --config "$E2E_WORKDIR/config.json" serve \
   </dev/null >>"$E2E_WORKDIR/serve.log" 2>&1 &
 echo $! > "$E2E_WORKDIR/serve.pid"
@@ -137,8 +137,8 @@ for i in $(seq 1 30); do
   [ "$code" = "200" ] && break
   sleep 1
 done
-[ "$code" = "200" ] || die "pki-core not ready, see $E2E_WORKDIR/serve.log"
-ok "pki-core ready ($code)"
+[ "$code" = "200" ] || die "core not ready, see $E2E_WORKDIR/serve.log"
+ok "core ready ($code)"
 
 log "== 5. Issue matrix user certs + AIC certs =="
 cat > "$CLIENT_CFG" <<EOF

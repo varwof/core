@@ -12,7 +12,7 @@ import (
 )
 
 // LDAPLookup is the interface for directory service lookups.
-// The default implementation uses go-ldap directly; a satellite (pki-ldap-bridge)
+// The default implementation uses go-ldap directly; a satellite (ldap-bridge)
 // can provide a remote implementation over HTTP.
 type LDAPLookup interface {
 	Lookup(cfg *LDAPConfig, username string) (*pkix.Name, error)

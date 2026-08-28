@@ -34,7 +34,7 @@ import (
 // in an AICConfig against the DA signer's certificate:
 //
 //  1. Reconstructs DelegationAuthTBS with the exact same field order the
-//     pki-client signer and gateway-lib VerifyDelegationAuth use.
+//     client signer and gateway-lib VerifyDelegationAuth use.
 //  2. Cross-validates the user certificate's SPKI hash against
 //     PrincipalUid.KeyHash (prevents forged user certs).
 //  3. Verifies the signature with the user certificate's public key

@@ -1,6 +1,6 @@
 {
   "version": "v1",
-  "description": "pki-core API route authorization rules. Edit this file to add/change/remove API permissions. Hot-reloaded on SIGHUP.",
+  "description": "core API route authorization rules. Edit this file to add/change/remove API permissions. Hot-reloaded on SIGHUP.",
   "public_paths": [
     "/healthz",
     "/readyz",

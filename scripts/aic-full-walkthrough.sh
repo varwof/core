@@ -3,7 +3,7 @@
 # aic-full-walkthrough.sh — Full feature walkthrough (repeatable verification script)
 #
 # Covers two environments with layered functional verification:
-#   1. Smoke instance (default /tmp/pki-superadmin-smoke) — pki-core self-test
+#   1. Smoke instance (default /tmp/pki-superadmin-smoke) — core self-test
 #      - Certificate full lifecycle: issue / list / renew / revoke / batch / re-sign
 #      - AIC full chain: aic issue / cert show / revoke-by-principal
 #      - TSA: RFC 3161 timestamp issuance and verification
@@ -12,12 +12,12 @@
 #      - AIC permission matrix: 4 users × 4 operations = 16 assertions
 #
 # Usage:
-#   scripts/aic-full-walkthrough.sh [--smoke-dir DIR] [--pki-client PATH]
+#   scripts/aic-full-walkthrough.sh [--smoke-dir DIR] [--client PATH]
 #
 # Configurable (env vars):
 #   SMOKE_DIR       smoke instance directory (default /tmp/pki-superadmin-smoke)
 #   SMOKE_ADDR      smoke mTLS address (default https://sa.smoke.varwof.test:9447)
-#   PKI_CLIENT      built pki-client binary (default /tmp/pki-client-bin)
+#   PKI_CLIENT      built client binary (default /tmp/client-bin)
 #   WORKDIR         output directory (default /tmp/aic-walkthrough)
 #   Production matrix params follow scripts/aic-agent-matrix.sh env vars
 #
@@ -27,7 +27,7 @@ set -uo pipefail
 
 SMOKE_DIR="${SMOKE_DIR:-/tmp/pki-superadmin-smoke}"
 SMOKE_ADDR="${SMOKE_ADDR:-https://sa.smoke.varwof.test:9447}"
-PKI_CLIENT="${PKI_CLIENT:-/tmp/pki-client-bin}"
+PKI_CLIENT="${PKI_CLIENT:-/tmp/client-bin}"
 WORKDIR="${WORKDIR:-/tmp/aic-walkthrough}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -42,7 +42,7 @@ fail() { printf '\033[1;31m  [FAIL]\033[0m %s\n' "$*"; FAIL=$((FAIL+1)); FAILED_
 note() { printf '\033[1;36m%s\033[0m\n' "$*"; }
 
 # ---------- Environment check ----------
-[ -x "$PKI_CLIENT" ] || { echo "pki-client not found: $PKI_CLIENT"; exit 2; }
+[ -x "$PKI_CLIENT" ] || { echo "client not found: $PKI_CLIENT"; exit 2; }
 [ -f "$SMOKE_DIR/pki.json" ] || { echo "smoke dir not found: $SMOKE_DIR"; exit 2; }
 
 CERT="$SMOKE_DIR/sa.pem"
@@ -52,8 +52,8 @@ ROOTCA="$SMOKE_DIR/tls/certs/ca.pem"
 
 SMOKE_CA="${SMOKE_CA:-SATest People CA}"
 
-# pki-client config file
-cat > "$WORKDIR/pki-client.json" << EOF
+# client config file
+cat > "$WORKDIR/client.json" << EOF
 {
   "server": "$SMOKE_ADDR",
   "ca_cert": "$ROOTCA",
@@ -61,31 +61,31 @@ cat > "$WORKDIR/pki-client.json" << EOF
   "client_key": "$KEY"
 }
 EOF
-chmod 600 "$WORKDIR/pki-client.json"
+chmod 600 "$WORKDIR/client.json"
 
 curlargs=(--cert "$CERT" --key "$KEY" --cacert "$ROOTCA")
 
 # ============================================================
-log "== 1. pki-core selfcheck (DB/TSA/CRL/healthz/issue/revoke/CRL generation) =="
-OUT="$("$PKI_CLIENT" "$WORKDIR/pki-client.json" selfcheck --ca "$SMOKE_CA" 2>&1)"
+log "== 1. core selfcheck (DB/TSA/CRL/healthz/issue/revoke/CRL generation) =="
+OUT="$("$PKI_CLIENT" "$WORKDIR/client.json" selfcheck --ca "$SMOKE_CA" 2>&1)"
 if echo "$OUT" | grep -q "ALL PASS"; then ok "selfcheck all passed"; else fail "selfcheck: $OUT"; fi
 
 # ============================================================
 log "== 2. Certificate full lifecycle =="
 
 note "--- 2a. issue certificate ---"
-ISSUE_OUT="$("$PKI_CLIENT" "$WORKDIR/pki-client.json" issue \
+ISSUE_OUT="$("$PKI_CLIENT" "$WORKDIR/client.json" issue \
   --cn "walk-$(date +%H%M%S)" --ca "$SMOKE_CA" --profile tls-client --validity 30 \
   --out "$WORKDIR" 2>&1)"
 if echo "$ISSUE_OUT" | grep -q "Serial:"; then ok "issue certificate"; else fail "issue: $ISSUE_OUT"; fi
 SER="$(echo "$ISSUE_OUT" | grep 'Serial:' | awk '{print $2}' | tr -d ' ')"
 
 note "--- 2b. list certificates ---"
-LIST_OUT="$("$PKI_CLIENT" "$WORKDIR/pki-client.json" list --ca "$SMOKE_CA" --status V 2>&1)"
+LIST_OUT="$("$PKI_CLIENT" "$WORKDIR/client.json" list --ca "$SMOKE_CA" --status V 2>&1)"
 if echo "$LIST_OUT" | grep -qE "^[0-9A-F]{40}"; then ok "list with full serial"; else fail "list: no full serial"; fi
 
 note "--- 2c. renew certificate ---"
-RENEW_OUT="$("$PKI_CLIENT" "$WORKDIR/pki-client.json" renew --ca "$SMOKE_CA" --serial "$SER" --out "$WORKDIR" 2>&1)"
+RENEW_OUT="$("$PKI_CLIENT" "$WORKDIR/client.json" renew --ca "$SMOKE_CA" --serial "$SER" --out "$WORKDIR" 2>&1)"
 if echo "$RENEW_OUT" | grep -q "new serial"; then ok "renew certificate"; else fail "renew: $RENEW_OUT"; fi
 
 note "--- 2d. batch issue ---"
@@ -95,27 +95,27 @@ cat > "$WORKDIR/batch.json" << EOF
   {"cn":"batch-walk-b","ca":"$SMOKE_CA","profile":"tls-client","validity":30}
 ]
 EOF
-BATCH_OUT="$("$PKI_CLIENT" "$WORKDIR/pki-client.json" batch --requests "$WORKDIR/batch.json" 2>&1)"
+BATCH_OUT="$("$PKI_CLIENT" "$WORKDIR/client.json" batch --requests "$WORKDIR/batch.json" 2>&1)"
 if echo "$BATCH_OUT" | grep -q '"status": "ok"'; then ok "batch issue"; else fail "batch: $BATCH_OUT"; fi
 
 note "--- 2e. re-sign (full serial) ---"
-RESIGN_SER="$("$PKI_CLIENT" "$WORKDIR/pki-client.json" list --ca "$SMOKE_CA" --cn "batch-walk-a" 2>/dev/null | awk 'NR==2{print $1}')"
+RESIGN_SER="$("$PKI_CLIENT" "$WORKDIR/client.json" list --ca "$SMOKE_CA" --cn "batch-walk-a" 2>/dev/null | awk 'NR==2{print $1}')"
 if [ -n "$RESIGN_SER" ]; then
-  RESIGN_OUT="$("$PKI_CLIENT" "$WORKDIR/pki-client.json" re-sign --ca "$SMOKE_CA" --serial "$RESIGN_SER" --validity 45 --out "$WORKDIR" 2>&1)"
+  RESIGN_OUT="$("$PKI_CLIENT" "$WORKDIR/client.json" re-sign --ca "$SMOKE_CA" --serial "$RESIGN_SER" --validity 45 --out "$WORKDIR" 2>&1)"
   if echo "$RESIGN_OUT" | grep -q "BEGIN CERTIFICATE"; then ok "re-sign certificate"; else fail "re-sign: $RESIGN_OUT"; fi
 else
   fail "re-sign: could not get batch certificate serial"
 fi
 
 note "--- 2f. revoke + CRL generation ---"
-REVOKE_OUT="$("$PKI_CLIENT" "$WORKDIR/pki-client.json" revoke --ca "$SMOKE_CA" --serial "$RESIGN_SER" --reason superseded --crl 2>&1)"
+REVOKE_OUT="$("$PKI_CLIENT" "$WORKDIR/client.json" revoke --ca "$SMOKE_CA" --serial "$RESIGN_SER" --reason superseded --crl 2>&1)"
 if echo "$REVOKE_OUT" | grep -q "Revoked:"; then ok "revoke + CRL"; else fail "revoke: $REVOKE_OUT"; fi
 
 # ============================================================
 log "== 3. AIC full chain =="
 
 note "--- 3a. issue user certificate (AIC base) ---"
-USER_OUT="$("$PKI_CLIENT" "$WORKDIR/pki-client.json" issue \
+USER_OUT="$("$PKI_CLIENT" "$WORKDIR/client.json" issue \
   --cn "walk-user" --ca "$SMOKE_CA" --profile tls-client --ou "db:reader" --validity 60 \
   --out "$WORKDIR" 2>&1)"
 if echo "$USER_OUT" | grep -q "Serial:"; then ok "user certificate issued"; else fail "user certificate: $USER_OUT"; fi
@@ -124,14 +124,14 @@ USER_CERT="$(ls -t "$WORKDIR"/*.pem 2>/dev/null | grep -vE -- "-key|agent|user" 
 USER_KEY="${USER_CERT%.pem}-key.pem"
 
 note "--- 3b. aic issue ---"
-AIC_OUT="$("$PKI_CLIENT" "$WORKDIR/pki-client.json" aic issue \
+AIC_OUT="$("$PKI_CLIENT" "$WORKDIR/client.json" aic issue \
   --user-cert "$USER_CERT" --user-key "$USER_KEY" --agent "walk-agent" \
   --caps "std/database-v1:query:SELECT std/database-v1:GET:*" --ca "$SMOKE_CA" --ou "db:reader" \
   --out "$WORKDIR" 2>&1)"
 if echo "$AIC_OUT" | grep -q "Serial:"; then ok "AIC issued"; else fail "AIC issue: $AIC_OUT"; fi
 
 note "--- 3c. cert show (decode AIC extension) ---"
-SHOW_OUT="$("$PKI_CLIENT" "$WORKDIR/pki-client.json" cert show --cert "$WORKDIR/walk-agent.pem" 2>&1)"
+SHOW_OUT="$("$PKI_CLIENT" "$WORKDIR/client.json" cert show --cert "$WORKDIR/walk-agent.pem" 2>&1)"
 if echo "$SHOW_OUT" | grep -q "AIC Extension" && echo "$SHOW_OUT" | grep -q "agent_id=walk-agent"; then
   ok "AIC extension decoded (agent_id/caps)"
 else
@@ -140,12 +140,12 @@ fi
 
 note "--- 3d. revoke-by-principal ---"
 PU="$(echo "$SHOW_OUT" | grep 'PrincipalUid:' | awk '{print $2}')"
-REV_PR_OUT="$("$PKI_CLIENT" "$WORKDIR/pki-client.json" revoke-by-principal --principal-uid "$PU" 2>&1)"
+REV_PR_OUT="$("$PKI_CLIENT" "$WORKDIR/client.json" revoke-by-principal --principal-uid "$PU" 2>&1)"
 if echo "$REV_PR_OUT" | grep -qE "Revoked [0-9]+ cert"; then ok "revoke-by-principal AIC revoked"; else fail "revoke-by-principal: $REV_PR_OUT"; fi
 
 note "--- 3e. verify AIC revoked ---"
 AIC_SERIAL="$(openssl x509 -in "$WORKDIR/walk-agent.pem" -noout -serial 2>/dev/null | sed 's/serial=//')"
-AIC_STATUS="$("$PKI_CLIENT" "$WORKDIR/pki-client.json" list --ca "$SMOKE_CA" --status R --json 2>/dev/null | python3 -c "
+AIC_STATUS="$("$PKI_CLIENT" "$WORKDIR/client.json" list --ca "$SMOKE_CA" --status R --json 2>/dev/null | python3 -c "
 import json,sys
 d=json.load(sys.stdin)
 target='$AIC_SERIAL'.lower()

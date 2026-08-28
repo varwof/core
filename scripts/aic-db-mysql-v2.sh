@@ -131,7 +131,7 @@ fi
 
 # ============================================================
 log "== 7. Real gateway full e2e (varwof client issues AIC + rule_schemes + mysql-api) =="
-# Prerequisite: pki-core init-full PKI + pki-client issued AIC (see §8 docs)
+# Prerequisite: core init-full PKI + client issued AIC (see §8 docs)
 E2E_AIC_CERT="${E2E_AIC_CERT:-/tmp/aic-e2e-pki/certs/zhangsan-agent.pem}"
 E2E_AIC_KEY="${E2E_AIC_KEY:-/tmp/aic-e2e-pki/certs/zhangsan-agent.key}"
 if [ -n "${MYSQL_DSN:-}" ] && [ -f "$E2E_AIC_CERT" ] && [ -f "$E2E_AIC_KEY" ]; then
@@ -142,7 +142,7 @@ if [ -n "${MYSQL_DSN:-}" ] && [ -f "$E2E_AIC_CERT" ] && [ -f "$E2E_AIC_KEY" ]; t
     fail "Real gateway full e2e: $REAL_OUT"
   fi
 else
-  note "Skipped real gateway full e2e (requires MYSQL_DSN + pki-core init-full + pki-client AIC certs)"
+  note "Skipped real gateway full e2e (requires MYSQL_DSN + core init-full + client AIC certs)"
 fi
 
 # ============================================================
