@@ -61,7 +61,7 @@ pki init-config > pki.json
 
 ## Performance Decision Guide (which configs matter most)
 
-Load-tested conclusions (`docs/bench/benchmark-report-2026-08-27.md` ⑨⑩⑪⑫). In order of
+Load-tested conclusions (`docs/bench/en/benchmark-report-2026-08-27.md` §5–§8). In order of
 value, the critical knobs are:
 
 1. **`device_profile` — deployment picker.** Set it once per machine type; it sizes the
@@ -75,7 +75,7 @@ value, the critical knobs are:
    injection-side limiter hitting clients that send too fast, not the global 503. When measuring
    raw capacity, disable it.
 4. **OS / DB layer (not in this file):** CPU governor + turbo (+43%) and
-   MariaDB `innodb_flush_log_at_trx_commit=2` (SD-card iowait −58%) — see report ⑨⑩.
+   MariaDB `innodb_flush_log_at_trx_commit=2` (SD-card iowait −58%) — see report §5§6.
 
 **Do NOT touch** (measurably slower when raised): `record_buffer.threshold` (500),
 `engine.write_threshold` (100), `engine.write_workers` (4). The profiles already encode this;
@@ -398,7 +398,7 @@ Map of CA names to certificate and key paths.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `device_profile` | string | `""` | Preset of device-sensitive defaults. `""` = x86/desktop baseline; `"low_mem"` for single-board computers / low-RAM (e.g. Raspberry Pi 5); `"high_throughput"` for multi-core servers that absorb bursts. Explicit `engine` / `record_buffer` settings always override the preset. Tuned by load testing (see `docs/bench/benchmark-report-2026-08-27.md` ⑨⑩⑪). |
+| `device_profile` | string | `""` | Preset of device-sensitive defaults. `""` = x86/desktop baseline; `"low_mem"` for single-board computers / low-RAM (e.g. Raspberry Pi 5); `"high_throughput"` for multi-core servers that absorb bursts. Explicit `engine` / `record_buffer` settings always override the preset. Tuned by load testing (see `docs/bench/en/benchmark-report-2026-08-27.md` §5–§7). |
 
 Exactly what each preset changes (everything else keeps the built-in default):
 

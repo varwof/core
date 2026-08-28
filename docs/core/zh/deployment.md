@@ -67,7 +67,7 @@ pki init-full \
 - 配置文件
 - 初始 CRL
 
-详情请参阅 [PKI 层级](pki-hierarchy.md)。
+详情请参阅 [PKI 层级](https://github.com/varwof/dev-docs/blob/main/core/zh/pki-hierarchy.md)。
 
 ---
 

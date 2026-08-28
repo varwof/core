@@ -152,5 +152,5 @@ pki crl --ca "Issuing CA" --out crl.pem
 - [CLI 命令](commands.md) — 完整的命令参考
 - [API 参考](api.md) — REST API 端点
 - [部署指南](deployment.md) — 生产部署
-- [PKI 层级](pki-hierarchy.md) — 包含 8 个子 CA 的完整 PKI 设置
-- [架构](architecture.md) — 系统设计
+- [PKI 层级](https://github.com/varwof/dev-docs/blob/main/core/zh/pki-hierarchy.md) — 包含 8 个子 CA 的完整 PKI 设置
+- [架构](https://github.com/varwof/dev-docs/blob/main/core/zh/architecture.md) — 系统设计

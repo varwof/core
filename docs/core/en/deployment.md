@@ -67,7 +67,7 @@ This creates:
 - Config file
 - Initial CRL
 
-See [PKI Hierarchy](pki-hierarchy.md) for details.
+See [PKI Hierarchy](https://github.com/varwof/dev-docs/blob/main/core/en/pki-hierarchy.md) for details.
 
 ---
 

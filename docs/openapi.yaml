@@ -1946,7 +1946,7 @@ components:
             DA reason code. Required for agent-proxy issuance (C2): the CA
             rejects requests without it 400 api.reason_required instead of
             fabricating a default. Default API_ISSUE when the client supplies
-            the field explicitly (e.g. via pki-client).
+            the field explicitly (e.g. via client).
         user_auth_reason_description:
           type: string
           description: DA reason description (default "user-authorized AIC issuance")

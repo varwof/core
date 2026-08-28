@@ -955,7 +955,7 @@ func (c *Config) ApplyDeviceProfile() { c.applyDeviceProfile() }
 
 // Device profile presets. Profiles tune "device-sensitive" parameters whose
 // optimal values differ by hardware (discovered by load testing — see
-// docs/bench/benchmark-report-2026-08-27.md ⑩): the write pipeline must be
+// docs/bench/zh/benchmark-report-2026-08-27.md §6): the write pipeline must be
 // sized down on low-memory / slow-disk hardware (Raspberry Pi 5, SD-card
 // MariaDB) to avoid overshoot, and up on high-throughput servers.
 // Profiles are applied as DEFAULTS ONLY: any explicitly configured value in

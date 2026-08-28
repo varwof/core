@@ -152,5 +152,5 @@ pki crl --ca "Issuing CA" --out crl.pem
 - [CLI Commands](commands.md) — Complete command reference
 - [API Reference](api.md) — REST API endpoints
 - [Deployment Guide](deployment.md) — Production deployment
-- [PKI Hierarchy](pki-hierarchy.md) — Full PKI setup with 8 sub-CAs
-- [Architecture](architecture.md) — System design
+- [PKI Hierarchy](https://github.com/varwof/dev-docs/blob/main/core/en/pki-hierarchy.md) — Full PKI setup with 8 sub-CAs
+- [Architecture](https://github.com/varwof/dev-docs/blob/main/core/en/architecture.md) — System design

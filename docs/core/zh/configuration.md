@@ -61,7 +61,7 @@ pki init-config > pki.json
 
 ## 性能决策速查（哪些配置最关键）
 
-负载测试结论（`docs/bench/benchmark-report-2026-08-27.md` ⑨⑩⑪⑫）。按价值排序：
+负载测试结论（`docs/bench/zh/benchmark-report-2026-08-27.md` §5–§8）。按价值排序：
 
 1. **`device_profile` — 选型预设**。每类机器设一次即可（`""` x86/台式机、`low_mem`
    树莓派 5 / 单板机、`high_throughput` 多核），自动设置写管线与内存预算。只写这一项
@@ -71,7 +71,7 @@ pki init-config > pki.json
    burst：错误率 15.1%→5.5%、吞吐 +32%）。代价：更多在途记录占用内存。
 3. **`rate_limit` — 每 IP 防滥用保护**。与缓冲背压无关，是注入侧限速器；测真实容量时关闭。
 4. **系统层（不在本文件）**：CPU governor + turbo（+43%）、MariaDB
-   `innodb_flush_log_at_trx_commit=2`（SD 卡 iowait −58%）— 见报告 ⑨⑩。
+   `innodb_flush_log_at_trx_commit=2`（SD 卡 iowait −58%）— 见报告 §5§6。
 
 **别动三项**（实测调大使吞吐下降）：`record_buffer.threshold`（500）、
 `engine.write_threshold`（100）、`engine.write_workers`（4）。profile 已编码这一结论；
@@ -394,7 +394,7 @@ CA 名称到证书和密钥路径的映射。
 
 | 字段 | 类型 | 默认值 | 描述 |
 |------|------|--------|------|
-| `device_profile` | string | `""` | 设备敏感默认值的预设。`""` = x86/台式机基线；`"low_mem"` 用于单板计算机/低内存设备（如树莓派 5）；`"high_throughput"` 用于吸收突发的多核服务器。显式配置的 `engine` / `record_buffer` 参数始终覆盖预设。由负载测试得出（见 `docs/bench/benchmark-report-2026-08-27.md` ⑨⑩⑪）。 |
+| `device_profile` | string | `""` | 设备敏感默认值的预设。`""` = x86/台式机基线；`"low_mem"` 用于单板计算机/低内存设备（如树莓派 5）；`"high_throughput"` 用于吸收突发的多核服务器。显式配置的 `engine` / `record_buffer` 参数始终覆盖预设。由负载测试得出（见 `docs/bench/zh/benchmark-report-2026-08-27.md` §5–§7）。 |
 
 各预设实际改动（其余保持内置默认）：
 

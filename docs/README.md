@@ -1,13 +1,23 @@
-# 用户文档
+# Varwof Core — Documentation
 
-> 面向用户的文档目录。
+Product / operations documentation for the core repository.
 
-| 文档 | 说明 |
-|------|------|
-| [api.md](api.md) | API 参考 |
-| [quickstart.md](quickstart.md) | 快速开始 |
-| [reference.md](reference.md) | 参考手册 |
-| [config.md](config.md) | 配置说明 |
-| [usage.md](usage.md) | 使用指南 |
-| [examples.md](examples.md) | 示例 |
-| [functions.md](functions.md) | 功能特性 |
+| Document | Description |
+|----------|-------------|
+| [Core docs](core/README.md) | Product/ops docs: quick start, commands, configuration, API, deployment (EN/ZH) |
+| [Bench & Test](bench/README.md) | Load benchmarks, performance work log, test reports ([中文](bench/README_CN.md)) |
+| [OpenAPI spec](openapi.yaml) | REST API OpenAPI 3.0 specification |
+| [Release Guide](ReleaseGuide_EN.md) | Release process ([中文](ReleaseGuide_CN.md)) |
+
+Architecture and design docs live in the
+[dev-docs](https://github.com/varwof/dev-docs) repository:
+
+- [Core](https://github.com/varwof/dev-docs/blob/main/core/README.md):
+  architecture, PKI architecture/hierarchy, RBAC, feature overview, RFC deviations
+- [Client](https://github.com/varwof/dev-docs/blob/main/client/README.md)
+- [Gateway](https://github.com/varwof/dev-docs/blob/main/gateway/README.md):
+  incl. end-to-end zero-trust gateway demo
+
+## License
+
+AGPL-3.0
