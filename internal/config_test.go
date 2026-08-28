@@ -886,3 +886,96 @@ func TestMergeConfigIdentity(t *testing.T) {
 		t.Fatalf("nil override should keep existing: %+v", merged3.Identity)
 	}
 }
+
+func TestDeviceProfileLowMem(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.DeviceProfile = DeviceProfileLowMem
+	cfg.normalizeDefaults()
+	if cfg.RecordBuffer.Threshold != 200 {
+		t.Fatalf("low_mem record_buffer.threshold: want 200, got %d", cfg.RecordBuffer.Threshold)
+	}
+	if cfg.RecordBuffer.MaxPending == nil || *cfg.RecordBuffer.MaxPending != 5000 {
+		t.Fatalf("low_mem record_buffer.max_pending: want 5000, got %v", cfg.RecordBuffer.MaxPending)
+	}
+	if cfg.Engine == nil {
+		t.Fatal("low_mem should enable engine")
+	}
+	if cfg.Engine.MaxCerts != 50000 {
+		t.Fatalf("low_mem engine.max_certs: want 50000, got %d", cfg.Engine.MaxCerts)
+	}
+	if cfg.Engine.WriteMaxPending != 5000 {
+		t.Fatalf("low_mem engine.write_max_pending: want 5000, got %d", cfg.Engine.WriteMaxPending)
+	}
+}
+
+func TestDeviceProfileHighThroughput(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.DeviceProfile = DeviceProfileHighThroughput
+	cfg.normalizeDefaults()
+	// Load-test-verified: threshold / write_threshold / write_workers are NOT
+	// raised (they slowed AIC); only max_pending grows to absorb bursts.
+	if cfg.RecordBuffer.Threshold != 0 {
+		t.Fatalf("high_throughput record_buffer.threshold must stay default (0), got %d", cfg.RecordBuffer.Threshold)
+	}
+	if cfg.RecordBuffer.MaxPending == nil || *cfg.RecordBuffer.MaxPending != 100000 {
+		t.Fatalf("high_throughput record_buffer.max_pending: want 100000, got %v", cfg.RecordBuffer.MaxPending)
+	}
+	if cfg.Engine == nil {
+		t.Fatal("high_throughput should enable engine")
+	}
+	if cfg.Engine.WriteMaxPending != 100000 {
+		t.Fatalf("high_throughput engine.write_max_pending: want 100000, got %d", cfg.Engine.WriteMaxPending)
+	}
+	// These must remain untouched (default): raising them was measured to slow AIC.
+	if cfg.Engine.WriteThreshold != 0 {
+		t.Fatalf("high_throughput must NOT raise write_threshold, got %d", cfg.Engine.WriteThreshold)
+	}
+	if cfg.Engine.WriteWorkers != 0 {
+		t.Fatalf("high_throughput must NOT raise write_workers, got %d", cfg.Engine.WriteWorkers)
+	}
+}
+
+func TestDeviceProfileExplicitWins(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.DeviceProfile = DeviceProfileLowMem
+	cfg.Engine = &EngineConfig{MaxCerts: 999999, WriteMaxPending: 7777}
+	cfg.RecordBuffer.Threshold = 123
+	cfg.normalizeDefaults()
+	if cfg.Engine.MaxCerts != 999999 {
+		t.Fatalf("explicit engine.max_certs should win, got %d", cfg.Engine.MaxCerts)
+	}
+	if cfg.Engine.WriteMaxPending != 7777 {
+		t.Fatalf("explicit engine.write_max_pending should win, got %d", cfg.Engine.WriteMaxPending)
+	}
+	if cfg.RecordBuffer.Threshold != 123 {
+		t.Fatalf("explicit record_buffer.threshold should win, got %d", cfg.RecordBuffer.Threshold)
+	}
+	// engine nil, only record_buffer set: engine should still be created
+	cfg2 := DefaultConfig()
+	cfg2.DeviceProfile = DeviceProfileLowMem
+	cfg2.RecordBuffer.MaxPending = &[]int{42}[0]
+	cfg2.normalizeDefaults()
+	if *cfg2.RecordBuffer.MaxPending != 42 {
+		t.Fatalf("explicit record_buffer.max_pending should win, got %d", *cfg2.RecordBuffer.MaxPending)
+	}
+}
+
+func TestDeviceProfileInvalid(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.DeviceProfile = "bogus"
+	if err := Validate(&cfg); err == nil {
+		t.Fatal("bogus device_profile should fail validation")
+	}
+}
+
+func TestDeviceProfileViaMerge(t *testing.T) {
+	base := DefaultConfig()
+	override := Config{DeviceProfile: DeviceProfileLowMem}
+	merged := MergeConfig(&base, &override)
+	if merged.RecordBuffer.Threshold != 200 {
+		t.Fatalf("merged low_mem threshold: want 200, got %d", merged.RecordBuffer.Threshold)
+	}
+	if merged.Engine == nil || merged.Engine.MaxCerts != 50000 {
+		t.Fatalf("merged low_mem engine.max_certs: want 50000, got %v", merged.Engine)
+	}
+}

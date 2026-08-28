@@ -1,0 +1,29 @@
+{
+  "mode": "stress",
+  "scenario": "regular",
+  "duration": "5m0s",
+  "agents": 100,
+  "users": 100,
+  "target_qps": 0,
+  "interval": "10m0s",
+  "totals": {
+    "total_requests": 3413774,
+    "success": 168165,
+    "failures": 3245609,
+    "error_codes": {
+      "0": 78,
+      "503": 3245531
+    },
+    "elapsed": 300010003843,
+    "issued_per_sec": 560.5313084426458,
+    "requests_per_sec": 11378.8672253292,
+    "latency_p50_ms": 4.412190894416881,
+    "latency_p95_ms": 31.74959639028025,
+    "latency_p99_ms": 92.24904368482646,
+    "latency_max_ms": 956.21668,
+    "mem_alloc_bytes": 56144848,
+    "mem_total_bytes": 141318358240,
+    "db_size_bytes": 455669384,
+    "certificate_rows": 168165
+  }
+}

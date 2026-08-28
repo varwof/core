@@ -41,3 +41,7 @@ cmd/pki/compliance-soc2-*.pdf
 /CLAUDE.md
 /.claude/
 /dev-docs/
+
+# 负载测试运行时产物（重跑即再生成）
+/bench/results/
+/bench/bin/

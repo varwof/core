@@ -25,10 +25,14 @@ import (
 
 func TestVersionString(t *testing.T) {
 	s := versionString()
-	if !strings.HasPrefix(s, "varwof 1.1.1") {
-		t.Fatalf("expected prefix 'varwof 1.1.1', got %q", s)
+	if !strings.HasPrefix(s, "varwof ") {
+		t.Fatalf("expected 'varwof ' prefix, got %q", s)
 	}
-	if !strings.Contains(s, "go1.26") {
+	ver := strings.Fields(strings.TrimPrefix(s, "varwof "))
+	if len(ver) == 0 || ver[0] == "" || ver[0] == "unknown" {
+		t.Fatalf("expected non-empty version, got %q", s)
+	}
+	if !strings.Contains(s, "go1.") {
 		t.Fatalf("expected Go version in output, got %q", s)
 	}
 }

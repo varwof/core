@@ -473,7 +473,8 @@ func (s *Server) apiIssueCert(w http.ResponseWriter, r *http.Request) {
 		// Only performs replay check on the 32B nonce carried by the client signature;
 		// BuildAICExtension itself rejects non-32B nonces (must be exactly 32 bytes).
 		if len(userAuth.Nonce) == 32 {
-			if err := s.storeDANonce(userAuth.Nonce); err != nil {
+			exp := daNonceExpiry(userAuth.Timestamp.Unix(), int64(userAuth.RequestedLifetime), s.daTimestampSkew(), s.getEngineNonceTTL())
+			if err := s.storeDANonce(userAuth.Nonce, exp); err != nil {
 				if errors.Is(err, db.ErrDuplicateNonce) {
 					s.apiErr(w, r, http.StatusForbidden, "api.da_nonce_replayed",
 						"delegation authorization nonce was already used to mint an AIC; replay rejected")
@@ -1452,7 +1453,8 @@ func (s *Server) apiIssueAIC(w http.ResponseWriter, r *http.Request) {
 	//     when not provided, the server generates a random 32B nonce (see step 12),
 	//     with no replay surface.
 	if len(req.Delegation.Nonce) == 32 {
-		if err := s.storeDANonce(req.Delegation.Nonce); err != nil {
+		exp := daNonceExpiry(req.Delegation.Timestamp, int64(req.Delegation.LifetimeSec), s.daTimestampSkew(), s.getEngineNonceTTL())
+		if err := s.storeDANonce(req.Delegation.Nonce, exp); err != nil {
 			if errors.Is(err, db.ErrDuplicateNonce) {
 				s.apiErr(w, r, http.StatusForbidden, "api.da_nonce_replayed",
 					"delegation authorization nonce was already used to mint an AIC; replay rejected")

@@ -60,6 +60,7 @@ type Config struct {
 	Aggregator        AggregatorConfig    `json:"aggregator,omitempty"`         // Batch certificate issuance aggregator config
 	RecordBuffer      RecordBufferConfig  `json:"record_buffer,omitempty"`      // RecordBuffer batch persistence config (threshold/max_pending/max_latency/disable)
 	Engine            *EngineConfig       `json:"engine,omitempty"`             // In-memory engine config (nil=disabled, reads/writes fall back to DB)
+	DeviceProfile     string              `json:"device_profile,omitempty"`     // Optional device tuning preset ("pi5"|"low_mem"|"high_throughput"). Applies device-sensitive defaults (write pipeline sizing) before explicit settings; "" = default (x86/desktop) tuned.
 	SPIFFE            *SPIFFEConfig       `json:"spiffe,omitempty"`             // SPIFFE identity integration config (nil=disabled)
 }
 
@@ -92,6 +93,7 @@ type EngineConfig struct {
 	WriteThreshold  int    `json:"write_threshold,omitempty"`   // Certificate batch persistence threshold (default 100)
 	WriteMaxPending int32  `json:"write_max_pending,omitempty"` // Pending persistence upper bound (backpressure, default 20000)
 	WriteMaxLatency string `json:"write_max_latency,omitempty"` // Maximum persistence latency (default "500ms")
+	WriteWorkers    int    `json:"write_workers,omitempty"`     // Backend writer goroutines for revoke/nonce/meta ops (default 4). Raise on multi-core servers for more parallel backend writes.
 }
 
 // RecordBufferConfig configures RecordBuffer batch persistence behavior.
@@ -448,6 +450,12 @@ func Validate(cfg *Config) error {
 	}
 	if cfg.Defaults.Hash != "" && !validHashes[cfg.Defaults.Hash] {
 		return fmt.Errorf("config: invalid defaults.hash %q", cfg.Defaults.Hash)
+	}
+	switch cfg.DeviceProfile {
+	case DeviceProfileDefault, DeviceProfileLowMem, DeviceProfileHighThroughput:
+	default:
+		return fmt.Errorf("config: invalid device_profile %q (want %q | %q | %q)",
+			cfg.DeviceProfile, DeviceProfileDefault, DeviceProfileLowMem, DeviceProfileHighThroughput)
 	}
 
 	durFields := map[string]string{
@@ -936,6 +944,86 @@ func (c *Config) normalizeDefaults() {
 	if c.Defaults.Realm == "" {
 		c.Defaults.Realm = "example.com"
 	}
+	c.applyDeviceProfile()
+}
+
+// ApplyDeviceProfile re-runs device-profile default filling on a config that
+// was constructed programmatically (not via LoadConfig). It is idempotent and
+// never overwrites explicitly set values. Used by embedded-server tools (e.g.
+// bench) that build internal.Config directly.
+func (c *Config) ApplyDeviceProfile() { c.applyDeviceProfile() }
+
+// Device profile presets. Profiles tune "device-sensitive" parameters whose
+// optimal values differ by hardware (discovered by load testing — see
+// docs/bench/benchmark-report-2026-08-27.md ⑩): the write pipeline must be
+// sized down on low-memory / slow-disk hardware (Raspberry Pi 5, SD-card
+// MariaDB) to avoid overshoot, and up on high-throughput servers.
+// Profiles are applied as DEFAULTS ONLY: any explicitly configured value in
+// engine / record_buffer wins over the preset.
+const (
+	// DeviceProfileDefault is the x86/desktop baseline (built-in defaults).
+	DeviceProfileDefault = ""
+	// DeviceProfileLowMem targets single-board computers / low-RAM boxes
+	// (e.g. Raspberry Pi 5: 4GB, SD card). Shrinks in-memory engine budgets
+	// and batch sizes so GC pressure and I/O bursts stay bounded.
+	DeviceProfileLowMem = "low_mem"
+	// DeviceProfileHighThroughput targets multi-core servers: larger batches
+	// and deeper write pipeline to exploit CPU headroom.
+	DeviceProfileHighThroughput = "high_throughput"
+)
+
+// applyDeviceProfile fills in device-sensitive default values that were left
+// unset, based on the selected profile. Explicit user settings (nonzero) are
+// never overwritten. Safe to call repeatedly; merge/load both invoke it.
+func (c *Config) applyDeviceProfile() {
+	switch c.DeviceProfile {
+	case DeviceProfileLowMem:
+		if c.RecordBuffer.Threshold <= 0 {
+			c.RecordBuffer.Threshold = 200 // smaller batches = bounded SD-card I/O bursts
+		}
+		if c.RecordBuffer.MaxPending == nil {
+			p := 5000
+			c.RecordBuffer.MaxPending = &p
+		}
+		if c.RecordBuffer.MaxLatency == "" {
+			c.RecordBuffer.MaxLatency = "500ms"
+		}
+		if c.Engine == nil {
+			c.Engine = &EngineConfig{}
+		}
+		if c.Engine.MaxCerts <= 0 {
+			c.Engine.MaxCerts = 50000 // 4GB box: bound resident certs
+		}
+		if c.Engine.MaxDANonces <= 0 {
+			c.Engine.MaxDANonces = 50000
+		}
+		if c.Engine.MaxNonces <= 0 {
+			c.Engine.MaxNonces = 50000
+		}
+		if c.Engine.WriteMaxPending <= 0 {
+			c.Engine.WriteMaxPending = 5000
+		}
+	case DeviceProfileHighThroughput:
+		// Load-test-verified (2026-08-28, AIC @100ms engine+MySQL, 18-core turbo):
+		//   - record_buffer.threshold 500→1000 and engine.write_threshold 100→500
+		//     both *slowed* AIC (~4% lower throughput: deeper batches hold flushMu /
+		//     the write pipeline longer). So they are intentionally NOT raised.
+		//   - write_workers 4→8 also slowed AIC (~25%: the per-request AIC extension
+		//     INSERT already saturates the DB pool). Not raised.
+		// The only safe high-throughput win is a deeper write pipeline cap
+		// (max_pending) so the buffer absorbs bursts without backpressuring.
+		if c.RecordBuffer.MaxPending == nil {
+			p := 100000
+			c.RecordBuffer.MaxPending = &p
+		}
+		if c.Engine == nil {
+			c.Engine = &EngineConfig{}
+		}
+		if c.Engine.WriteMaxPending <= 0 {
+			c.Engine.WriteMaxPending = 100000
+		}
+	}
+	// Unknown / empty profile: keep built-in defaults unchanged.
 }
 
 func MergeConfig(base, override *Config) *Config {
@@ -1503,5 +1591,7 @@ func MergeConfig(base, override *Config) *Config {
 	if override.SPIFFE != nil {
 		c.SPIFFE = override.SPIFFE
 	}
+	c.DeviceProfile = override.DeviceProfile
+	c.normalizeDefaults()
 	return &c
 }

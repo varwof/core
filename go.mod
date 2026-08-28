@@ -8,7 +8,7 @@ require (
 	github.com/miekg/dns v1.1.62
 	github.com/prometheus/client_golang v1.20.5
 	github.com/tjfoc/gmsm v1.4.1
-	github.com/varwof/engine v0.1.0
+	github.com/varwof/engine v0.2.0
 	github.com/varwof/pkcs7 v0.1.0
 	github.com/varwof/register v0.1.0
 	golang.org/x/crypto v0.54.0
@@ -55,3 +55,7 @@ require (
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
 )
+
+// Local development: core depends on un-released engine changes
+// (DA nonce expiry, user/token memory index, NonceTTL). Replace with the
+// local engine checkout; a published engine release should remove this.

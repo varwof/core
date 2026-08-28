@@ -1,0 +1,29 @@
+{
+  "mode": "stress",
+  "scenario": "aic",
+  "duration": "5m0s",
+  "agents": 100,
+  "users": 100,
+  "target_qps": 0,
+  "interval": "10m0s",
+  "totals": {
+    "total_requests": 688730,
+    "success": 360832,
+    "failures": 327898,
+    "error_codes": {
+      "0": 98,
+      "503": 327800
+    },
+    "elapsed": 300001755529,
+    "issued_per_sec": 1202.7662950296296,
+    "requests_per_sec": 2295.753232462079,
+    "latency_p50_ms": 6.860544183167061,
+    "latency_p95_ms": 210.7609948572442,
+    "latency_p99_ms": 807.4891729164466,
+    "latency_max_ms": 3541.363776,
+    "mem_alloc_bytes": 67899744,
+    "mem_total_bytes": 64097751616,
+    "db_size_bytes": 701603840,
+    "certificate_rows": 360832
+  }
+}

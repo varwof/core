@@ -315,6 +315,9 @@ func engineFromConfig(cfg *internal.Config, onRevoked func(serial string)) engin
 			opts.WriteMaxLatency = d
 		}
 	}
+	if ec.WriteWorkers > 0 {
+		opts.WriteWorkers = ec.WriteWorkers
+	}
 	return opts
 }
 
@@ -500,9 +503,51 @@ func (s *Server) getCertBySPKIHash(hash, caName, status string) ([]*db.CertRecor
 // otherwise the DB da_nonces table is written directly. Returns
 // db.ErrDuplicateNonce when the nonce was already used to mint an AIC (replay
 // attempt must be rejected).
-func (s *Server) storeDANonce(nonce []byte) error {
+// daNonceClockBuffer is the extra retention added to a DA nonce beyond the
+// timestamp-freshness window, to absorb clock skew between the agent signing
+// the DA and the CA checking its timestamp. 3 minutes is deliberately generous
+// vs the default 30s skew.
+const daNonceClockBuffer = 3 * time.Minute
+
+// daNonceExpiry returns the deadline after which a DelegationAuthorization
+// nonce no longer needs to be retained for replay protection.
+//
+// The DA timestamp-freshness check (da_max_timestamp_skew) already rejects DAs
+// older than skew, so a replayed DA cannot pass that check once |now - ts| >
+// skew — the nonce only needs to outlive that window plus a clock-skew buffer.
+// When the freshness check is disabled (skew <= 0) the nonce is retained for
+// the DA lifetime instead; if the lifetime is also unset it falls back to the
+// engine's NonceTTL. The deadline is floored at now+buffer so an entry never
+// expires before the request that created it has settled.
+func daNonceExpiry(ts int64, lifetimeSec int64, skew time.Duration, ttl time.Duration) time.Time {
+	now := time.Now()
+	window := skew
+	if window <= 0 {
+		window = time.Duration(lifetimeSec) * time.Second
+		if window <= 0 {
+			window = ttl
+		}
+	}
+	exp := time.Unix(ts, 0).Add(window).Add(daNonceClockBuffer)
+	if min := now.Add(daNonceClockBuffer); exp.Before(min) {
+		exp = min
+	}
+	return exp
+}
+
+// getEngineNonceTTL returns the engine's NonceTTL when the engine is enabled,
+// else the 24h default. Used only as the last-resort DA nonce retention when
+// both the timestamp-skew window and the DA lifetime are unavailable.
+func (s *Server) getEngineNonceTTL() time.Duration {
 	if e := s.getEngine(); e != nil {
-		return e.StoreDANonce(nonce)
+		return e.NonceTTL()
+	}
+	return 24 * time.Hour
+}
+
+func (s *Server) storeDANonce(nonce []byte, exp time.Time) error {
+	if e := s.getEngine(); e != nil {
+		return e.StoreDANonce(nonce, exp)
 	}
 	return s.getDB().StoreDANonce(nonce)
 }
@@ -776,7 +821,9 @@ func (s *Server) EnableEngine(cfg *internal.Config) error {
 	slog.Info("serve: memory engine enabled",
 		"certs", e.Metrics().CertIndexSize,
 		"revoked", e.Metrics().RevokedSetSize,
-		"nonces", e.Metrics().NonceSetSize)
+		"nonces", e.Metrics().NonceSetSize,
+		"users", e.Metrics().UserIndexSize,
+		"tokens", e.Metrics().TokenIndexSize)
 	return nil
 }
 

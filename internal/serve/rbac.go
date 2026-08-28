@@ -340,7 +340,7 @@ func (s *Server) authResultToUser(r *provisioner.AuthResult) (*AuthUser, error) 
 		au.CAScopes = scopes
 		return au, nil
 	}
-	user, err := s.getDB().GetUserByUsername(r.Username)
+	user, err := s.getUserByUsername(r.Username)
 	if err != nil {
 		return au, nil
 	}
@@ -437,7 +437,7 @@ func (s *Server) gatewayDelegatedUser(r *http.Request) (*AuthUser, error) {
 	if username == "" {
 		return nil, nil
 	}
-	user, err := s.getDB().GetUserByUsername(username)
+	user, err := s.getUserByUsername(username)
 	if err != nil || !user.Enabled {
 		return nil, nil
 	}
@@ -495,7 +495,7 @@ func (s *Server) gatewayForwardedCertUser(r *http.Request) (*AuthUser, error) {
 	if username == "" {
 		return nil, nil
 	}
-	user, err := s.getDB().GetUserByUsername(username)
+	user, err := s.getUserByUsername(username)
 	if err != nil || !user.Enabled {
 		return nil, nil
 	}
@@ -517,12 +517,12 @@ func (s *Server) gatewayForwardedCertUser(r *http.Request) (*AuthUser, error) {
 }
 
 func (s *Server) authByToken(token string) (*AuthUser, error) {
-	info, err := s.getDB().GetToken(token)
+	info, err := s.getToken(token)
 	if err != nil {
 		return nil, nil
 	}
 	// Load user CA scopes from database
-	user, err := s.getDB().GetUserByUsername(info.Username)
+	user, err := s.getUserByUsername(info.Username)
 	var caScopes []string
 	if err == nil && user.CAScopes != "" {
 		caScopes = parseCAScopes(user.CAScopes)
@@ -552,7 +552,7 @@ func (s *Server) authByBasic(r *http.Request) (*AuthUser, error) {
 	if s.loginThrottled(username) {
 		return nil, nil
 	}
-	user, err := s.getDB().GetUserByUsername(username)
+	user, err := s.getUserByUsername(username)
 	if err != nil || !user.Enabled {
 		return nil, nil
 	}
@@ -738,7 +738,7 @@ func (s *Server) authFromCert(cert *x509.Certificate, r *http.Request) (*AuthUse
 // the agent's declared capabilities — anything outside the intersection is rejected.
 // No PA extension → fail-closed rejection (permissions come only from the certificate).
 func (s *Server) authFromAIC(aic *ca.AIC, pa *ca.PrincipalAuthorization) (*AuthUser, error) {
-	user, err := s.getDB().GetUserByUsername(aic.PrincipalUid.String())
+	user, err := s.getUserByUsername(aic.PrincipalUid.String())
 	if err != nil || !user.Enabled {
 		return nil, nil
 	}

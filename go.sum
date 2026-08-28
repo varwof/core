@@ -107,8 +107,8 @@ github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
 github.com/tjfoc/gmsm v1.4.1 h1:aMe1GlZb+0bLjn+cKTPEvvn9oUEBlJitaZiiBwsbgho=
 github.com/tjfoc/gmsm v1.4.1/go.mod h1:j4INPkHWMrhJb38G+J6W4Tw0AbuN8Thu3PbdVYhVcTE=
-github.com/varwof/engine v0.1.0 h1:PJ+Rq+/KTAv2zKkJUTA5kvRGwEHXxI5a5kRuSbTsZOQ=
-github.com/varwof/engine v0.1.0/go.mod h1:yeTTd4PFDJUNzBN8DF9mALmrMkTGwogfNmoDvQUiaTs=
+github.com/varwof/engine v0.2.0 h1:e61VEpS022QNm+dbU353DnIqzL+FIyqQ7Lx+JHfw+AM=
+github.com/varwof/engine v0.2.0/go.mod h1:yeTTd4PFDJUNzBN8DF9mALmrMkTGwogfNmoDvQUiaTs=
 github.com/varwof/pkcs7 v0.1.0 h1:zA8ZZtJqosoUvzuqB1dapf0x6VazcmSE6j9IkyEbS0Q=
 github.com/varwof/pkcs7 v0.1.0/go.mod h1:5ZDmWtTHfGamWu4DP3EutQF1MOHoMzSRovXWYbSg8qQ=
 github.com/varwof/register v0.1.0 h1:zgjSc44LPfGjJVWzHZjQZ76AG8ZhDMi9lYl4CKO9iCI=

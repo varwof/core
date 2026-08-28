@@ -52,7 +52,7 @@ CLIENT_CERT="$DIR/client.pem"
 CLIENT_KEY="$DIR/client-key.pem"
 
 echo "=== 3. 验证证书 OU 字段 ==="
-openssl x509 -in "$CLIENT_CERT" -noout -subject | grep -q "OU=gateway:test" || {
+openssl x509 -in "$CLIENT_CERT" -noout -subject | grep -qE "OU[[:space:]]*=[[:space:]]*gateway:test" || {
   echo "FAIL: OU not found in certificate"
   exit 1
 }
@@ -114,8 +114,8 @@ cat > "$DIR/gw.json" <<JSON
       "name": "test-echo",
       "listen": "127.0.0.1:$GW_PORT",
       "target": "127.0.0.1:$SRV_PORT",
-      "tls_mode": "mtls",
-      "mtls": {
+      "protocol": "tcp+mtls",
+      "tls": {
         "ca_cert_file": "$CA_CERT",
         "cert_file": "$CA_CERT",
         "key_file": "$CA_KEY",

@@ -1,0 +1,28 @@
+{
+  "mode": "random",
+  "scenario": "regular",
+  "duration": "10m0s",
+  "agents": 2500,
+  "users": 2500,
+  "target_qps": 0,
+  "interval": "600ms",
+  "totals": {
+    "total_requests": 2475432,
+    "success": 1863769,
+    "failures": 611663,
+    "error_codes": {
+      "503": 611663
+    },
+    "elapsed": 600006691641,
+    "issued_per_sec": 3106.247023516769,
+    "requests_per_sec": 4125.673987451321,
+    "latency_p50_ms": 1.404988197016984,
+    "latency_p95_ms": 9.810637314014743,
+    "latency_p99_ms": 43.00823290184992,
+    "latency_max_ms": 2088.254685,
+    "mem_alloc_bytes": 1137198512,
+    "mem_total_bytes": 127905189920,
+    "db_size_bytes": 2177032192,
+    "certificate_rows": 1863769
+  }
+}

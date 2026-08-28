@@ -39,7 +39,7 @@ func (s *Server) apiLogin(w http.ResponseWriter, r *http.Request) {
 		s.apiErr(w, r, http.StatusTooManyRequests, "api.account_locked", "")
 		return
 	}
-	user, err := s.getDB().GetUserByUsername(req.Username)
+	user, err := s.getUserByUsername(req.Username)
 
 	if err != nil || user == nil {
 		detail, _ := json.Marshal(map[string]any{"username": req.Username})
@@ -65,7 +65,7 @@ func (s *Server) apiLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.resetLoginThrottle(req.Username)
-	token, err := s.getDB().CreateAPIToken(user.ID, "login", "")
+	token, err := s.createAPIToken(user.ID, "login", "")
 	if err != nil {
 		s.apiErr(w, r, http.StatusInternalServerError, "api.create_token_failed", "")
 		return
@@ -97,8 +97,8 @@ func (s *Server) apiLogout(w http.ResponseWriter, r *http.Request) {
 	}
 	token := extractToken(r)
 	if token != "" {
-		if info, err := s.getDB().GetToken(token); err == nil && info != nil {
-			s.getDB().DeleteTokenByHash(db.TokenHash(token))
+		if info, err := s.getToken(token); err == nil && info != nil {
+			s.deleteTokenByHash(db.TokenHash(token))
 		}
 	}
 	// Clear the HttpOnly session cookie for the web console.
@@ -121,12 +121,12 @@ func (s *Server) apiUserInfo(w http.ResponseWriter, r *http.Request) {
 		s.apiErr(w, r, http.StatusUnauthorized, "api.no_token", "")
 		return
 	}
-	info, err := s.getDB().GetToken(token)
+	info, err := s.getToken(token)
 	if err != nil || info == nil {
 		s.apiErr(w, r, http.StatusUnauthorized, "api.invalid_token", "")
 		return
 	}
-	user, err := s.getDB().GetUserByUsername(info.Username)
+	user, err := s.getUserByUsername(info.Username)
 	if err != nil || user == nil {
 		s.apiErr(w, r, http.StatusUnauthorized, "api.user_not_found", "")
 		return
@@ -216,7 +216,7 @@ func (s *Server) apiUsers(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		hash := db.HashPassword(req.Password, salt)
-		if err := s.getDB().CreateUser(req.Username, hash, salt, role); err != nil {
+		if err := s.createUser(req.Username, hash, salt, role); err != nil {
 			s.apiErr(w, r, http.StatusInternalServerError, "api.internal_error", err.Error())
 			return
 		}
@@ -237,7 +237,7 @@ func (s *Server) apiUserByID(w http.ResponseWriter, r *http.Request, idStr strin
 		s.apiErr(w, r, http.StatusBadRequest, "api.invalid_user_id", "")
 		return
 	}
-	if err := s.getDB().DeleteUser(id); err != nil {
+	if err := s.deleteUser(id); err != nil {
 		s.apiErr(w, r, http.StatusInternalServerError, "api.internal_error", err.Error())
 		return
 	}
@@ -272,7 +272,7 @@ func (s *Server) apiUserOperatorCert(w http.ResponseWriter, r *http.Request, idS
 			s.apiErr(w, r, http.StatusBadRequest, "api.operator_cert_invalid", err.Error())
 			return
 		}
-		if err := s.getDB().UpdateUserOperatorCert(id, req.CertPEM); err != nil {
+		if err := s.updateUserOperatorCert(id, req.CertPEM); err != nil {
 			s.apiErr(w, r, http.StatusInternalServerError, "api.internal_error", err.Error())
 			return
 		}
@@ -285,7 +285,7 @@ func (s *Server) apiUserOperatorCert(w http.ResponseWriter, r *http.Request, idS
 			"operator_cert_bind", string(detail))
 		apiOK(w, map[string]any{"status": "bound", "scope": scopes})
 	case http.MethodDelete:
-		if err := s.getDB().UpdateUserOperatorCert(id, ""); err != nil {
+		if err := s.updateUserOperatorCert(id, ""); err != nil {
 			s.apiErr(w, r, http.StatusInternalServerError, "api.internal_error", err.Error())
 			return
 		}
@@ -330,7 +330,7 @@ func (s *Server) apiTokens(w http.ResponseWriter, r *http.Request) {
 			s.apiErr(w, r, http.StatusBadRequest, "api.user_id_required", "")
 			return
 		}
-		token, err := s.getDB().CreateAPIToken(req.UserID, req.Description, "")
+		token, err := s.createAPIToken(req.UserID, req.Description, "")
 		if err != nil {
 			s.apiErr(w, r, http.StatusInternalServerError, "api.internal_error", err.Error())
 			return
@@ -352,7 +352,7 @@ func (s *Server) apiTokenByID(w http.ResponseWriter, r *http.Request, idStr stri
 		s.apiErr(w, r, http.StatusBadRequest, "api.invalid_token_id", "")
 		return
 	}
-	if err := s.getDB().DeleteToken(id); err != nil {
+	if err := s.deleteTokenByID(id); err != nil {
 		s.apiErr(w, r, http.StatusInternalServerError, "api.internal_error", err.Error())
 		return
 	}
