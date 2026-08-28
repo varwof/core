@@ -1,6 +1,6 @@
 openapi: "3.0.3"
 info:
-  title: pki PKI API
+  title: varwof PKI API
   version: "1.0.0"
   description: |
     All-in-One PKI Infrastructure API

@@ -8,12 +8,12 @@
 
 ## 证书颁发机构
 
-### `pki ca init`
+### `varwof ca init`
 
 初始化新的 CA（根 CA 或中间 CA）。
 
 ```bash
-pki ca init \
+varwof ca init \
   --name "My CA" \
   --key-type ecdsa-p256 \
   --validity 3650d \
@@ -37,24 +37,24 @@ pki ca init \
 | `--permitted-dns` | 名称约束：允许的 DNS |
 | `--excluded-dns` | 名称约束：排除的 DNS |
 
-### `pki ca list`
+### `varwof ca list`
 
 列出数据库中的所有 CA。
 
-### `pki ca info`
+### `varwof ca info`
 
 显示 CA 详情。
 
 ```bash
-pki ca info --name "My CA"
+varwof ca info --name "My CA"
 ```
 
-### `pki ca offline-sign`
+### `varwof ca offline-sign`
 
 离线签署子 CA 证书（气隙操作）。
 
 ```bash
-pki ca offline-sign \
+varwof ca offline-sign \
   --ca-cert root/ca.pem \
   --ca-key root/ca.key \
   --csr sub.csr \
@@ -62,12 +62,12 @@ pki ca offline-sign \
   --validity 3650d
 ```
 
-### `pki ca cold-backup`
+### `varwof ca cold-backup`
 
 创建 CA 密钥的加密冷备份。
 
 ```bash
-pki ca cold-backup create \
+varwof ca cold-backup create \
   --ca-name "Root CA" \
   --ca-cert root/ca.pem \
   --ca-key root/ca.key \
@@ -77,12 +77,12 @@ pki ca cold-backup create \
 
 ## 证书生命周期
 
-### `pki issue`
+### `varwof issue`
 
 签发证书（从 CSR 或自动生成密钥）。
 
 ```bash
-pki issue \
+varwof issue \
   --ca "Issuing CA" \
   --cn server.example.com \
   --san DNS:server.example.com \
@@ -114,12 +114,12 @@ SAN 格式示例：
 --san DNS:example.com,DNS:www.example.com,IP:10.0.0.1,email:user@example.com
 ```
 
-### `pki renew`
+### `varwof renew`
 
 续期证书。
 
 ```bash
-pki renew --serial <serial> --ca "Issuing CA" --validity 365d
+varwof renew --serial <serial> --ca "Issuing CA" --validity 365d
 ```
 
 | 标志 | 描述 |
@@ -131,41 +131,41 @@ pki renew --serial <serial> --ca "Issuing CA" --validity 365d
 | `--keep-key` | 重用现有私钥 |
 | `--key-type` | 新的密钥类型 |
 
-### `pki revoke`
+### `varwof revoke`
 
 吊销证书。
 
 ```bash
-pki revoke --serial <serial> --ca "Issuing CA" --reason key-compromise
+varwof revoke --serial <serial> --ca "Issuing CA" --reason key-compromise
 ```
 
 吊销原因：`unspecified`、`key-compromise`、`ca-compromise`、`affiliation-changed`、`superseded`、`cessation-of-operation`、`certificate-hold`、`remove-from-crl`、`privilege-withdrawn`、`aa-compromise`。
 
-### `pki list`
+### `varwof list`
 
 列出证书。
 
 ```bash
-pki list --ca "Issuing CA" --status valid --format table
-pki list --cn server --format json --limit 10
+varwof list --ca "Issuing CA" --status valid --format table
+varwof list --cn server --format json --limit 10
 ```
 
-### `pki view`
+### `varwof view`
 
 查看证书详情。
 
 ```bash
-pki view --serial <serial> --ca "Issuing CA"
+varwof view --serial <serial> --ca "Issuing CA"
 ```
 
 ## 批量操作
 
-### `pki batch`
+### `varwof batch`
 
 从 CSV 批量签发证书。
 
 ```bash
-pki batch --ca "Issuing CA" --csv hosts.csv --out-dir certs/
+varwof batch --ca "Issuing CA" --csv hosts.csv --out-dir certs/
 ```
 
 CSV 格式：
@@ -177,91 +177,91 @@ server2.example.com,DNS:server2.example.com,tls-server
 
 ## PKCS#7 签名
 
-### `pki sign`
+### `varwof sign`
 
 使用 PKCS#7 签署文件。
 
 ```bash
 # Detached signature
-pki sign --ca "CodeSign CA" --cert signer.pem --key signer.key \
+varwof sign --ca "CodeSign CA" --cert signer.pem --key signer.key \
   --in document.pdf --sig document.pdf.p7s
 
 # Embedded signature
-pki sign --ca "CodeSign CA" --cert signer.pem --key signer.key \
+varwof sign --ca "CodeSign CA" --cert signer.pem --key signer.key \
   --in document.pdf --embed --sig document.pdf.p7s
 
 # CAdES-T (timestamped)
-pki sign --ca "CodeSign CA" --cert signer.pem --key signer.key \
+varwof sign --ca "CodeSign CA" --cert signer.pem --key signer.key \
   --in document.pdf --cades --sig document.pdf.p7s
 ```
 
-### `pki verify`
+### `varwof verify`
 
 验证 PKCS#7 签名。
 
 ```bash
-pki verify --sig document.pdf.p7s --in document.pdf
-pki verify --embed document-signed.pdf
+varwof verify --sig document.pdf.p7s --in document.pdf
+varwof verify --embed document-signed.pdf
 ```
 
-### `pki run`
+### `varwof run`
 
 验证二进制文件的分离签名，然后执行。
 
 ```bash
-pki run --run-ca "CodeSign CA" --sig tool.bin.p7s tool.bin
+varwof run --run-ca "CodeSign CA" --sig tool.bin.p7s tool.bin
 ```
 
 ## 导入/导出
 
-### `pki import`
+### `varwof import`
 
 从 OpenSSL 格式或 PKCS#12 导入证书。
 
 ```bash
 # From OpenSSL index.txt
-pki import --ca "My CA" --index index.txt --cert-dir certs/
+varwof import --ca "My CA" --index index.txt --cert-dir certs/
 
 # From PKCS#12
-pki import --ca "My CA" --pfx bundle.p12 --password "secret"
+varwof import --ca "My CA" --pfx bundle.p12 --password "secret"
 ```
 
-### `pki export`
+### `varwof export`
 
 将证书导出为 PKCS#12。
 
 ```bash
-pki export --cert cert.pem --key key.pem --chain ca-chain.pem \
+varwof export --cert cert.pem --key key.pem --chain ca-chain.pem \
   --pfx out.p12 --pfx-password "secret"
 ```
 
 ## 密钥管理
 
-### `pki key encrypt` / `pki key decrypt`
+### `varwof key encrypt` / `varwof key decrypt`
 
 加密/解密私钥。
 
 ```bash
-pki key encrypt --in plain.key --out encrypted.key --password "secret"
-pki key decrypt --in encrypted.key --out plain.key --password "secret"
+varwof key encrypt --in plain.key --out encrypted.key --password "secret"
+varwof key decrypt --in encrypted.key --out plain.key --password "secret"
 ```
 
-### `pki recover`
+### `varwof recover`
 
 恢复托管的私钥。
 
 ```bash
-pki recover --serial <serial> --ca "My CA" --admin-key admin.key --out recovered.key
+varwof recover --serial <serial> --ca "My CA" --admin-key admin.key --out recovered.key
 ```
 
 ## 服务器
 
-### `pki serve`
+### `varwof serve`
 
 启动所有 PKI 服务（TSA + OCSP + Web + API）。
 
 ```bash
-pki serve --config pki.json
+varwof serve --config pki.json
 ```
 
 | 标志 | 描述 |
@@ -271,152 +271,152 @@ pki serve --config pki.json
 | `--install` | 安装为 Windows 服务 |
 | `--uninstall` | 卸载 Windows 服务 |
 
-### `pki serve tsa`
+### `varwof serve tsa`
 
 仅启动 TSA（独立运行）。
 
-### `pki serve ocsp`
+### `varwof serve ocsp`
 
 仅启动 OCSP 响应器（独立运行）。
 
-### `pki serve crl`
+### `varwof serve crl`
 
 启动 CRL 生成 + 分发。
 
-### `pki serve api`
+### `varwof serve api`
 
 仅启动 REST API + Web UI。
 
-### `pki serve dns`
+### `varwof serve dns`
 
 启动 DNS 服务器（ACME DNS-01 + CERT + SRV 记录）。
 
 ## 用户与 RBAC 管理
 
-### `pki user add`
+### `varwof user add`
 
 ```bash
-pki user add --username admin --password secret --role admin
-pki user add --username operator1 --password secret --role operator
+varwof user add --username admin --password secret --role admin
+varwof user add --username operator1 --password secret --role operator
 ```
 
 角色：`admin`、`operator`、`auditor`、`readonly`
 
-### `pki user bind-operator-cert`
+### `varwof user bind-operator-cert`
 
 将操作员证书绑定到用户（用于基于 mTLS 的 CA 作用域）。
 
 ```bash
-pki user bind-operator-cert --username operator1 --cert operator.pem
+varwof user bind-operator-cert --username operator1 --cert operator.pem
 ```
 
-### `pki token create`
+### `varwof token create`
 
 ```bash
-pki token create --username admin --description "CI token" --expires 720h
+varwof token create --username admin --description "CI token" --expires 720h
 ```
 
 ## 信任联邦
 
-### `pki trust bridge issue`
+### `varwof trust bridge issue`
 
 交叉签署 CA 以建立信任桥。
 
-### `pki trust bridge list`
+### `varwof trust bridge list`
 
 列出已有的信任桥。
 
-### `pki trust import`
+### `varwof trust import`
 
 导入信任锚点。
 
 ## 注册机构
 
-### `pki ra submit`
+### `varwof ra submit`
 
 提交 CSR 以供审批。
 
 ```bash
-pki ra submit --cn server.example.com --san DNS:server.example.com --profile tls-server
+varwof ra submit --cn server.example.com --san DNS:server.example.com --profile tls-server
 ```
 
-### `pki ra approve` / `pki ra reject`
+### `varwof ra approve` / `varwof ra reject`
 
 批准或拒绝待处理的请求。
 
 ```bash
-pki ra approve --id <request-id>
-pki ra reject --id <request-id> --reason "insufficient documentation"
+varwof ra approve --id <request-id>
+varwof ra reject --id <request-id> --reason "insufficient documentation"
 ```
 
 ## 实用工具
 
-### `pki version`
+### `varwof version`
 
 打印版本和构建信息。
 
-### `pki init-full`
+### `varwof init-full`
 
 创建完整的 PKI 层级（根 CA + 8 个子 CA）。
 
 ```bash
-pki init-full \
+varwof init-full \
   --root-name "TestCorp Root CA" \
   --org "TestCorp" \
   --country CN \
   --base-dir /opt/pki
 ```
 
-### `pki init-config`
+### `varwof init-config`
 
 将示例配置打印到标准输出。
 
-### `pki db init`
+### `varwof db init`
 
 初始化数据库（创建 + 迁移到最新 schema）。
 
-### `pki db migrate`
+### `varwof db migrate`
 
 将 schema 迁移到目标版本。
 
 ```bash
-pki db migrate --to 2 --dry-run
+varwof db migrate --to 2 --dry-run
 ```
 
-### `pki db backup`
+### `varwof db backup`
 
 备份数据库。
 
 ```bash
-pki db backup --out backup.db
+varwof db backup --out backup.db
 ```
 
-### `pki benchmark`
+### `varwof benchmark`
 
 基准测试哈希和签名算法性能。
 
-### `pki report`
+### `varwof report`
 
 生成合规报告 PDF。
 
 ```bash
-pki report --type soc2 --out report.pdf
+varwof report --type soc2 --out report.pdf
 ```
 
-### `pki cpcps`
+### `varwof cpcps`
 
 生成 CP/CPS 合规文档（RFC 3647）。
 
 ```bash
-pki cpcps --out-dir docs/ --separate-cp
+varwof cpcps --out-dir docs/ --separate-cp
 ```
 
-### `pki completion`
+### `varwof completion`
 
 生成 shell 补全。
 
 ```bash
-pki completion bash > /etc/bash_completion.d/pki
-pki completion zsh > ~/.zfunc/_pki
-pki completion fish > ~/.config/fish/completions/pki.fish
+varwof completion bash > /etc/bash_completion.d/pki
+varwof completion zsh > ~/.zfunc/_pki
+varwof completion fish > ~/.config/fish/completions/pki.fish
 ```

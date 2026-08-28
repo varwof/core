@@ -16,7 +16,7 @@
 
 ```bash
 # 1. Install the binary
-cp pki /usr/local/bin/pki
+cp varwof /usr/local/bin/varwof
 cp deploy/init.sh /usr/local/bin/pki-init
 cp deploy/pki-backup.sh /usr/local/bin/pki-backup
 
@@ -53,7 +53,7 @@ On first startup, an empty database is created and all migrations are applied.
 One command to create the complete PKI hierarchy:
 
 ```bash
-pki init-full \
+varwof init-full \
   --root-name "TestCorp Root CA" \
   --org "TestCorp" \
   --country CN \
@@ -115,7 +115,7 @@ GRANT ALL ON pkidb.* TO 'pki'@'localhost';
 |---------|--------|------------|---------------|
 | Deployment | Zero config | Requires PG server | Requires MySQL server |
 | Concurrent writes | Single writer | Multi-writer | Multi-writer |
-| Online backup | `pki db backup` | pg_dump | mysqldump |
+| Online backup | `varwof db backup` | pg_dump | mysqldump |
 | Distributed lock | noop | advisory lock | GET_LOCK |
 | Recommended | Single node/dev | Production/multi-node | Production/MySQL ecosystem |
 | Driver | modernc.org/sqlite (pure Go) | pgx/v5 (pure Go) | go-sql-driver/mysql (pure Go) |
@@ -124,16 +124,16 @@ GRANT ALL ON pkidb.* TO 'pki'@'localhost';
 
 ```bash
 # SQLite (default)
-pki db init
+varwof db init
 
 # PostgreSQL
-pki db init --dsn "postgres://user:pass@host:5432/pki?sslmode=disable"
+varwof db init --dsn "postgres://user:pass@host:5432/pki?sslmode=disable"
 
 # MySQL
-pki db init --dsn "mysql://user:pass@host:3306/pki?charset=utf8mb4&parseTime=true"
+varwof db init --dsn "mysql://user:pass@host:3306/pki?charset=utf8mb4&parseTime=true"
 ```
 
-`pki db init` is idempotent.
+`varwof db init` is idempotent.
 
 ---
 
@@ -235,7 +235,7 @@ systemctl enable --now pki-backup.timer
 ### Manual Backup
 
 ```bash
-pki db backup --output /backup/pki-$(date +%Y%m%d).db
+varwof db backup --output /backup/pki-$(date +%Y%m%d).db
 ```
 
 ### Restoring a Backup
@@ -280,7 +280,7 @@ SQLite is not encrypted at rest. Sensitive data (private keys) is stored encrypt
 ### Key Security
 
 - Keep root CA key offline (air-gapped)
-- Use `pki ca cold-backup` for encrypted backups
+- Use `varwof ca cold-backup` for encrypted backups
 - Enable `key_escrow` for admin key recovery
 - Rotate CA master keys before expiry via `POST /ca/{name}/rotate`
 

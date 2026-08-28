@@ -343,9 +343,9 @@ curl "http://localhost:8443/api/v1/dns-query?name=example.com&type=TXT"
 
 | 服务 | 端口 | 描述 |
 |------|------|------|
-| `pki serve` | `:8443` | Web UI + REST API + TSA + OCSP + CRL + DoH |
-| `pki serve dns` | `:53` | DNS UDP（ACME DNS-01） |
-| `pki serve dns` (DoT) | `:853` | DNS over TLS |
+| `varwof serve` | `:8443` | Web UI + REST API + TSA + OCSP + CRL + DoH |
+| `varwof serve dns` | `:53` | DNS UDP（ACME DNS-01） |
+| `varwof serve dns` (DoT) | `:853` | DNS over TLS |
 
 ---
 

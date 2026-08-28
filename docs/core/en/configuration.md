@@ -10,7 +10,7 @@ Default locations (searched in order):
 
 Generate a sample:
 ```bash
-pki init-config > pki.json
+varwof init-config > pki.json
 ```
 
 ---

@@ -16,7 +16,7 @@
 
 ```bash
 # 1. 安装二进制文件
-cp pki /usr/local/bin/pki
+cp varwof /usr/local/bin/varwof
 cp deploy/init.sh /usr/local/bin/pki-init
 cp deploy/pki-backup.sh /usr/local/bin/pki-backup
 
@@ -53,7 +53,7 @@ docker compose up -d
 一条命令创建完整的 PKI 层级：
 
 ```bash
-pki init-full \
+varwof init-full \
   --root-name "TestCorp Root CA" \
   --org "TestCorp" \
   --country CN \
@@ -115,7 +115,7 @@ GRANT ALL ON pkidb.* TO 'pki'@'localhost';
 |------|--------|------------|---------------|
 | 部署 | 零配置 | 需要 PG 服务器 | 需要 MySQL 服务器 |
 | 并发写入 | 单写入者 | 多写入者 | 多写入者 |
-| 在线备份 | `pki db backup` | pg_dump | mysqldump |
+| 在线备份 | `varwof db backup` | pg_dump | mysqldump |
 | 分布式锁 | noop | 咨询锁 | GET_LOCK |
 | 推荐 | 单节点/开发 | 生产/多节点 | 生产/MySQL 生态系统 |
 | 驱动 | modernc.org/sqlite（纯 Go） | pgx/v5（纯 Go） | go-sql-driver/mysql（纯 Go） |
@@ -124,16 +124,16 @@ GRANT ALL ON pkidb.* TO 'pki'@'localhost';
 
 ```bash
 # SQLite（默认）
-pki db init
+varwof db init
 
 # PostgreSQL
-pki db init --dsn "postgres://user:pass@host:5432/pki?sslmode=disable"
+varwof db init --dsn "postgres://user:pass@host:5432/pki?sslmode=disable"
 
 # MySQL
-pki db init --dsn "mysql://user:pass@host:3306/pki?charset=utf8mb4&parseTime=true"
+varwof db init --dsn "mysql://user:pass@host:3306/pki?charset=utf8mb4&parseTime=true"
 ```
 
-`pki db init` 是幂等的。
+`varwof db init` 是幂等的。
 
 ---
 
@@ -235,7 +235,7 @@ systemctl enable --now pki-backup.timer
 ### 手动备份
 
 ```bash
-pki db backup --output /backup/pki-$(date +%Y%m%d).db
+varwof db backup --output /backup/pki-$(date +%Y%m%d).db
 ```
 
 ### 恢复备份
@@ -280,7 +280,7 @@ SQLite 不对静态数据加密。敏感数据（私钥）使用 PBKDF2+AES-256-
 ### 密钥安全
 
 - 保持根 CA 密钥离线（气隙）
-- 使用 `pki ca cold-backup` 进行加密备份
+- 使用 `varwof ca cold-backup` 进行加密备份
 - 启用 `key_escrow` 用于管理员密钥恢复
 - 通过 `POST /ca/{name}/rotate` 在到期前轮换 CA 主密钥
 

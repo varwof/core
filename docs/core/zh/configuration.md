@@ -10,7 +10,7 @@
 
 生成示例：
 ```bash
-pki init-config > pki.json
+varwof init-config > pki.json
 ```
 
 ---
