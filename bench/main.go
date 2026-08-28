@@ -3,7 +3,7 @@
 
 // Command bench runs an embedded varwof-core load test.
 //
-// It starts a full pki-core server in-process against a SQLite database,
+// It starts a full core server in-process against a SQLite database,
 // signs admin/user certificates under a Root→People CA hierarchy, and hammers
 // the real /api/v1/certs endpoint with either regular (tls-client) or AIC
 // (agent-proxy) issuance.

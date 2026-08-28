@@ -1,57 +1,63 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════
-# varwof-core 负载测试重现脚本
+# varwof-core load-test reproduction script
 #
-# 一键重现 docs/bench/benchmark-report-2026-08-27.md ⑤⑥⑦ 节的全部
-# 负载测试，输出可对照的关键指标，保证结论可复现、可审计。
+# Reproduces every load test from §1–§3 of the benchmark report
+# (docs/bench/en/benchmark-report-2026-08-27.md) in one command and
+# emits the comparable key metrics, keeping the conclusions
+# reproducible and auditable.
 #
-# 用法:
-#   ./run-load-tests.sh                 # 跑全部 5 个测试
-#   ./run-load-tests.sh --only t1       # 只跑指定测试 (t1|t2|t3|t4|t5)
+# Usage:
+#   ./run-load-tests.sh                 # run all 5 tests
+#   ./run-load-tests.sh --only t1       # run one test (t1|t2|t3|t4|t5)
 #   MYSQL_URL=mysql://bench:bench@127.0.0.1:3306/bench_mysql ./run-load-tests.sh
 #
-# 环境变量:
-#   MYSQL_URL   被测 MySQL DSN（默认本机 bench 库）
-#   MYSQL_ADMIN 建库命令前缀（默认 "sudo mysql"，需要 root 权限 DROP/CREATE 库）
-#   NO_BUILD    非空则跳过 bench 二进制重新编译（用现有 bin/bench-load）
-#   RUN_TIMEOUT 单个测试 wall-clock 上限（秒，默认 0 = 按测试内置上限）
+# Environment variables:
+#   MYSQL_URL   MySQL DSN under test (default: local bench DB)
+#   MYSQL_ADMIN command prefix for creating the DB (default "sudo mysql",
+#               needs root DROP/CREATE privileges)
+#   NO_BUILD    non-empty = skip recompiling the bench binary (use existing bin/bench-load)
+#   RUN_TIMEOUT per-test wall-clock cap in seconds (default 0 = built-in caps)
 #
-# 输出:
-#   results/<时间戳>/<测试名>.log   完整 bench 报告
-#   results/<时间戳>/SUMMARY.md     汇总表 + 判读结论
+# Output:
+#   results/<timestamp>/<test>.log    full bench report
+#   results/<timestamp>/SUMMARY.md    summary table + interpretation
 # ═══════════════════════════════════════════════════════════════
 set -euo pipefail
 cd "$(dirname "$0")"
 ROOT=$(pwd)
 
-# ─── 可调配置 ───
+# ─── Tunable config ───
 MYSQL_URL="${MYSQL_URL:-mysql://bench:bench@127.0.0.1:3306/bench_mysql}"
 MYSQL_ADMIN="${MYSQL_ADMIN:-sudo mysql}"
 BENCH_BIN="$ROOT/bin/bench-load"
 RESULTS="$ROOT/results/$(date +%Y%m%d-%H%M%S)"
-# ─── 参数解析 ───
-# 支持 --only tN 与 ONLY=tN 环境变量两种方式
+# ─── Arg parsing ───
+# Supports both `--only tN` and the ONLY=tN environment variable
 ONLY="${ONLY:-all}"
 if [ "${1:-}" = "--only" ]; then
   ONLY="${2:-all}"
 fi
 mkdir -p "$RESULTS"
 
-# ─── 工具函数 ───
+# ─── Helpers ───
 
-# 重建被测 MySQL 库：每个测试独立库，保证干净起点（行数/内存/索引状态）
-# 全部测试可重复跑，互不污染。
+# Rebuild the MySQL DB under test: each test gets a clean DB so the starting
+# state (row counts / memory / index state) is reproducible. Tests are fully
+# repeatable and never pollute each other.
 rebuild_db() {
   $MYSQL_ADMIN -e "DROP DATABASE IF EXISTS bench_mysql" 2>/dev/null || true
   $MYSQL_ADMIN -e "CREATE DATABASE bench_mysql"
-  # 应用账号 grant：'bench'@'%'（1133 类报错可忽略，见历史记录）
+  # Apply the 'bench'@'%' account grant (1133-class errors are ignorable, see history)
   $MYSQL_ADMIN -e "GRANT ALL ON bench_mysql.* TO 'bench'@'%'" 2>/dev/null || true
 }
 
-# 后台运行 bench 并采样 RSS 峰值。参数: <输出文件> <wall-timeout(秒)> <bench 参数...>
-# 注意不用 `timeout` 包裹（timeout 会 fork 子进程，$! 拿到的是 timeout 而非
-# bench，RSS 采样会采错进程），改为内置 watchdog：超过 wall 秒直接 kill bench，
-# 写入 .timeout 标记并继续后续测试。峰值 RSS 通过 stdout 返回（诊断输出走 stderr）。
+# Run bench in the background and sample the peak RSS. Args: <out-file> <wall-timeout(s)> <bench args...>
+# Deliberately NOT wrapped in `timeout` (timeout forks a child, $! would be the
+# timeout PID, not bench, so RSS sampling would hit the wrong process). Instead
+# a built-in watchdog: past the wall seconds, kill bench directly, write a
+# .timeout marker, and continue with the remaining tests. The peak RSS is
+# returned on stdout (diagnostics go to stderr).
 run_bench() {
   local out="$1" wall="$2"; shift 2
   local peak=0 pid start now rss
@@ -65,19 +71,20 @@ run_bench() {
     if [ $((now - start)) -gt "$wall" ]; then
       kill -9 "$pid" 2>/dev/null
       touch "$out.timeout"
-      echo "  ⚠ bench 超过 ${wall}s 被终止 (测试窗口+排空未完成)" >&2
+      echo "  ⚠ bench killed after ${wall}s (test window + drain not finished)" >&2
       break
     fi
     sleep 1
   done
   wait "$pid" 2>/dev/null || true
-  echo "$peak"   # 返回峰值 RSS (kB)
+  echo "$peak"   # returns peak RSS (kB)
 }
 
-# 从 bench 完整报告中提取关键指标，写入 $RESULTS/<name>.metrics（每行一个，
-# 缺省填 0）。报告格式见 bench 的 Benchmark Report 输出；某些测试可能没有
-# HTTP 503 行（无背压时），故每个提取项都做缺省兜底，避免 set -e 在无匹配
-# （含 set -o pipefail 使管道非零）时中断。
+# Extract the key metrics from a full bench report into $RESULTS/<name>.metrics
+# (one per line, missing values default to 0). Report format: see the bench
+# Benchmark Report output; some tests may have no HTTP 503 line (no
+# backpressure), so every extracted item has a default fallback to keep
+# set -e from aborting on a non-zero pipeline (incl. set -o pipefail).
 parse_report() {
   local name="$1" f="$RESULTS/$name.log"
   local reqs success h0 h503 latline p50 p95 p99 max err
@@ -92,8 +99,9 @@ parse_report() {
     "$reqs" "$success" "$h0" "$h503" "${p50:-0}" "${p95:-0}" "${p99:-0}" "${max:-0}" "$err" > "$RESULTS/$name.metrics"
 }
 
-# 打印单行摘要（从 .metrics 读取，格式与 SUMMARY.md 表头对应）
-# 注意：read 只读第一行，多行指标必须用 mapfile 逐行读取。
+# Print a one-line summary row (read from .metrics; format matches the
+# SUMMARY.md header).
+# Note: `read` only reads the first line; multi-line metrics must be read line by line with mapfile.
 summary_row() {
   local name="$1" metrics="$2"
   local -a lines
@@ -105,36 +113,38 @@ summary_row() {
     "${p50:-0}" "${p99:-0}" "${lines[5]:-0%}"
 }
 
-# ─── 前置检查与编译 ───
+# ─── Preflight and build ───
 echo "═══════════════════════════════════════════════════════════════"
-echo "  varwof-core 负载测试重现脚本"
-echo "  输出目录: $RESULTS"
+echo "  varwof-core load-test reproduction script"
+echo "  output dir: $RESULTS"
 echo "═══════════════════════════════════════════════════════════════"
 
-# 1. MySQL 连通性（前提，避免跑一半才发现库不可用）
+# 1. MySQL connectivity (prerequisite — avoid finding out mid-run that the DB is unusable)
 echo -n "[check] MySQL $MYSQL_URL ... "
-$MYSQL_ADMIN -e "SELECT 1" >/dev/null 2>&1 && echo "OK" || { echo "FAIL (需能无密码 root 执行 mysql 或设 MYSQL_ADMIN)"; exit 1; }
+$MYSQL_ADMIN -e "SELECT 1" >/dev/null 2>&1 && echo "OK" || { echo "FAIL (need passwordless root mysql, or set MYSQL_ADMIN)"; exit 1; }
 
-# 2. 编译 bench（若未禁用）
+# 2. Build bench (unless disabled)
 if [ -n "${NO_BUILD:-}" ] && [ -x "$BENCH_BIN" ]; then
-  echo "[skip] 使用现有 $BENCH_BIN"
+  echo "[skip] using existing $BENCH_BIN"
 else
   echo "[build] go build -o $BENCH_BIN ."
   (cd "$ROOT" && go build -o "$BENCH_BIN" .)
 fi
 
-# ─── 测试清单 ───
-# 每个测试独立函数，含：目的注释 / bench 参数 / 预期与判读标准 / 输出
-# 测试结果全部写入 $RESULTS，末尾统一汇总。
+# ─── Test list ───
+# Each test is its own function: purpose comment / bench args / expected +
+# acceptance criteria / output. All results land in $RESULTS, summarized at the end.
 
-# ── T1: 普通证书 (regular) 无背压真实吞吐上限 ──
-# 目的: 量普通证书在"无 503 背压"下的真实持续吞吐 (CPU 上限)。
-#   此前 200k maxpending 下 52% 是 503 限流, 掩盖真实能力;
-#   调大 maxpending 到 1e6 (测试窗口内不触发) 后量到的才是 CPU 墙。
-# 预期: ~1.1 万 certs/s, 503 = 0, 与注入提高到 5000 agents 时吞吐不变。
-# 判读: 若接近 1 万/s 且 503 归零 → 满足; 若明显偏低 → CPU 或锁瓶颈。
+# ── T1: regular-cert no-backpressure real throughput ceiling ──
+# Purpose: measure the real sustained throughput of regular certs with "no 503
+#   backpressure" (CPU ceiling). Previously 52% of requests under the 200k
+#   maxpending were 503 throttling, hiding the real capability; only after
+#   raising maxpending to 1e6 (not triggered within the test window) is the
+#   true CPU wall measured.
+# Expected: ~11k certs/s, 503 = 0; throughput unchanged when injection raised to 5000 agents.
+# Interpret: close to 10k/s with zero 503s → satisfied; significantly lower → CPU or lock bottleneck.
 run_t1() {
-  local name=t1-regular-nobp label="T1 普通证书无背压吞吐 (CPU上限)"
+  local name=t1-regular-nobp label="T1 regular no-backpressure throughput (CPU ceiling)"
   echo "▶ $label"
   rebuild_db
   local peak
@@ -146,14 +156,15 @@ run_t1() {
   echo "  -> $name: $(summary_row "$name" "$RESULTS/$name.metrics")"
 }
 
-# ── T2: AIC 无背压真实吞吐上限 ──
-# 目的: 量 AIC (agent-proxy) 无背压下的真实持续吞吐 (CPU 上限)。
-#   与 T1 对比即可量化 AIC 相对 regular 的额外服务端成本 (DA 验签 + 每请求
-#   2 条 DB 写)。此前 200k maxpending 下 ~4.1k/s 是背压假象。
-# 预期: ~5.7-6.1k certs/s, 503 = 0; 提高到 5000 agents 吞吐不变 (CPU 墙)。
-# 判读: AIC 上限 ≈ 6k/s → 企业需求 833/s 有 ~7 倍余量。
+# ── T2: AIC no-backpressure real throughput ceiling ──
+# Purpose: measure the real sustained AIC (agent-proxy) throughput without
+#   backpressure (CPU ceiling). Comparing with T1 quantifies AIC's extra server
+#   cost vs regular (DA verification + 2 DB writes per request). The earlier
+#   ~4.1k/s under 200k maxpending was a backpressure artifact.
+# Expected: ~5.7-6.1k certs/s, 503 = 0; unchanged at 5000 agents (CPU wall).
+# Interpret: AIC ceiling ≈ 6k/s → ~7× headroom over the 833/s enterprise demand.
 run_t2() {
-  local name=t2-aic-nobp label="T2 AIC 无背压吞吐 (CPU上限)"
+  local name=t2-aic-nobp label="T2 AIC no-backpressure throughput (CPU ceiling)"
   echo "▶ $label"
   rebuild_db
   local peak
@@ -165,14 +176,14 @@ run_t2() {
   echo "  -> $name: $(summary_row "$name" "$RESULTS/$name.metrics")"
 }
 
-# ── T3: 企业稳态 (5万人 × 10 agents, 每 10 分钟一次) ──
-# 目的: 验证真实企业需求强度下的长期稳定性。
-#   5 万人 × 10 agents = 50 万 agents, 每 10 分钟申请一次 AIC
-#   = 平均注入 833/s。用 5000 agents × 6s interval 精确模拟该强度。
-# 预期: 错误率 ~0, p99 个位数 ms, 无 503, 内存稳定。
-# 判读: 若 833/s 下 p99 < 100ms 且错误 < 1% → 稳态余量 ≥ 7 倍。
+# ── T3: enterprise steady state (50k people × 10 agents, once per 10 min) ──
+# Purpose: verify long-term stability at the real enterprise demand.
+#   50k people × 10 agents = 500k agents, one AIC every 10 min = average injection
+#   833/s. Simulated exactly with 5000 agents at a 6s interval.
+# Expected: error ~0, p99 single-digit ms, no 503, stable memory.
+# Interpret: at 833/s, p99 < 100ms and error < 1% → ≥ 7× steady-state headroom.
 run_t3() {
-  local name=t3-enterprise-steady label="T3 企业稳态 833/s"
+  local name=t3-enterprise-steady label="T3 enterprise steady state 833/s"
   echo "▶ $label"
   rebuild_db
   local peak
@@ -184,14 +195,16 @@ run_t3() {
   echo "  -> $name: $(summary_row "$name" "$RESULTS/$name.metrics")"
 }
 
-# ── T4: 上班瞬间 burst (最坏 50 万同时突发) ──
-# 目的: 测最坏情况 —— 50 万 agents 上班瞬间同时申请 AIC。
-#   stress 模式 = 所有 agent 全速无间隔, 直接打满服务器; 用 3000 agents 测
-#   CPU 墙吞吐, 外推 50 万突发排空时间 = 50万 ÷ 实测吞吐。
-# 预期: ~6.1k certs/s (CPU 墙), 503 = 0, RSS 峰值 ~1.6GB。
-# 判读: 排空时间 = 500000/吞吐 ≈ 82s; 期间延迟升高但不丢请求、不 503。
+# ── T4: wake-up-moment burst (worst case 500k at once) ──
+# Purpose: measure the worst case — 500k agents all requesting an AIC at the
+#   same instant. stress mode = all agents at full speed, no interval, pummels
+#   the server; 3000 agents measure the CPU-wall throughput, from which the
+#   500k burst drain time is extrapolated = 500k ÷ measured throughput.
+# Expected: ~6.1k certs/s (CPU wall), 503 = 0, RSS peak ~1.6GB.
+# Interpret: drain time = 500000/throughput ≈ 82s; latency rises but no dropped
+#   requests, no 503.
 run_t4() {
-  local name=t4-burst-3000 label="T4 burst 3000并发"
+  local name=t4-burst-3000 label="T4 burst 3000 concurrency"
   echo "▶ $label"
   rebuild_db
   local peak
@@ -203,13 +216,16 @@ run_t4() {
   echo "  -> $name: $(summary_row "$name" "$RESULTS/$name.metrics")"
 }
 
-# ── T5: burst 高并发对照 ──
-# 目的: 验证 burst 吞吐是 CPU 墙、与并发数无关 (3000 vs 5000 agents)。
-#   T4 3000 并发 6.1k/s vs T5 5000 并发应同样 ~6.1k/s → 证明排空时间与
-#   并发无关, 恒定 ≈ 82s; 并发越高仅 (a) 排队延迟升 (b) RSS 峰值升。
-# 判读: 两测试吞吐差 < 5% → CPU 墙成立; RSS 5000 > 3000 → 缓冲积压内存线性。
+# ── T5: burst high-concurrency control ──
+# Purpose: verify burst throughput is a CPU wall, independent of concurrency
+#   (3000 vs 5000 agents). T4 at 3000 → 6.1k/s vs T5 at 5000 should be the
+#   same ~6.1k/s, proving the drain time is constant at ≈82s regardless of
+#   concurrency; higher concurrency only (a) raises queuing latency and
+#   (b) raises the RSS peak.
+# Interpret: the two tests within 5% → CPU wall holds; RSS 5000 > 3000 →
+#   buffered-backlog memory is linear.
 run_t5() {
-  local name=t5-burst-5000 label="T5 burst 5000并发"
+  local name=t5-burst-5000 label="T5 burst 5000 concurrency"
   echo "▶ $label"
   rebuild_db
   local peak
@@ -221,7 +237,7 @@ run_t5() {
   echo "  -> $name: $(summary_row "$name" "$RESULTS/$name.metrics")"
 }
 
-# ─── 执行 ───
+# ─── Execution ───
 run_all() {
   run_t1; run_t2; run_t3; run_t4; run_t5
 }
@@ -233,22 +249,22 @@ case "${ONLY}" in
   t3|T3)    run_t3 ;;
   t4|T4)    run_t4 ;;
   t5|T5)    run_t5 ;;
-  *)        echo "未知测试: $ONLY (可用: all|t1..t5)"; exit 1 ;;
+  *)        echo "unknown test: $ONLY (available: all|t1..t5)"; exit 1 ;;
 esac
 
-# ─── 汇总 ───
+# ─── Summary ───
 cat > "$RESULTS/SUMMARY.md" <<'HDR'
-# 负载测试汇总
+# Load Test Summary
 
-| 测试 | 成功(certs) | req/s | HTTP0 | HTTP503 | p50 | p99 | err% |
-|------|------------|-------|-------|---------|-----|-----|------|
+| Test | Success(certs) | req/s | HTTP0 | HTTP503 | p50 | p99 | err% |
+|------|----------------|-------|-------|---------|-----|-----|------|
 HDR
 for f in "$RESULTS"/t*-*.metrics; do
   [ -e "$f" ] || continue
   name=$(basename "$f" .metrics)
-  # run_bench 把超时标记写为 <log>.timeout，这里按 metrics 路径反推检测
+  # run_bench writes the timeout marker as <log>.timeout; detect it by path
   if [ -e "${f%.metrics}.log.timeout" ]; then
-    echo "  $name (TIMEOUT, 结果缺失)" >> "$RESULTS/SUMMARY.md"
+    echo "  $name (TIMEOUT, results missing)" >> "$RESULTS/SUMMARY.md"
   else
     summary_row "$name" "$f" >> "$RESULTS/SUMMARY.md"
   fi
@@ -256,7 +272,7 @@ done
 
 echo ""
 echo "═══════════════════════════════════════════════════════════════"
-echo "  汇总: $RESULTS/SUMMARY.md"
+echo "  summary: $RESULTS/SUMMARY.md"
 cat "$RESULTS/SUMMARY.md"
 echo "═══════════════════════════════════════════════════════════════"
-echo "  完整报告: $RESULTS/t*.log  | 指标: $RESULTS/t*.metrics"
+echo "  full reports: $RESULTS/t*.log  |  metrics: $RESULTS/t*.metrics"

@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/varwof/core/internal"
@@ -62,6 +63,7 @@ type Env struct {
 	Users      []TestUser
 	caCertPath string
 	caKeyPath  string
+	caDir      string
 	mux        *serve.Server
 }
 
@@ -175,7 +177,20 @@ func (e *Env) insertCAsAndSeedUser() error {
 		return fmt.Errorf("insert people cameta: %w", err)
 	}
 
-	dir := filepath.Join(filepath.Dir(e.DBPath), "cas")
+	// The CA pair must be on disk for cfg.CAs. For file-backed DBs it sits next
+	// to the DB; for remote DSNs (`mysql://…`/`postgres://…`) filepath.Dir would
+	// mangle the DSN into a junk `mysql:/…` directory, so write it to a temp dir.
+	var dir string
+	if strings.Contains(e.DBPath, "://") {
+		td, err := os.MkdirTemp("", "bench-cas-*")
+		if err != nil {
+			return fmt.Errorf("mkdir temp cas dir: %w", err)
+		}
+		e.caDir = td
+		dir = td
+	} else {
+		dir = filepath.Join(filepath.Dir(e.DBPath), "cas")
+	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
@@ -479,6 +494,9 @@ func (e *Env) Close() {
 	}
 	if e.DB != nil {
 		e.DB.Close()
+	}
+	if e.caDir != "" {
+		os.RemoveAll(e.caDir)
 	}
 }
 
