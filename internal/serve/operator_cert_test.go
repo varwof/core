@@ -15,6 +15,7 @@ import (
 	"encoding/asn1"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -301,13 +302,23 @@ func TestAPIUserOperatorCert_BindUnbind(t *testing.T) {
 	}
 	user, _ := srv.getDB().GetUserByUsername("op")
 
+	// user:manage (operator-cert bind/unbind) requires the superadmin
+	// management certificate under the strict default route table.
+	fx := newMTLSSuperAdminFixture(t, h, "user:manage")
+
 	post := func(path string, body []byte) *httptest.ResponseRecorder {
-		req, _ := http.NewRequest(http.MethodPost, path, bytes.NewReader(body))
-		req.SetBasicAuth("superadmin", "superadmin")
+		req, _ := http.NewRequest(http.MethodPost, fx.Server.URL+path, bytes.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
-		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, req)
-		return rec
+		resp, err := fx.Client.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		raw, _ := io.ReadAll(resp.Body)
+		rr := httptest.NewRecorder()
+		rr.Code = resp.StatusCode
+		rr.Body = bytes.NewBuffer(raw)
+		return rr
 	}
 
 	// Bind: valid cert → bound + scope
@@ -338,12 +349,15 @@ func TestAPIUserOperatorCert_BindUnbind(t *testing.T) {
 
 	// Unbind
 	dreq, _ := http.NewRequest(http.MethodDelete,
-		fmt.Sprintf("/api/v1/users/%d/operator-cert", user.ID), nil)
-	dreq.SetBasicAuth("superadmin", "superadmin")
-	drec := httptest.NewRecorder()
-	h.ServeHTTP(drec, dreq)
-	if drec.Code != http.StatusOK {
-		t.Fatalf("unbind: expected 200, got %d", drec.Code)
+		fx.Server.URL+fmt.Sprintf("/api/v1/users/%d/operator-cert", user.ID), nil)
+	dresp, err := fx.Client.Do(dreq)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer dresp.Body.Close()
+	if dresp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(dresp.Body)
+		t.Fatalf("unbind: expected 200, got %d: %s", dresp.StatusCode, string(b))
 	}
 
 	// After unbind, fallback to account ca_scopes (none → nil)

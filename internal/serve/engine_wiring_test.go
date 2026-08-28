@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -859,14 +860,25 @@ func TestEngineRevokeCertsBatchMemoryTruth(t *testing.T) {
 	entries = append(entries, map[string]string{"ca": "test-ca", "serial": "DEADBEEF"})
 	body, _ := json.Marshal(map[string]any{"entries": entries})
 
-	rr := postJSON(t, ts, "/api/v1/certs/revoke-batch", string(body), token)
-	if rr.Code != http.StatusOK {
-		t.Fatalf("batch revoke: %d %s", rr.Code, rr.Body.String())
+	// Batch revocation requires the superadmin management certificate (strict
+	// routes: require_role superadmin/admin); a plain token resolves to the
+	// operator role and is correctly rejected.
+	fx := newMTLSSuperAdminFixture(t, h, "user:revoke-all")
+	rreq, _ := http.NewRequest(http.MethodPost, fx.Server.URL+"/api/v1/certs/revoke-batch", bytes.NewReader(body))
+	rreq.Header.Set("Content-Type", "application/json")
+	rsp, err := fx.Client.Do(rreq)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rsp.Body.Close()
+	if rsp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(rsp.Body)
+		t.Fatalf("batch revoke: %d %s", rsp.StatusCode, string(b))
 	}
 	var resp struct {
 		RevokedCount int `json:"revoked_count"`
 	}
-	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+	if err := json.NewDecoder(rsp.Body).Decode(&resp); err != nil {
 		t.Fatal(err)
 	}
 	if resp.RevokedCount != 3 {

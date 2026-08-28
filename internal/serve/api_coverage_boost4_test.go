@@ -709,10 +709,9 @@ func TestAPIUsersInfo(t *testing.T) {
 
 func TestAPIWebhooks_ListEmpty(t *testing.T) {
 	_, handler := newTestServerWithDB(t)
-	ts := httptest.NewServer(handler)
-	defer ts.Close()
+	fx := newMTLSSuperAdminFixture(t, handler, "webhook:manage")
 
-	resp := authedGet(t, ts, "/api/v1/webhooks")
+	resp := authedMTLSGet(t, fx.Client, fx.Server, "/api/v1/webhooks")
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)

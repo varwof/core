@@ -126,6 +126,41 @@ type issueResp struct {
 	SPIFFEID     string `json:"spiffe_id,omitempty"`
 }
 
+// isManagementProfile reports whether the requested profile issues a
+// management certificate (m-*). Such certificates carry CA scope and are
+// minted for the management sub-CA, which operator and other non-superadmin
+// roles are hard-excluded from.
+func isManagementProfile(p ca.Profile) bool {
+	switch p {
+	case ca.ProfileMSuperAdmin, ca.ProfileMAdmin, ca.ProfileMOperator, ca.ProfileMAuditor,
+		ca.ProfileMRevoker, ca.ProfileMReadonly, ca.ProfileMConsole, ca.ProfileMAutoRenew,
+		ca.ProfileMReporter:
+		return true
+	}
+	return false
+}
+
+// hasValidAccountAuth reports whether the request carries a live account
+// credential (Basic auth or token) validated against the user store. Cert-first
+// mTLS alone never counts here: management operations require the certificate
+// to be paired with a username/password (account) association.
+func (s *Server) hasValidAccountAuth(r *http.Request) bool {
+	if u, err := s.authByBasic(r); err == nil && u != nil {
+		return true
+	}
+	if tok := r.Header.Get("X-Auth-Token"); tok != "" {
+		if u, err := s.authByToken(tok); err == nil && u != nil {
+			return true
+		}
+	}
+	if auth := r.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
+		if u, err := s.authByToken(strings.TrimPrefix(auth, "Bearer ")); err == nil && u != nil {
+			return true
+		}
+	}
+	return false
+}
+
 // apiIssueCert handles POST /api/v1/certs
 func (s *Server) apiIssueCert(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -157,6 +192,28 @@ func (s *Server) apiIssueCert(w http.ResponseWriter, r *http.Request) {
 	}
 	if effProfile == "" {
 		effProfile = ca.ProfileTLSServer
+	}
+	// ── Management sub-CA gate ─────────────────────────────────────────────────
+	// Minting management (m-*) certificates is restricted to the superadmin
+	// role; every other role (operator and friends) is hard-excluded from the
+	// management sub-CA and confined to the other (non-management) regions.
+	// Superadmin must additionally pair the mTLS certificate with a live
+	// account credential (cert + username/password association): a bare
+	// certificate is never enough for management mint.
+	// NOTE(deprecated): the operator's management-mint capability is planned
+	// for removal; this gate is the fail-closed front-line for it.
+	if isManagementProfile(effProfile) {
+		u, _ := r.Context().Value(userCtxKey).(*AuthUser)
+		if u == nil || u.Role != "superadmin" {
+			s.apiErr(w, r, http.StatusForbidden, "api.management_mint_denied",
+				"management sub-CA profile mint is reserved to superadmin")
+			return
+		}
+		if !s.hasValidAccountAuth(r) {
+			s.apiErr(w, r, http.StatusForbidden, "api.management_mint_requires_account",
+				"minting management certificates requires username/password account association")
+			return
+		}
 	}
 	if req.CN == "" && effProfile != ca.ProfileIdentityUser {
 		s.apiErr(w, r, http.StatusBadRequest, "api.cn_required", "")

@@ -206,19 +206,25 @@ func (s *Server) getRouteRules() *routing.RouteRules {
 
 // loadRouteRules populates the authorization rule set. When the configuration
 // declares routes_file, that file is authoritative (per-URL authorization body).
-// On any load failure it falls back to the embedded default rules so a broken
-// file can never fail open. This closes the gap where routes_file was a dead
-// config key and serve always used the embedded rules.
+// Loading is fail-closed: a broken file never downgrades to the lax embedded
+// table. On startup with no prior rules it refuses to serve; on reload it keeps
+// the previously working rules.
 func (s *Server) loadRouteRules(cfg *internal.Config) {
 	if cfg != nil && cfg.RoutesFile != "" {
-		if rr, err := routing.LoadFile(cfg.RoutesFile); err == nil {
-			s.routeRules.Store(rr)
-			slog.Info("serve: loaded route rules from file", "path", cfg.RoutesFile, "rules", rr.Count())
-			return
-		} else {
-			slog.Error("serve: failed to load route rules file, falling back to embedded default",
+		rr, err := routing.LoadFile(cfg.RoutesFile)
+		if err != nil {
+			// Fail-closed: never fall back to the embedded default table when a
+			// rules file was explicitly configured but is unreadable.
+			slog.Error("serve: failed to load route rules file (fail-closed)",
 				"path", cfg.RoutesFile, "error", err)
+			if prev := s.routeRules.Load(); prev != nil {
+				return
+			}
+			panic("serve: routes_file configured but unreadable: " + cfg.RoutesFile)
 		}
+		s.routeRules.Store(rr)
+		slog.Info("serve: loaded route rules from file", "path", cfg.RoutesFile, "rules", rr.Count())
+		return
 	}
 	s.routeRules.Store(LoadDefaultRouteRules())
 }

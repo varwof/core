@@ -31,6 +31,21 @@
 #   RBAC_BIN      deployed binary (default /usr/local/bin/varwof or PATH's varwof)
 #   RBAC_HTTPS    HTTPS mTLS port (default 18443)
 #   RBAC_HTTP     HTTP port (default 18080)
+#   RBAC_ADMIN_PASS  superadmin account password used to satisfy the
+#                    management-mint double-factor (cert + account). Dev only.
+#   RBAC_ADMIN_SCOPE CA scope embedded in management certs. Defaults to "*"
+#                    ONLY because this is a verification harness; production
+#                    must set the smallest scope per role/CA instead.
+#
+# Security notes (mint policy):
+#   * Management (m-*) certificates are minted ONLY by the superadmin role,
+#     and ONLY when the mTLS certificate is paired with a live account
+#     credential (cert + username/password). operator and every other role are
+#     hard-excluded from the management sub-CA. The operator's management-mint
+#     capability is deprecated and will be removed.
+#   * Private keys stay under management/users/private/ (0600 after deploy);
+#     the public cert files under management/users/certs/ must never be used
+#     as --key material. helpers.py always pairs certs/certs with private/keys.
 #
 set -euo pipefail
 
@@ -67,6 +82,9 @@ ADMIN_CA="$ORG Management CA"
 BASE="https://127.0.0.1:$HTTPS"
 SUPER_CERT="$MGMT_USERS/certs/user-superadmin-alice.pem"
 SUPER_KEY="$MGMT_USERS/private/user-superadmin-alice.key"
+SUPER_USER="alice"
+SUPER_PASS="${RBAC_ADMIN_PASS:-VarwofAdmin#2026!}"
+SUPER_BASIC=(-u "$SUPER_USER:$SUPER_PASS")
 LOG="$PKI_DIR/verify.log"
 PY="$PKI_DIR/helpers.py"
 ADMIN_NAMES="alice(superadmin),bob(admin),carol(operator),dave(auditor),erin(readonly),frank(auto-renew)"
@@ -186,7 +204,7 @@ mint_extras() {
     [ -s "$c" ] && continue
     log "  mint role cert: $r"
     resp="$PKI_DIR/issue-$r.json"
-    code="$(api --cert "$SUPER_CERT" --key "$SUPER_KEY" -X POST \
+    code="$(api "${SUPER_BASIC[@]}" --cert "$SUPER_CERT" --key "$SUPER_KEY" -X POST \
       -H 'Content-Type: application/json' \
       -d "{\"ca\":\"$ADMIN_CA\",\"cn\":\"$r@$DOMAIN\",\"profile\":\"m-$r\",\"key_type\":\"ecdsa-p256\",\"ca_scope\":\"*\"}" \
       -o "$resp" -w '%{http_code}' "$BASE/api/v1/certs" || true)"
@@ -252,6 +270,21 @@ behavior_checks() {
   printf '  %-48s %-5s %s\n' "auditor    POST /api/v1/certs (403)" "$c_audi" "" | tee -a "$LOG"
   printf '  %-48s %-5s %s\n' "admin      PUT  /api/v1/admin/config (403)" "$c_cfg" "" | tee -a "$LOG"
   printf '  %-48s %-5s %s\n' "readonly   GET  /healthz (public 200)" "$c_pub" "" | tee -a "$LOG"
+
+  # P0: management sub-CA hard-exclusion + cert+account double-factor.
+  local mb p0_oper p0_nocct p0_acc p0_cfg
+  mb='{"ca":"'"$ADMIN_CA"'","cn":"p0-probe@'"$DOMAIN"'","profile":"m-superadmin","ca_scope":"*"}'
+  opc="$(cert_for operator)"; opk="$(key_for operator)"
+  p0_oper="$(api --cert "$opc" --key "$opk" -X POST -H 'Content-Type: application/json' -d "$mb" -o /dev/null -w '%{http_code}' "$BASE/api/v1/certs" || true)"
+  mb2='{"ca":"'"$ADMIN_CA"'","cn":"p0-probe2@'"$DOMAIN"'","profile":"m-revoker","ca_scope":"*"}'
+  p0_nocct="$(api --cert "$SUPER_CERT" --key "$SUPER_KEY" -X POST -H 'Content-Type: application/json' -d "$mb2" -o /dev/null -w '%{http_code}' "$BASE/api/v1/certs" || true)"
+  p0_acc="$(api "${SUPER_BASIC[@]}" --cert "$SUPER_CERT" --key "$SUPER_KEY" -X POST -H 'Content-Type: application/json' -d "$mb2" -o /dev/null -w '%{http_code}' "$BASE/api/v1/certs" || true)"
+  printf '  %-48s %-5s %s\n' "P0 operator mint m-superadmin (403)" "$p0_oper" "" | tee -a "$LOG"
+  printf '  %-48s %-5s %s\n' "P0 superadmin mint no account  (403)" "$p0_nocct" "" | tee -a "$LOG"
+  printf '  %-48s %-5s %s\n' "P0 superadmin mint + account   (200)" "$p0_acc" "" | tee -a "$LOG"
+  [ "$p0_oper" = "403" ] || { warn "P0 FAIL: operator minted a management cert (http=$p0_oper)!"; FAIL=$((FAIL+1)); }
+  [ "$p0_nocct" = "403" ] || { warn "P0 FAIL: superadmin mint without account credential (http=$p0_nocct)!"; FAIL=$((FAIL+1)); }
+  [ "$p0_acc" = "200" ] || { warn "P0 FAIL: superadmin+account mint rejected (http=$p0_acc)"; FAIL=$((FAIL+1)); }
 }
 
 # ---------------------------------------------------------------------------
@@ -315,6 +348,14 @@ PY
     start_serve
     wait_ready
     ok "serve up at $BASE"
+    # P0 double-factor: bind a superadmin account so management-mint requests
+    # can pair the mTLS certificate with a username/password credential.
+    "$BIN" --config "$CONFIG" user add -username "$SUPER_USER" \
+      -password "$SUPER_PASS" -role superadmin >/dev/null 2>&1 \
+      && ok "superadmin account $SUPER_USER provisioned (cert + password)" \
+      || warn "superadmin account exists or could not be provisioned: $LOG"
+    chmod 600 "$MGMT_USERS"/private/*.key "$MGMT_USERS"/certs/*.pem 2>/dev/null || true
+    ok "management private keys locked to 0600"
     write_helpers
     mint_extras
     log ">> deployment done. run: scripts/verify-rbac-api.sh"

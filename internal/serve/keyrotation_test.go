@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -118,16 +119,23 @@ func TestAPICARotate(t *testing.T) {
 	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyDER})
 
 	body := fmt.Sprintf(`{"cert_pem":%q,"key_pem":%q}`, certPEM, keyPEM)
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/ca/test-ca/rotate", strings.NewReader(body))
+	fx := newMTLSSuperAdminFixture(t, handler, "config:write")
+	req, _ := http.NewRequest(http.MethodPost, fx.Server.URL+"/api/v1/ca/test-ca/rotate", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	req.SetBasicAuth("admin", "admin")
-	rr := httptest.NewRecorder()
-	handler.ServeHTTP(rr, req)
-	if rr.Code != http.StatusOK {
-		t.Fatalf("rotate status: %d body=%s", rr.Code, rr.Body.String())
+	rsp, err := fx.Client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rsp.Body.Close()
+	raw, err := io.ReadAll(rsp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rsp.StatusCode != http.StatusOK {
+		t.Fatalf("rotate status: %d body=%s", rsp.StatusCode, string(raw))
 	}
 	var resp map[string]any
-	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+	if err := json.Unmarshal(raw, &resp); err != nil {
 		t.Fatal(err)
 	}
 	if resp["status"] != "rotated" {
@@ -164,25 +172,33 @@ func TestAPICARotate(t *testing.T) {
 
 func TestAPICARotateErrors(t *testing.T) {
 	_, handler, _, _ := newTestServerWithCA(t)
+	fx := newMTLSSuperAdminFixture(t, handler, "config:write")
+
+	rotate := func(t *testing.T, body string) *httptest.ResponseRecorder {
+		t.Helper()
+		req, _ := http.NewRequest(http.MethodPost, fx.Server.URL+"/api/v1/ca/test-ca/rotate", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		rsp, err := fx.Client.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer rsp.Body.Close()
+		raw, _ := io.ReadAll(rsp.Body)
+		rr := httptest.NewRecorder()
+		rr.Code = rsp.StatusCode
+		rr.Body = bytes.NewBuffer(raw)
+		return rr
+	}
 
 	t.Run("missing body", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/ca/test-ca/rotate", strings.NewReader(`{}`))
-		req.Header.Set("Content-Type", "application/json")
-		req.SetBasicAuth("admin", "admin")
-		rr := httptest.NewRecorder()
-		handler.ServeHTTP(rr, req)
+		rr := rotate(t, `{}`)
 		if rr.Code != http.StatusBadRequest {
 			t.Fatalf("expected 400, got %d", rr.Code)
 		}
 	})
 
 	t.Run("bad cert pem", func(t *testing.T) {
-		body := `{"cert_pem":"not-a-cert","key_pem":"not-a-key"}`
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/ca/test-ca/rotate", strings.NewReader(body))
-		req.Header.Set("Content-Type", "application/json")
-		req.SetBasicAuth("admin", "admin")
-		rr := httptest.NewRecorder()
-		handler.ServeHTTP(rr, req)
+		rr := rotate(t, `{"cert_pem":"not-a-cert","key_pem":"not-a-key"}`)
 		if rr.Code != http.StatusBadRequest {
 			t.Fatalf("expected 400, got %d", rr.Code)
 		}
@@ -208,11 +224,7 @@ func TestAPICARotateErrors(t *testing.T) {
 		keyPEM := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyDER})
 
 		body := fmt.Sprintf(`{"cert_pem":%q,"key_pem":%q}`, certPEM, keyPEM)
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/ca/test-ca/rotate", strings.NewReader(body))
-		req.Header.Set("Content-Type", "application/json")
-		req.SetBasicAuth("admin", "admin")
-		rr := httptest.NewRecorder()
-		handler.ServeHTTP(rr, req)
+		rr := rotate(t, body)
 		if rr.Code != http.StatusBadRequest {
 			t.Fatalf("expected 400 for key mismatch, got %d body=%s", rr.Code, rr.Body.String())
 		}
@@ -258,13 +270,17 @@ func TestLoadCAKeySnapshotConsistency(t *testing.T) {
 	newKeyPEM := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: newKeyDER})
 
 	body := fmt.Sprintf(`{"cert_pem":%q,"key_pem":%q}`, string(newCertPEM), string(newKeyPEM))
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/ca/test-ca/rotate", strings.NewReader(body))
+	fx := newMTLSSuperAdminFixture(t, handler, "config:write")
+	req, _ := http.NewRequest(http.MethodPost, fx.Server.URL+"/api/v1/ca/test-ca/rotate", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	req.SetBasicAuth("admin", "admin")
-	rr := httptest.NewRecorder()
-	handler.ServeHTTP(rr, req)
-	if rr.Code != http.StatusOK {
-		t.Fatalf("rotate status: %d body=%s", rr.Code, rr.Body.String())
+	rsp, err := fx.Client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rsp.Body.Close()
+	if rsp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(rsp.Body)
+		t.Fatalf("rotate status: %d body=%s", rsp.StatusCode, string(b))
 	}
 
 	cert, key, err := srv.loadCAKey("test-ca")
