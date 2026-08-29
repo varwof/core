@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -523,3 +524,98 @@ func TestRequireRouteAuth_AgentBlockedByAllowAIC(t *testing.T) {
 }
 
 func boolPtr(b bool) *bool { return &b }
+
+// TestAPIUserOperatorCert_NegativePaths drives the remaining apiUserOperatorCert
+// error branches through the HTTP layer: bad id, malformed JSON, missing cert_pem,
+// a non-management certificate whose OU maps to no role, and an unsupported method.
+func TestAPIUserOperatorCert_NegativePaths(t *testing.T) {
+	srv, h := newTestServerWithDB(t)
+	caCert, caKey := newTestCA(t, "test-ca")
+
+	salt, _ := db.GenerateSalt()
+	if err := srv.getDB().CreateUser("op", db.HashPassword("secret", salt), salt, "operator"); err != nil {
+		t.Fatal(err)
+	}
+	user, _ := srv.getDB().GetUserByUsername("op")
+
+	fx := newMTLSSuperAdminFixture(t, h, "user:manage")
+
+	send := func(method, suffix, body string) *httptest.ResponseRecorder {
+		t.Helper()
+		req, _ := http.NewRequest(method, fx.Server.URL+suffix, strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := fx.Client.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		raw, _ := io.ReadAll(resp.Body)
+		rr := httptest.NewRecorder()
+		rr.Code = resp.StatusCode
+		rr.Body = bytes.NewBuffer(raw)
+
+		return rr
+	}
+
+	path := fmt.Sprintf("/api/v1/users/%d/operator-cert", user.ID)
+
+	// Non-management certificate (OU maps to no role), registered and valid.
+	engineerCert := signManagementCert(t, caCert, caKey, "eng", "Engineer", "CA-E",
+		time.Now().Add(24*time.Hour))
+	registerCert(t, srv.getDB(), caCert, engineerCert, "V")
+	engineerPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: engineerCert.Raw})
+
+	tests := []struct {
+		name     string
+		method   string
+		suffix   string
+		body     string
+		wantCode int
+		wantErr  string
+	}{
+		{
+			name:     "invalid user id",
+			method:   http.MethodPost,
+			suffix:   "/api/v1/users/abc/operator-cert",
+			body:     `{"cert_pem":"x"}`,
+			wantCode: http.StatusBadRequest,
+			wantErr:  "invalid user id",
+		},
+		{
+			name:     "malformed json",
+			method:   http.MethodPost,
+			suffix:   path,
+			body:     `{not json`,
+			wantCode: http.StatusBadRequest,
+			wantErr:  "Invalid JSON",
+		},
+		{
+			name:     "missing cert_pem",
+			method:   http.MethodPost,
+			suffix:   path,
+			body:     `{}`,
+			wantCode: http.StatusBadRequest,
+			wantErr:  "cert_pem is required",
+		},
+		{
+			name:     "certificate OU maps to no role",
+			method:   http.MethodPost,
+			suffix:   path,
+			body:     fmt.Sprintf(`{"cert_pem":%q}`, string(engineerPEM)),
+			wantCode: http.StatusBadRequest,
+			wantErr:  "operator cert rejected",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := send(tt.method, tt.suffix, tt.body)
+			if rec.Code != tt.wantCode {
+				t.Fatalf("status=%d want=%d body=%s", rec.Code, tt.wantCode, rec.Body.String())
+			}
+			if !strings.Contains(rec.Body.String(), tt.wantErr) {
+				t.Fatalf("missing error code %q in body=%s", tt.wantErr, rec.Body.String())
+			}
+		})
+	}
+}

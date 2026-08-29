@@ -738,3 +738,44 @@ func tlsConn(peer *x509.Certificate) *tls.ConnectionState {
 }
 
 var _ = tlsConn // keep reference (suppress unused warning noise)
+
+// TestTokenProvisioner_SetTokenResolver covers the M23 atomic resolver wiring:
+// SetTokenResolver installs the resolver into the atomic store, which takes
+// precedence over the plain global, and resolver errors surface to callers
+// instead of being silently swallowed.
+func TestTokenProvisioner_SetTokenResolver(t *testing.T) {
+	prev := TokenResolver
+	defer SetTokenResolver(prev)
+
+	SetTokenResolver(func(token string) (*AuthResult, error) {
+		if token == "boom" {
+			return nil, errors.New("token rejected by resolver")
+		}
+		return &AuthResult{Username: "atomic-user", Role: "operator"}, nil
+	})
+
+	// Even if the plain global is clobbered directly (simulating a stale
+	// legacy write), the atomic copy installed by SetTokenResolver wins.
+	TokenResolver = func(string) (*AuthResult, error) {
+		return &AuthResult{Username: "stale-global", Role: "operator"}, nil
+	}
+
+	req, _ := http.NewRequest("GET", "/", nil)
+	req.Header.Set("X-Auth-Token", "tok-atomic")
+
+	p := NewTokenProvisioner()
+	res, err := p.Authenticate(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res == nil || res.Username != "atomic-user" {
+		t.Fatalf("expected atomic resolver result, got %+v", res)
+	}
+
+	// Resolver error must propagate (no silent swallow).
+	reqErr, _ := http.NewRequest("GET", "/", nil)
+	reqErr.Header.Set("X-Auth-Token", "boom")
+	if _, err := p.Authenticate(reqErr); err == nil {
+		t.Fatal("expected propagated resolver error")
+	}
+}
