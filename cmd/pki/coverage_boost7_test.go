@@ -215,5 +215,3 @@ func TestExecBinaryError(t *testing.T) {
 		t.Fatal("expected exec error")
 	}
 }
-
-func boolPtr(b bool) *bool { return &b }

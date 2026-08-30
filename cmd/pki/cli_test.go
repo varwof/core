@@ -2302,3 +2302,5 @@ func TestCLIAuditWithLimit(t *testing.T) {
 		t.Fatalf("audit with limit: %v", err)
 	}
 }
+
+func boolPtr(b bool) *bool { return &b }
