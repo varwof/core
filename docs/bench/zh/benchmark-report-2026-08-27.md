@@ -2,10 +2,10 @@
 
 - 日期: 2026-08-27
 - 工具: `bench/` — 嵌入式 varwof-core 服务器 (SQLite 文件 DB) + 真实 `/api/v1/certs`
-- 环境: 18 CPU / 30GB 内存, NVMe, Go
+- 环境: 18 CPU / 32 GB 内存, NVMe, Go
 - 目标工作负载: 5万用户 × 10 agent = 50万 agent × 每 10 分钟 1 张证书 × 24h ≈ 3.6 亿张, 平均 **≈4,167 req/s** (等价 150万人×8h)
 - 原始数据: `../results/*.json`
-- 前置工程记录（argon2 根因、DA nonce 批量写、User/Token 内存索引、MySQL R12、
+- 前置工程记录（argon2 根因、DA nonce 批量写、User/Token 内存索引、MariaDB R12、
   锁分片 R4/R13）见 [性能工程工作日志](performance-worklog-2026-08-27.md) §1–§4
 
 ## 测试矩阵
@@ -107,7 +107,7 @@ DA 验签 + 双写。再往上需并行 ECDSA / 硬件加速 (CPU 墙) 或 AIC �
 → 平均注入 = 500,000 / 600s ≈ **833 AIC/s**。普通证书需求量小, 忽略。峰值若全部
 agent 独立定时器 (泊松分布), 瞬时 ~2-3× 均值 (~2,500/s) 已在能力内。
 
-**贴近真实强度测试** (engine 模式, MySQL, `-interval 6s` × 5000 agents ≈ 833/s):
+**贴近真实强度测试** (engine 模式, MariaDB, `-interval 6s` × 5000 agents ≈ 833/s):
 
 | 项 | 数值 |
 |---|---|
@@ -143,7 +143,7 @@ agent 独立定时器 (泊松分布), 瞬时 ~2-3× 均值 (~2,500/s) 已在能�
 **需求**: 5 万人 × 10 agents = 50 万 agents, 若上班瞬间全部同时醒来并发申请 AIC
 (最坏情况), 即一次性 50 万请求突发。
 
-**实测 burst 能力** (`-mode stress` 全速并发, engine + MySQL):
+**实测 burst 能力** (`-mode stress` 全速并发, engine + MariaDB):
 
 | 项 | 数值 |
 |---|---|
@@ -178,7 +178,7 @@ agent 独立定时器 (泊松分布), 瞬时 ~2-3× 均值 (~2,500/s) 已在能�
 > 注: `-mode stress` = 所有 agent 全速无间隔, 用于 burst; `-agents` 越高收尾
 > 排空越慢 (3000 agents/30s 排空需 ~1-2 分钟), 属预期。
 
-**§3 补: 5000 agents 高并发对照** (`-mode stress`, engine + MySQL, 30s):
+**§3 补: 5000 agents 高并发对照** (`-mode stress`, engine + MariaDB, 30s):
 
 | 项 | 3000 agents | 5000 agents |
 |---|---|---|
@@ -221,7 +221,7 @@ agent 独立定时器 (泊松分布), 瞬时 ~2-3× 均值 (~2,500/s) 已在能�
 调速器 + **`intel_pstate/no_turbo=1`（睿频被禁）**, `scaling_max_freq` 被限制在
 **1.2GHz**（写入被拒）。此前所有测试（§1–§4）都在此受限状态下进行。
 
-**逐步解锁并重测 regular @100ms（engine+MySQL, 2500 agents, 15s/10s）**:
+**逐步解锁并重测 regular @100ms（engine+MariaDB, 2500 agents, 15s/10s）**:
 
 | CPU 状态 | 实际频率 | regular certs/s | p50 | p99 |
 |----------|----------|-----------------|-----|-----|
@@ -281,7 +281,7 @@ echo 4500000 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq  # 视 CPU 
 - MariaDB 根因: 原 root 密码未知, 经 `--skip-grant-tables` 重建了 `bench` 用户
   (`'bench'@'%'`), TCP 登录正常。
 
-**对比汇总 (全部 engine + MySQL, 无背压)**:
+**对比汇总 (全部 engine + MariaDB, 无背压)**:
 
 | 平台 | regular | AIC | 企业833/s余量 | burst排空(50万) |
 |------|---------|-----|--------------|----------------|

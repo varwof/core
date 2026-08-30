@@ -146,7 +146,7 @@
 - [ ] 生成 HTML 报告 (图表)
 - [ ] 基线对比功能 (与上次结果比较)
 
-**首轮基准测试** (2026-08-27, 18 核 / 30GB 内存, SQLite 文件 DB; 标题误标 48 核——勘误见[性能工作日志](performance-worklog-2026-08-27.md) §1):
+**首轮基准测试** (2026-08-27, 18 核 / 32 GB 内存, SQLite 文件 DB; 标题误标 48 核——勘误见[性能工作日志](performance-worklog-2026-08-27.md) §1):
 - 报告: `./benchmark-report-2026-08-27.md` | 工程记录: `./performance-worklog-2026-08-27.md` | 原始 JSON: `../results/*.json`
 - 关键发现: 默认 record_buffer (max_pending=20000) 下持续签发被背压限制到 ~560/s (大量 503); 调大 max_pending 后 regular 达 ~5,600/s; AIC 并发提升后因每次签发的同步 `da_nonces` 写入 + SQLite 单写锁争用, 2500 agent 时退化到 533/s。
 
@@ -158,13 +158,13 @@
 - [x] bench 工具增强: 增加 `-engine` (内存引擎模式) 与 Postgres DSN (`postgres://`) 支持, 记录 WAL 峰值
 - [x] 复测基线: 修复 record buffer 关闭时 flush (2026-08-27 已修) 后重跑矩阵
 - [x] **argon2 根因**: 每请求 Basic Auth → `authByBasic`→`db.HashPassword`→`argon2.IDKey` 占 CPU 44%; bench 改 login-once + Bearer token, AIC/regular 各 +60% (详见[性能工作日志](performance-worklog-2026-08-27.md) §1)
-- [x] engine 遗留: PG 上 `StoreDANonce` 同步单行 INSERT 改造为批量 (见下 "DA nonce 批量写"); **MySQL+engine 写管线崩溃 (21GB/conn reset) 修复** —— 详见下 "MySQL+engine 写管线崩溃根因与修复"
+- [x] engine 遗留: PG 上 `StoreDANonce` 同步单行 INSERT 改造为批量 (见下 "DA nonce 批量写"); **MariaDB+engine 写管线崩溃 (21GB/conn reset) 修复** —— 详见下 "MariaDB+engine 写管线崩溃根因与修复"
 - [ ] `BulkInsertAICExtensions` 落地; engine 启动 LOAD 改分批 (替代 LIMIT/OFFSET)
 - [x] **AIC 剩余墙定位**: 非 ECDSA/argon2。除 argon2 后 ECDSA 验签仅 ~3 核 (CPU 利用率 65% 未满), 真瓶颈 = 每请求同步单行 `INSERT INTO da_nonces` 同步过 WAL fsync (pg_stat_activity 采样实证), 修复方向见报告
 - [x] **DA nonce 批量写 (engine 侧已修)**: `StoreDANonce` 非 WAL 分支改走 `RecordBuffer.AddDANonce` 批量收敛 + 满刷; AIC 复测 3,529/s、p50 47ms ([性能工作日志](performance-worklog-2026-08-27.md) §2 表)
 - [x] **User/Token 内存索引 (engine + serve 双仓已落地)**: engine 新增 User/Token 索引 + 启动载入; serve 认证读路径 `getUserByUsername`/`getToken` engine 优先回退 DB; 写路径写穿 (login/create/delete/password-rotate)。AIC @600ms 达 **4,111 certs/s (注入上限)**, p50 2.7ms; DB 活动仅剩批量 `INSERT INTO certificates`。新增测试均绿 (engine 4 项 + core rbac_engine_test 4 项, race 通过)
-- [x] **MySQL+engine 写管线崩溃根因与修复 (R12, engine 仓已落地)**: 双层根因 —— ① 文档记录的 21GB 经 dmesg 实证为 **OOM 击杀** (`oom-kill bench-smoke anon-rss ~21GB`, 现版本 2GiB `MaxResidentBytes` 预算兜底, 不再复现); ② 真实缺陷 = **MySQL 无读超时**, 半开连接让 `bulkInsertChunk→Exec→readPacket` 永久阻塞并持有 `flushMu` → drain 卡死 (pending 钉 maxPending, 全 503) → `Stop()→FlushAll()` 死锁挂死。修复: mysql DSN 注入 `timeout=10s&readTimeout=30s&writeTimeout=30s` (`ensureMySQLTimeouts`) + `ExecContext` + `BulkInsertCertRecordsCtx`/`BulkStoreDANoncesCtx` + recordbuffer `flushDBTimeout=2min` ctx 兜底。**顺带 PG/MySQL 批量分块 39→500 行/条** (`certChunkSize`, 往返降 ~13×)。复测 (均 exit=0 打印报告): MySQL regular @100ms **7,575/s**、AIC @100ms **6,034/s** (修复前 4,325)、AIC @600ms 4,114/s; PG AIC @600ms 4,054/s 无回归。`-race` 全绿; 新单测 `TestEnsureMySQLTimeouts`/`TestBulkInsertCertRecordsCtxCancelled`/`TestBulkStoreDANoncesCtxCancelled`
-- [ ] 下一个墙: **write pipeline 批量落库吞吐** —— 已随 R12 分块优化提升 (MySQL AIC 4,325→6,034/s), 但 100ms 高注入下仍可能背压 (503); 继续评估更大 chunk/批量 AIC 扩展
+- [x] **MariaDB+engine 写管线崩溃根因与修复 (R12, engine 仓已落地)**: 双层根因 —— ① 文档记录的 21GB 经 dmesg 实证为 **OOM 击杀** (`oom-kill bench-smoke anon-rss ~21GB`, 现版本 2GiB `MaxResidentBytes` 预算兜底, 不再复现); ② 真实缺陷 = **MariaDB 无读超时**, 半开连接让 `bulkInsertChunk→Exec→readPacket` 永久阻塞并持有 `flushMu` → drain 卡死 (pending 钉 maxPending, 全 503) → `Stop()→FlushAll()` 死锁挂死。修复: mysql DSN 注入 `timeout=10s&readTimeout=30s&writeTimeout=30s` (`ensureMariaDBTimeouts`) + `ExecContext` + `BulkInsertCertRecordsCtx`/`BulkStoreDANoncesCtx` + recordbuffer `flushDBTimeout=2min` ctx 兜底。**顺带 PG/MariaDB 批量分块 39→500 行/条** (`certChunkSize`, 往返降 ~13×)。复测 (均 exit=0 打印报告): MariaDB regular @100ms **7,575/s**、AIC @100ms **6,034/s** (修复前 4,325)、AIC @600ms 4,114/s; PG AIC @600ms 4,054/s 无回归。`-race` 全绿; 新单测 `TestEnsureMariaDBTimeouts`/`TestBulkInsertCertRecordsCtxCancelled`/`TestBulkStoreDANoncesCtxCancelled`
+- [ ] 下一个墙: **write pipeline 批量落库吞吐** —— 已随 R12 分块优化提升 (MariaDB AIC 4,325→6,034/s), 但 100ms 高注入下仍可能背压 (503); 继续评估更大 chunk/批量 AIC 扩展
 - [ ] engine 遗留: `BulkInsertAICExtensions` 落地; 启动 LOAD 改分批 (替代 LIMIT/OFFSET)
 
 ### 13. 模糊测试 (Fuzz)

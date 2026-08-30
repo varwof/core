@@ -2,11 +2,11 @@
 
 - Date: 2026-08-27
 - Tool: `bench/` — embedded varwof-core server (SQLite file DB) + real `/api/v1/certs`
-- Environment: 18 CPU / 30GB RAM, NVMe, Go
+- Environment: 18 CPU / 32 GB RAM, NVMe, Go
 - Target workload: 50k users × 10 agents = 500k agents × 1 certificate per 10 min × 24h ≈ 360M certificates, average **≈4,167 req/s** (equivalent to 1.5M people × 8h)
 - Raw data: `../results/*.json`
 - Prerequisite engineering record (argon2 root cause, DA nonce batch writes, User/Token
-  in-memory indexes, MySQL R12, lock sharding R4/R13) — see
+  in-memory indexes, MariaDB R12, lock sharding R4/R13) — see
   [Performance Engineering Work Log](performance-worklog-2026-08-27.md) §1–§4
 
 ## Test Matrix
@@ -120,7 +120,7 @@ AIC every 10 minutes → average injection = 500,000 / 600s ≈ **833 AIC/s**. R
 are a small, negligible demand. If all agents use independent timers (Poisson), an
 instantaneous ~2-3× the average (~2,500/s) is still within capability.
 
-**Near-real-intensity test** (engine mode, MySQL, `-interval 6s` × 5000 agents ≈ 833/s):
+**Near-real-intensity test** (engine mode, MariaDB, `-interval 6s` × 5000 agents ≈ 833/s):
 
 | Item | Value |
 |------|-------|
@@ -159,7 +159,7 @@ still within capability.
 **Requirement**: 50k people × 10 agents = 500k agents; if at wake-up all wake and request
 an AIC concurrently (worst case), that's a one-shot 500k-request burst.
 
-**Measured burst capability** (`-mode stress` full-speed concurrency, engine + MySQL):
+**Measured burst capability** (`-mode stress` full-speed concurrency, engine + MariaDB):
 
 | Item | Value |
 |------|-------|
@@ -198,7 +198,7 @@ sufficient budget).**
 > Note: `-mode stress` = all agents full-speed, no interval; for bursts. Higher `-agents`
 > means a slower drain tail (3000 agents/30s drains in ~1-2 minutes; expected).
 
-**§3 addendum: 5000-agent high-concurrency comparison** (`-mode stress`, engine + MySQL, 30s):
+**§3 addendum: 5000-agent high-concurrency comparison** (`-mode stress`, engine + MariaDB, 30s):
 
 | Item | 3000 agents | 5000 agents |
 |------|-------------|-------------|
@@ -245,7 +245,7 @@ all under the `powersave` governor with **`intel_pstate/no_turbo=1` (turbo disab
 `scaling_max_freq` was capped at **1.2GHz** (writes to it were rejected). All prior tests
 (§1–§4) ran in this restricted state.
 
-**Step-by-step unlock and re-measurement of regular @100ms (engine+MySQL, 2500 agents,
+**Step-by-step unlock and re-measurement of regular @100ms (engine+MariaDB, 2500 agents,
 15s/10s)**:
 
 | CPU state | Actual frequency | regular certs/s | p50 | p99 |
@@ -312,7 +312,7 @@ linked pure Go (modernc sqlite / go-sql-driver are cgo-free).
 - MariaDB note: the original root password was unknown; the `bench` user
   (`'bench'@'%'`) was rebuilt via `--skip-grant-tables`; TCP login works.
 
-**Comparison summary (all engine + MySQL, no backpressure)**:
+**Comparison summary (all engine + MariaDB, no backpressure)**:
 
 | Platform | regular | AIC | Steady 833/s headroom | Burst drain (500k) |
 |----------|---------|-----|-----------------------|--------------------|

@@ -3,14 +3,14 @@
 - 日期: 2026-08-27
 - 关联: [基准报告](benchmark-report-2026-08-27.md)（本文为其前置工程记录 §1–§4；
   基准报告的测量结论见基准报告 §1–§8）
-- 范围: argon2 认证根因、DA nonce 批量写、User/Token 内存索引、MySQL+engine
+- 范围: argon2 认证根因、DA nonce 批量写、User/Token 内存索引、MariaDB+engine
   写管线崩溃修复（R12）、瓶颈 prof + 锁分片 + 满缓冲 herd 修复（R4/R13）
 
 > 纯写路径 14K/sec 溯源: `BenchmarkRecordBufferFlushBatch` (recordbuffer 包)
 > = 100 条/批 `FlushAll`→SQLite 批量 insert, 本机 7.38ms/100 条 ≈ **13,600/s**。
 > 该数字无 HTTP/签名/AIC, 是批落库纯吞吐, 不是端到端上限。
 
-## §1 argon2 根因与批量写路径（PG/MySQL 迁移 + engine 模式）
+## §1 argon2 根因与批量写路径（PG/MariaDB 迁移 + engine 模式）
 
 ### bench 工具变更
 
@@ -22,15 +22,15 @@
   `Close()` 之前, 保证关停排空期 (AIC 拖尾 3× 时长) 不把 profile 截成 0 字节。
 - **认证改为启动时一次 login 换 Bearer token** (见 argon2 根因)。
 
-### 引擎模式三后端对比 (18 核 Intel Ultra 5 125H / 30GB)
+### 引擎模式三后端对比 (18 核 Intel Ultra 5 125H / 32 GB)
 
 | 后端 | 场景 | 引擎 | agents | max_pending | certs/s | 失败 | p50 | 备注 |
 |------|------|------|--------|-------------|---------|------|-----|------|
 | PG | aic | 引擎 | 2500 | 20,000(默认) | 888 | **71% 503** | 123ms | 503=写管线 rb.IsFull() 背压 |
 | SQLite | aic | 引擎 | 2500 | 20,000 | 542 | 9.6% (仅 HTTP0) | 3.6s | 单写锁争用无 503, 延迟飙 |
 | PG | regular | 引擎 | 2500 | 200,000 | **2,570** | 0% | 1.5ms | — |
-| MySQL | regular | 引擎 | 2500 | — | ~398 | 崩 | — | **写管线瘫: 内存涨 21GB + connection reset by peer** |
-| MySQL | regular | record buffer | 2500 | — | 3,105 | 19% 503 | 1.7ms | record buffer 模式正常 |
+| MariaDB | regular | 引擎 | 2500 | — | ~398 | 崩 | — | **写管线瘫: 内存涨 21GB + connection reset by peer** |
+| MariaDB | regular | record buffer | 2500 | — | 3,105 | 19% 503 | 1.7ms | record buffer 模式正常 |
 | PG | regular | record buffer | 2500 | — | 3,790 | — | — | — |
 | SQLite | regular | record buffer | 2500 | — | 5,626 | — | — | 批量落库上限 |
 
@@ -85,9 +85,9 @@ ECDSA/argon2 无关**。修复方向: `StoreDANonce` 改入 write pipeline 批�
 
 ### engine 模式遗留问题 (待办)
 
-1. `Engine.StoreDANonce` 在非 WAL 后端 (PG/MySQL) 是 **同步单行 INSERT**
+1. `Engine.StoreDANonce` 在非 WAL 后端 (PG/MariaDB) 是 **同步单行 INSERT**
    (engine`writes.go:277`) → AIC 硬墙之一。
-2. **MySQL + engine 写管线瘫**: 内存暴涨至 21GB + connection reset by peer。
+2. **MariaDB + engine 写管线瘫**: 内存暴涨至 21GB + connection reset by peer。
 3. 引擎自带 `BenchmarkIssueCertMemory` 持续负载下 FAIL (写管线背压) + 单次
    积压 10 万行刷库 9s。
 4. AIC 扩展仍逐条写入 (`BulkInsertAICExtensions` 未实现,
@@ -154,11 +154,11 @@ enabled, 语义等同 `db.GetToken` 的 JOIN+WHERE):
 `TestEngineUpdateUserPasswordInvalidatesTokens`, `TestEngineUserWriteThroughAPI`,
 race 全绿)。engine 全测试与 core `internal/serve` 全测试通过。
 
-待办下一步: ① write pipeline 批量落库再提速 (如今是唯一墙); ② MySQL+engine
+待办下一步: ① write pipeline 批量落库再提速 (如今是唯一墙); ② MariaDB+engine
 写管线崩溃 (21GB/conn reset) 修复; ③ `BulkInsertAICExtensions` 落地; ④ 启动
 LOAD 改分批 (替代 LIMIT/OFFSET)。
 
-## §3 MySQL+engine 写管线崩溃根因与修复 (R12)
+## §3 MariaDB+engine 写管线崩溃根因与修复 (R12)
 
 承接上文 "§2 engine 模式遗留问题 ②"。**两层根因**:
 
@@ -166,46 +166,46 @@ LOAD 改分批 (替代 LIMIT/OFFSET)。
    `oom-kill: task=bench-smoke, anon-rss:~21GB` (两次)。"connection reset by
    peer" 是其下游表象。现版本 `MaxResidentBytes` 默认 2GiB 预算生效 (options.go
    :98-99), RSS 平台化, 已不再复现。
-2. **当前代码的真实缺陷 = MySQL 半开连接无读超时**: `bulkInsertChunk→Exec→
+2. **当前代码的真实缺陷 = MariaDB 半开连接无读超时**: `bulkInsertChunk→Exec→
    mysqlConn.readPacket` 无 deadline 永久阻塞, flush 全程持有 `flushMu` →
    drain goroutine 卡死 → pending 钉在 maxPending (全请求 503) →
    `Stop()→FlushAll()` 死锁等待同一把锁 → 优雅停机挂死 (SIGQUIT dump 实证,
    goroutine 1 主栈 `FlushAll` 等 flushMu; recordbuffer run→drain→flushLocked→
-   `BulkInsertCertRecords`→readPacket 卡读)。MySQL 进程本身无异常 (processlist
+   `BulkInsertCertRecords`→readPacket 卡读)。MariaDB 进程本身无异常 (processlist
    显示 INSERT 正常执行), 是客户端侧无超时导致的挂死。
 
 **修复 (engine 仓, R12)**:
-- `db/db.go`: mysql DSN 注入 `ensureMySQLTimeouts` (`timeout=10s&readTimeout=30s&
+- `db/db.go`: mysql DSN 注入 `ensureMariaDBTimeouts` (`timeout=10s&readTimeout=30s&
   writeTimeout=30s`, 已有不覆盖, `@unix(` 跳过); 新增 `ExecContext`;
 - `db/batch.go` / `db/da_nonces.go`: `BulkInsertCertRecordsCtx` /
   `BulkStoreDANoncesCtx` (旧入口委托 Background);
 - `recordbuffer`: `flushLocked` / `replayWAL` 批量写包 `flushDBTimeout=2min`
   ctx 兜底 —— 半开连接至多拖 2 分钟即报错重试, 不再无限阻塞;
-- 顺带: PG/MySQL 批量分块 **39 → 500 行/条** (`certChunkSize`, SQLite 守 999
+- 顺带: PG/MariaDB 批量分块 **39 → 500 行/条** (`certChunkSize`, SQLite 守 999
   变量上限), 写入往返次数降 ~13× —— 直接破除写管线墙一部分。
 
 **复测 (本机 MariaDB 10.11 / PostgreSQL 15, 均 exit=0 且打印报告)**:
 
 | 场景 | 修复前 | 修复后 |
 |------|--------|--------|
-| MySQL regular @100ms (原崩溃场景) | ~398/s 崩 (21GB/conn reset) | **7,575 certs/s**, p50 80.7ms, 错误 35% (503 背压) |
-| MySQL AIC @100ms | 4,325/s | **6,034 certs/s**, p50 305.9ms, 错误 1.61% |
-| MySQL AIC @600ms | — | 4,114 certs/s, 错误 0.06% |
+| MariaDB regular @100ms (原崩溃场景) | ~398/s 崩 (21GB/conn reset) | **7,575 certs/s**, p50 80.7ms, 错误 35% (503 背压) |
+| MariaDB AIC @100ms | 4,325/s | **6,034 certs/s**, p50 305.9ms, 错误 1.61% |
+| MariaDB AIC @600ms | — | 4,114 certs/s, 错误 0.06% |
 | PG AIC @600ms | 4,111/s | 4,054 certs/s (无回归, p50 2.9ms) |
 
-> 说明: MySQL regular @100ms 的错误率 35% 来自 maxpending 背压 (503), 属设计内
+> 说明: MariaDB regular @100ms 的错误率 35% 来自 maxpending 背压 (503), 属设计内
 > 限流, 非故障; 关键是**不再崩溃/挂死, 停机干净退出**。高注入下停机会把积压
-> (可达 ~200k) 以 MySQL 写墙速度 (~2-4k/s) 同步排空, 故极端压测的关停排空期
-> 需预留数分钟 (属预期, 非挂死; 期间 MySQL 持续 INSERT)。
+> (可达 ~200k) 以 MariaDB 写墙速度 (~2-4k/s) 同步排空, 故极端压测的关停排空期
+> 需预留数分钟 (属预期, 非挂死; 期间 MariaDB 持续 INSERT)。
 
 **验证**: `-race` 全绿 (db/recordbuffer/engine); 新单测
-`TestEnsureMySQLTimeouts` / `TestBulkInsertCertRecordsCtxCancelled` /
+`TestEnsureMariaDBTimeouts` / `TestBulkInsertCertRecordsCtxCancelled` /
 `TestBulkStoreDANoncesCtxCancelled`。engine `docs/RISKS.md` R12、`NEXT_STEPS.md`
 已同步记录。
 
 ## §4 瓶颈 prof 分析 + 锁分片 + 满缓冲 herd 修复 (R4/R13)
 
-**prof 结论 (AIC MySQL @100ms, 18 核只用了 ~8 核)**: 此前 p50=锁排队、吞吐
+**prof 结论 (AIC MariaDB @100ms, 18 核只用了 ~8 核)**: 此前 p50=锁排队、吞吐
 受两处单锁 + ECDSA 限制、写管线已退为地板 (不再拖后腿)。用户对 nonce 的见解
 正确并被采纳 —— DA nonce 有 timestamp+lifetime, 新鲜度检查 (skew 30s) 已限制
 可用窗口, 内存留存只需 **skew + 3min 缓冲** (勿用 24h flat NonceTTL, 会存几亿
@@ -229,17 +229,17 @@ LOAD 改分批 (替代 LIMIT/OFFSET)。
 |------|------|
 | AIC @100ms 20s | 5.3–5.5k certs/s, p50 137–220ms (缓冲吸收突发) |
 | AIC @100ms 40s (修复前 R5 前基线 3,160/s; R5 修复前 40s 塌缩至 ~108k 总量) | **~163k 成功 / 40s ≈ 4.1k certs/s 持续**, 无塌缩, 背压=干净 503 |
-| MySQL 批量插入独立上限 (500 行 chunk, 热) | ≈ 7.3k certs/s |
+| MariaDB 批量插入独立上限 (500 行 chunk, 热) | ≈ 7.3k certs/s |
 
 > 关键: **修复前的 40s 塌缩是 R13 的 flushMu herd** —— 缓冲 ~18s 填满后每个
 > `AddDANonce` 同步 FlushAll, 2k+ goroutine 排在同一把锁后面, 服务器冻结
-> (dump 实证); 修复后 40s 总量 163k 恰好 = MySQL 批量插入持续上限 (含 DA nonce
+> (dump 实证); 修复后 40s 总量 163k 恰好 = MariaDB 批量插入持续上限 (含 DA nonce
 > 约 8k records/s), 即吞吐已被后端写墙封顶, 剩余提升需减写 (见待办)。
 
 验证: `-race` 全绿 (db/recordbuffer/engine); serve 相关用例绿; engine
 `docs/RISKS.md` R13、`NEXT_STEPS.md` 已同步。
 
-待办下一步: ① 吞吐已到 MySQL 写墙 (~4k certs/s 持续), 想再上需减写:
+待办下一步: ① 吞吐已到 MariaDB 写墙 (~4k certs/s 持续), 想再上需减写:
    - AIC 场景每请求写 1 cert + 1 nonce = 2 条 DB 写; 可评估 DA nonce 是否必须
      批量落库 (重放防护在内存, DB 侧仅审计/恢复用途);
    ② `BulkInsertAICExtensions` 落地; ③ 启动 LOAD 改分批 (替代 LIMIT/OFFSET)。

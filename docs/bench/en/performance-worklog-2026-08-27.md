@@ -5,7 +5,7 @@
   prerequisite engineering record §1–§4; the report's measurement conclusions are in
   benchmark report §1–§8
 - Scope: argon2 auth root cause, DA nonce batch writes, User/Token in-memory indexes,
-  MySQL+engine write-pipeline crash fix (R12), bottleneck prof + lock sharding +
+  MariaDB+engine write-pipeline crash fix (R12), bottleneck prof + lock sharding +
   full-buffer herd fix (R4/R13)
 
 > The 14K/sec pure-write-path trace comes from `BenchmarkRecordBufferFlushBatch`
@@ -13,7 +13,7 @@
 > records on this machine ≈ **13,600/s**. That number has no HTTP/signing/AIC — it's the
 > pure batch-write ceiling, not an end-to-end limit.
 
-## §1 argon2 root cause and batch write path (PG/MySQL migration + engine mode)
+## §1 argon2 root cause and batch write path (PG/MariaDB migration + engine mode)
 
 ### bench tool changes
 
@@ -26,15 +26,15 @@
   0-byte profile.
 - **Auth changed to a one-time login at startup → Bearer token** (see argon2 root cause).
 
-### Three backend comparison in engine mode (18-core Intel Ultra 5 125H / 30GB)
+### Three backend comparison in engine mode (18-core Intel Ultra 5 125H / 32 GB)
 
 | Backend | Scenario | Engine | agents | max_pending | certs/s | failures | p50 | Notes |
 |---------|----------|--------|--------|-------------|---------|----------|-----|-------|
 | PG | aic | engine | 2500 | 20,000 (default) | 888 | **71% 503** | 123ms | 503 = write-pipeline rb.IsFull() backpressure |
 | SQLite | aic | engine | 2500 | 20,000 | 542 | 9.6% (HTTP0 only) | 3.6s | single-writer lock contention, no 503, latency spikes |
 | PG | regular | engine | 2500 | 200,000 | **2,570** | 0% | 1.5ms | — |
-| MySQL | regular | engine | 2500 | — | ~398 | crash | — | **write pipeline gave up: memory +21GB + connection reset by peer** |
-| MySQL | regular | record buffer | 2500 | — | 3,105 | 19% 503 | 1.7ms | record-buffer mode is healthy |
+| MariaDB | regular | engine | 2500 | — | ~398 | crash | — | **write pipeline gave up: memory +21GB + connection reset by peer** |
+| MariaDB | regular | record buffer | 2500 | — | 3,105 | 19% 503 | 1.7ms | record-buffer mode is healthy |
 | PG | regular | record buffer | 2500 | — | 3,790 | — | — | — |
 | SQLite | regular | record buffer | 2500 | — | 5,626 | — | — | batch-write ceiling |
 
@@ -92,9 +92,9 @@ not the root cause.
 
 ### Engine-mode leftovers (to-do)
 
-1. `Engine.StoreDANonce` on non-WAL backends (PG/MySQL) is a **synchronous single-row
+1. `Engine.StoreDANonce` on non-WAL backends (PG/MariaDB) is a **synchronous single-row
    INSERT** (`engine writes.go:277`) → one of the AIC hard walls.
-2. **MySQL + engine write pipeline collapses**: memory balloons to 21GB + connection
+2. **MariaDB + engine write pipeline collapses**: memory balloons to 21GB + connection
    reset by peer.
 3. Engine's own `BenchmarkIssueCertMemory` FAILs under sustained load (write-pipeline
    backpressure) + a single 100k-row backlog flush takes 9s.
@@ -169,10 +169,10 @@ New engine tests: `TestUserTokenLoadAndAuthLookups`,
 race clean). Engine full tests and core `internal/serve` full tests pass.
 
 Next to-dos: ① speed up write-pipeline batch persistence further (now the only wall);
-② fix the MySQL+engine write-pipeline crash (21GB/conn reset); ③ land
+② fix the MariaDB+engine write-pipeline crash (21GB/conn reset); ③ land
 `BulkInsertAICExtensions`; ④ change startup LOAD to batched (replace LIMIT/OFFSET).
 
-## §3 MySQL+engine write-pipeline crash root cause and fix (R12)
+## §3 MariaDB+engine write-pipeline crash root cause and fix (R12)
 
 Continuing "§1 engine-mode leftover ②". **Two-layer root cause**:
 
@@ -180,25 +180,25 @@ Continuing "§1 engine-mode leftover ②". **Two-layer root cause**:
    showed `oom-kill: task=bench-smoke, anon-rss:~21GB` (twice). "connection reset by
    peer" was its downstream symptom. The current `MaxResidentBytes` default 2GiB budget
    (options.go:98-99) makes RSS platform-bound and it no longer reproduces.
-2. **The real defect in the current code = MySQL half-open connections with no read
+2. **The real defect in the current code = MariaDB half-open connections with no read
    timeout**: `bulkInsertChunk→Exec→mysqlConn.readPacket` blocks forever with no
    deadline; the entire flush holds `flushMu` → the drain goroutine hangs → pending pins
    at maxPending (all requests 503) → `Stop()→FlushAll()` deadlocks waiting on the same
    lock → graceful shutdown hangs (proven by SIGQUIT dump: goroutine 1 main stack
    `FlushAll` waiting for flushMu; recordbuffer run→drain→flushLocked→
-   `BulkInsertCertRecords`→readPacket stuck on read). MySQL itself is healthy
+   `BulkInsertCertRecords`→readPacket stuck on read). MariaDB itself is healthy
    (processlist shows INSERTs executing normally) — the hang is the client side having no
    timeout.
 
 **Fix (engine repo, R12)**:
-- `db/db.go`: inject `ensureMySQLTimeouts` into the MySQL DSN (`timeout=10s&readTimeout=30s&
+- `db/db.go`: inject `ensureMariaDBTimeouts` into the MariaDB DSN (`timeout=10s&readTimeout=30s&
   writeTimeout=30s`, not overwriting existing, skipping `@unix(`); add `ExecContext`;
 - `db/batch.go` / `db/da_nonces.go`: `BulkInsertCertRecordsCtx` /
   `BulkStoreDANoncesCtx` (old entry points delegate to Background);
 - `recordbuffer`: `flushLocked` / `replayWAL` wrap batch writes with a `flushDBTimeout=2min`
   ctx fallback — a half-open connection stalls at most 2 minutes before erroring and
   retrying, no infinite blocking;
-- Bonus: PG/MySQL chunk size **39 → 500 rows/statement** (`certChunkSize`; SQLite stays at
+- Bonus: PG/MariaDB chunk size **39 → 500 rows/statement** (`certChunkSize`; SQLite stays at
   the 999-variable limit), cutting write round-trips ~13× — directly removing part of the
   write-pipeline wall.
 
@@ -206,19 +206,19 @@ Continuing "§1 engine-mode leftover ②". **Two-layer root cause**:
 
 | Scenario | Before | After |
 |----------|--------|-------|
-| MySQL regular @100ms (original crash scenario) | ~398/s crash (21GB/conn reset) | **7,575 certs/s**, p50 80.7ms, error 35% (503 backpressure) |
-| MySQL AIC @100ms | 4,325/s | **6,034 certs/s**, p50 305.9ms, error 1.61% |
-| MySQL AIC @600ms | — | 4,114 certs/s, error 0.06% |
+| MariaDB regular @100ms (original crash scenario) | ~398/s crash (21GB/conn reset) | **7,575 certs/s**, p50 80.7ms, error 35% (503 backpressure) |
+| MariaDB AIC @100ms | 4,325/s | **6,034 certs/s**, p50 305.9ms, error 1.61% |
+| MariaDB AIC @600ms | — | 4,114 certs/s, error 0.06% |
 | PG AIC @600ms | 4,111/s | 4,054 certs/s (no regression, p50 2.9ms) |
 
-> Note: the 35% error rate at MySQL regular @100ms comes from maxpending backpressure
+> Note: the 35% error rate at MariaDB regular @100ms comes from maxpending backpressure
 > (503) — a by-design rate limit, not a failure; the key point is **no more crash/hang,
 > clean shutdown**. At very high injection, shutdown drains the backlog (up to ~200k) at
-> MySQL write-wall speed (~2-4k/s), so under extreme load allow several minutes for the
-> shutdown drain phase (expected, not a hang; MySQL keeps INSERTing throughout).
+> MariaDB write-wall speed (~2-4k/s), so under extreme load allow several minutes for the
+> shutdown drain phase (expected, not a hang; MariaDB keeps INSERTing throughout).
 
 **Verification**: `-race` clean (db/recordbuffer/engine); new unit tests
-`TestEnsureMySQLTimeouts` / `TestBulkInsertCertRecordsCtxCancelled` /
+`TestEnsureMariaDBTimeouts` / `TestBulkInsertCertRecordsCtxCancelled` /
 `TestBulkStoreDANoncesCtxCancelled`. engine `docs/RISKS.md` R12 and `NEXT_STEPS.md`
 updated.
 
@@ -229,7 +229,7 @@ to batched (replace LIMIT/OFFSET).
 
 ## §4 Bottleneck prof analysis + lock sharding + full-buffer herd fix (R4/R13)
 
-**prof findings (AIC MySQL @100ms; the 18 cores only use ~8)**: p50 was lock waiting;
+**prof findings (AIC MariaDB @100ms; the 18 cores only use ~8)**: p50 was lock waiting;
 throughput was limited by two single locks + ECDSA; the write pipeline had already become
 the floor (no longer the drag). The user's insight about nonces was correct and adopted —
 DA nonces carry timestamp+lifetime, the freshness check (skew 30s) already bounds the
@@ -259,19 +259,19 @@ usable window, so in-memory retention only needs **skew + 3min buffer** (don't u
 |----------|-------|
 | AIC @100ms 20s | 5.3–5.5k certs/s, p50 137–220ms (buffer absorbs bursts) |
 | AIC @100ms 40s (pre-fix R5 baseline 3,160/s; pre-R5-fix 40s collapse to ~108k total) | **~163k successes / 40s ≈ 4.1k certs/s sustained**, no collapse, backpressure = clean 503 |
-| MySQL bulk-insert standalone ceiling (500-row chunk, hot) | ≈ 7.3k certs/s |
+| MariaDB bulk-insert standalone ceiling (500-row chunk, hot) | ≈ 7.3k certs/s |
 
 > Key: **the pre-fix 40s collapse was the R13 flushMu herd** — once the buffer filled
 > (~18s), every `AddDANonce` did a synchronous FlushAll, 2k+ goroutines queued behind the
 > same lock, freezing the server (dump-proof). After the fix the 40s total of 163k
-> exactly equals the MySQL bulk-insert sustained ceiling (≈8k records/s incl. DA nonces),
+> exactly equals the MariaDB bulk-insert sustained ceiling (≈8k records/s incl. DA nonces),
 > i.e. throughput is now capped by the backend write wall; further gains require writing
 > less (see to-dos).
 
 Verification: `-race` clean (db/recordbuffer/engine); serve-related cases green; engine
 `docs/RISKS.md` R13 and `NEXT_STEPS.md` updated.
 
-Next to-dos (updated): ① throughput is already at the MySQL write wall (~4k certs/s
+Next to-dos (updated): ① throughput is already at the MariaDB write wall (~4k certs/s
 sustained); to go higher you must write less:
    - The AIC scenario writes 1 cert + 1 nonce per request = 2 DB writes; evaluate whether
      DA nonces must be batched to disk at all (replay protection lives in memory; the DB

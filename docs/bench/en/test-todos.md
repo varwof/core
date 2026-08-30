@@ -149,7 +149,7 @@
 - [ ] HTML report generation (charts)
 - [ ] Baseline comparison (diff vs previous run)
 
-**First-round benchmark** (2026-08-27; reported as "48 cores / 30GB RAM, SQLite file
+**First-round benchmark** (2026-08-27; reported as "48 cores / 32 GB RAM, SQLite file
 DB" — later corrected to 18 cores, see the [work log](performance-worklog-2026-08-27.md) §1 erratum):
 - Report: `./benchmark-report-2026-08-27.md` | Work log: `./performance-worklog-2026-08-27.md` | Raw JSON: `../results/*.json`
 - Key findings: with the default record_buffer (max_pending=20000), sustained issuance is
@@ -175,8 +175,8 @@ DB" — later corrected to 18 cores, see the [work log](performance-worklog-2026
       `argon2.IDKey` cost 44% CPU; bench changed to login-once + Bearer token; AIC and
       regular each +60% (see [Performance Engineering Work Log](performance-worklog-2026-08-27.md) §1)
 - [x] engine leftover: PG `StoreDANonce` synchronous single-row INSERT converted to batch
-      (see "DA nonce batch writes" below); **MySQL+engine write-pipeline crash
-      (21GB/conn reset) fixed** — see "MySQL+engine write-pipeline crash root cause and
+      (see "DA nonce batch writes" below); **MariaDB+engine write-pipeline crash
+      (21GB/conn reset) fixed** — see "MariaDB+engine write-pipeline crash root cause and
       fix" below
 - [ ] `BulkInsertAICExtensions` landed; engine startup LOAD switched to batching (replace
       LIMIT/OFFSET)
@@ -193,24 +193,24 @@ DB" — later corrected to 18 cores, see the [work log](performance-worklog-2026
       (login/create/delete/password-rotate). AIC @600ms reached **4,111 certs/s (injection
       ceiling)**, p50 2.7ms; DB activity reduced to bulk `INSERT INTO certificates` only.
       New tests green (4 engine + 4 core rbac_engine, race clean)
-- [x] **MySQL+engine write-pipeline crash root cause and fix (R12, engine repo)**:
+- [x] **MariaDB+engine write-pipeline crash root cause and fix (R12, engine repo)**:
       two-layer cause — ① the documented 21GB proven by dmesg to be an **OOM kill**
       (`oom-kill bench-smoke anon-rss ~21GB`; current 2GiB `MaxResidentBytes` budget
-      guards it, no longer reproduces); ② the real defect = **MySQL has no read timeout**,
+      guards it, no longer reproduces); ② the real defect = **MariaDB has no read timeout**,
       half-open connections let `bulkInsertChunk→Exec→readPacket` block forever while
       holding `flushMu` → drain stuck (pending pins at maxPending, all 503) →
       `Stop()→FlushAll()` deadlock hang. Fix: inject
-      `timeout=10s&readTimeout=30s&writeTimeout=30s` into the MySQL DSN
-      (`ensureMySQLTimeouts`) + `ExecContext` + `BulkInsertCertRecordsCtx`/
+      `timeout=10s&readTimeout=30s&writeTimeout=30s` into the MariaDB DSN
+      (`ensureMariaDBTimeouts`) + `ExecContext` + `BulkInsertCertRecordsCtx`/
       `BulkStoreDANoncesCtx` + recordbuffer `flushDBTimeout=2min` ctx fallback.
-      **Bonus PG/MySQL chunk 39→500 rows/statement**
+      **Bonus PG/MariaDB chunk 39→500 rows/statement**
       (`certChunkSize`, round-trips down ~13×). Re-measured (all exit=0 with reports):
-      MySQL regular @100ms **7,575/s**, AIC @100ms **6,034/s** (was 4,325 before fix),
+      MariaDB regular @100ms **7,575/s**, AIC @100ms **6,034/s** (was 4,325 before fix),
       AIC @600ms 4,114/s; PG AIC @600ms 4,054/s no regression. `-race` clean; new unit
-      tests `TestEnsureMySQLTimeouts`/`TestBulkInsertCertRecordsCtxCancelled`/
+      tests `TestEnsureMariaDBTimeouts`/`TestBulkInsertCertRecordsCtxCancelled`/
       `TestBulkStoreDANoncesCtxCancelled`
 - [ ] Next wall: **write-pipeline batch-write throughput** — already improved by the R12
-      chunk optimization (MySQL AIC 4,325→6,034/s), but at 100ms high injection
+      chunk optimization (MariaDB AIC 4,325→6,034/s), but at 100ms high injection
       backpressure (503) can still occur; keep evaluating larger chunks / batched AIC
       extensions
 - [ ] engine leftover: land `BulkInsertAICExtensions`; startup LOAD switched to batching
