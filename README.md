@@ -116,3 +116,7 @@ core is the **core CA engine** of the varwof ecosystem, providing complete PKI l
 | IETF Draft | [draft-wei-aic-identity-cert](https://datatracker.ietf.org/doc/draft-wei-aic-identity-cert/) |
 | License | AGPL-3.0 |
 | Member | [Open Invention Network](https://openinventionnetwork.com/) |
+
+## Community
+
+Questions, feedback, and port status: [AIC Discussions](https://github.com/varwof/aic-jwt/discussions)

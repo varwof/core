@@ -65,3 +65,7 @@ core 是 varwof 生态的**核心 CA 引擎**。本项目是 [Open Invention Net
 | IETF 草案 | [draft-wei-aic-identity-cert](https://datatracker.ietf.org/doc/draft-wei-aic-identity-cert/) |
 | 许可证 | AGPL-3.0 |
 | 成员 | [Open Invention Network](https://openinventionnetwork.com/) |
+
+## 社区
+
+问题、反馈与移植状态：[AIC Discussions](https://github.com/varwof/aic-jwt/discussions)
