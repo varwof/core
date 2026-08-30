@@ -5,22 +5,24 @@ package ca
 
 import "encoding/asn1"
 
-// Varwof PKI OID tree (spec v1.5 §2.2):
+// Varwof PKI OID tree (spec v1.7.2 §2.2; aligned with dev-docs/aic/07-oid-tree.md):
 //
 // 1.3.6.1.4.1.66257 (IANA PEN — Varwof PKI)
-// ├── 1  Identity and Permission Core
-// │   ├── 1  AIC
-// │   │   ├── 1  AgentIdentity (reserved)
-// │   │   ├── 2  DelegationAuthorization
-// │   ├── 2  PrincipalAuthorization
-// │   ├── 3  Capability Scheme Registry (reserved)
-// │   ├── 4  Vendor Extension Registry (reserved)
-// │   └── 6  RenewalToken
+// ├── 1  Core Identity and Permission
+// │   ├── 1  AIC                                (.1.1; main identity extension)
+// │   │   ├── 1  AgentIdentity                  (.1.1.1; reserved sub-node, embedded fields in AIC)
+// │   │   ├── 2  DelegationAuthorization        (.1.1.2; reserved sub-node, embedded signature evidence)
+// │   │   ├── 3  (unallocated)
+// │   │   └── 4  DelegationDepthControl         (.1.1.4; FUTURE spec reserve, not yet implemented)
+// │   ├── 2  PrincipalAuthorization             (.1.2; active)
+// │   ├── 5  GatewaySession                     (.1.5; historical, migrated to AIC)
+// │   │   └── 1  Sub-CA scope                   (.1.5.1; active, production use in sign/sub)
+// │   └── 6  RenewalToken                       (.1.6)
 // ├── 3  National/Industry Certification
 // │   ├── 1  MarketAccessId
 // │   ├── 2  TrustLevel
 // │   ├── 3  CrossBorder (reserved)
-// │   └── 4  EUDIWallet (reserved)
+// │   │      (branch 3 further planning TBD)
 // ├── 5  GM (Chinese National Cryptography)
 // └── 6  Certificate Transparency
 
@@ -43,12 +45,6 @@ var (
 
 	// 1.2 PrincipalAuthorization (v1.5: replaces old UserPermission)
 	OIDPrincipalAuthorization = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 1, 2}
-
-	// 1.3 Capability Scheme Registry (reserved)
-	OIDCapabilitySchemeRegistry = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 1, 3}
-
-	// 1.4 Vendor Extension Registry (reserved)
-	OIDVendorExtensionRegistry = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 1, 4}
 
 	// 1.6 RenewalToken (auto-renewal token, I-D §6)
 	OIDRenewalToken = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 66257, 1, 6}
