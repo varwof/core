@@ -6,6 +6,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/varwof/core/internal"
@@ -37,8 +38,10 @@ func TestWriteFileAtomic(t *testing.T) {
 	if err != nil || string(data) != "{}" {
 		t.Fatalf("atomically written content: %q (err=%v)", data, err)
 	}
-	if fi, err := os.Stat(path); err != nil || fi.Mode().Perm() != 0o600 {
-		t.Fatalf("perm: %v (%v)", fi, err)
+	if runtime.GOOS != "windows" {
+		if fi, err := os.Stat(path); err != nil || fi.Mode().Perm() != 0o600 {
+			t.Fatalf("perm: %v (%v)", fi, err)
+		}
 	}
 
 	if err := writeFileAtomic(filepath.Join(dir, "nope", "x.json"), []byte("{}"), 0o600); err == nil {
