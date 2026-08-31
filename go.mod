@@ -8,7 +8,6 @@ require (
 	github.com/miekg/dns v1.1.62
 	github.com/prometheus/client_golang v1.20.5
 	github.com/tjfoc/gmsm v1.4.1
-	github.com/varwof/aic-jwt v0.0.0-00010101000000-000000000000
 	github.com/varwof/engine v0.2.0
 	github.com/varwof/pkcs7 v0.1.0
 	github.com/varwof/register v0.1.0
@@ -60,8 +59,3 @@ require (
 // Local development: core depends on un-released engine changes
 // (DA nonce expiry, user/token memory index, NonceTTL). Replace with the
 // local engine checkout; a published engine release should remove this.
-
-// Local development: core reuses the local aic-jwt checkout (OAuth AS/RS
-// reference layer) for the L3 OAuth endpoints. Remove once a published
-// aic-jwt release covers it.
-replace github.com/varwof/aic-jwt => ../aic-jwt

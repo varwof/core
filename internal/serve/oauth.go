@@ -16,8 +16,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/varwof/aic-jwt"
 	"github.com/varwof/core/internal/ca"
+	"github.com/varwof/types/aicjwt"
 )
 
 // oauthIssuerID is the OAuth authorization-server identity. It matches the
@@ -35,7 +35,7 @@ const oauthDefaultLifetime = 3600 * time.Second
 
 // oauthIssuer builds the reference OAuth Issuer bound to the configured
 // default CA (same private key as X.509 issuance and JWKS publication).
-func (s *Server) oauthIssuer() (*aicjson.Issuer, *x509.Certificate, error) {
+func (s *Server) oauthIssuer() (*oauthIssuer, *x509.Certificate, error) {
 	cfg := s.getConfig()
 	caName := cfg.Defaults.CA
 	caCfg, ok := cfg.CAs[caName]
@@ -50,7 +50,7 @@ func (s *Server) oauthIssuer() (*aicjson.Issuer, *x509.Certificate, error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("oauth: derive alg: %w", err)
 	}
-	return aicjson.NewIssuer(oauthIssuerID, ca.SPKISHA256(cert), signer, alg, nil), cert, nil
+	return newOAuthIssuer(oauthIssuerID, ca.SPKISHA256(cert), signer, alg, nil), cert, nil
 }
 
 // serveOAuthToken handles POST /oauth/token (RFC 6749 §3.2). Supported
@@ -73,7 +73,7 @@ func (s *Server) serveOAuthToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req := aicjson.TokenRequest{
+	req := oauthTokenRequest{
 		GrantType:           r.Form.Get("grant_type"),
 		Code:                r.Form.Get("code"),
 		RedirectURI:         r.Form.Get("redirect_uri"),
@@ -97,7 +97,7 @@ func (s *Server) serveOAuthToken(w http.ResponseWriter, r *http.Request) {
 	// x509 → AIC-JWT exchange: the subject credential is an X.509 AIC
 	// certificate; the exchanged token is minted by the same CA via
 	// ca.SignJWT (full AIC validation, shared trust root).
-	if req.GrantType == aicjson.GrantTypeTokenExchange &&
+	if req.GrantType == GrantTypeTokenExchange &&
 		req.SubjectTokenType == oauthTokenTypeX509Cert {
 		s.oauthExchangeX509(w, r, req.SubjectToken)
 		return
@@ -114,33 +114,24 @@ func (s *Server) serveOAuthToken(w http.ResponseWriter, r *http.Request) {
 	// client_assertion. Core treats the assertion as an AIC-JWT (not a DA
 	// JWT), validates it against the CA trust root, then mints a fresh
 	// RFC 9068 access token bound to the presented key.
-	if req.GrantType == aicjson.GrantTypeJWTBearer {
+	if req.GrantType == GrantTypeJWTBearer {
 		s.oauthJWTBearer(w, r, req, issuer, caCert)
 		return
 	}
 
-	agentPub, err := oauthPresenterKey(r)
-	if err != nil {
-		s.apiErr(w, r, http.StatusBadRequest, "oauth.invalid_request", err.Error())
-		return
-	}
-
-	resp, err := issuer.HandleTokenRequest(req, agentPub, []string{oauthIssuerID}, time.Now())
-	if err != nil {
-		s.apiErr(w, r, http.StatusBadRequest, "oauth.invalid_grant", err.Error())
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", "no-store")
-	json.NewEncoder(w).Encode(resp)
+	// The remaining grant types (authorization_code, non-x509 token
+	// exchange) are not implemented by core's token endpoint.
+	s.apiErr(w, r, http.StatusBadRequest, "oauth.unsupported_grant_type",
+		fmt.Sprintf("grant_type %q is not supported", req.GrantType))
+	return
 }
 
 // oauthJWTBearer implements RFC 7523 JWT-bearer in core's adaptation:
 // client_assertion is an AIC-JWT issued by the same CA. It is validated
 // with the full draft pipeline against the CA trust root, and a fresh
 // RFC 9068 access token is minted bound to the presented PoP key.
-func (s *Server) oauthJWTBearer(w http.ResponseWriter, r *http.Request, req aicjson.TokenRequest, issuer *aicjson.Issuer, caCert *x509.Certificate) {
-	if req.ClientAssertion == "" || req.ClientAssertionType != aicjson.AssertionTypeJWT {
+func (s *Server) oauthJWTBearer(w http.ResponseWriter, r *http.Request, req oauthTokenRequest, issuer *oauthIssuer, caCert *x509.Certificate) {
+	if req.ClientAssertion == "" || req.ClientAssertionType != AssertionTypeJWT {
 		s.apiErr(w, r, http.StatusBadRequest, "oauth.invalid_request", "client_assertion with type jwt-bearer required")
 		return
 	}
@@ -150,7 +141,7 @@ func (s *Server) oauthJWTBearer(w http.ResponseWriter, r *http.Request, req aicj
 		return
 	}
 
-	dec, err := aicjson.Validate(req.ClientAssertion, aicjson.VerifyOptions{
+	dec, err := aicjwt.Validate(req.ClientAssertion, aicjwt.VerifyOptions{
 		Now:              time.Now(),
 		ExpectedIssuer:   oauthIssuerID,
 		ExpectedAudience: []string{oauthIssuerID},
@@ -162,12 +153,12 @@ func (s *Server) oauthJWTBearer(w http.ResponseWriter, r *http.Request, req aicj
 	}
 
 	// Faithfully carry over the assertion's identity claims.
-	_, pb, _, err := aicjson.ParseCompact(req.ClientAssertion)
+	_, pb, _, err := aicjwt.ParseCompact(req.ClientAssertion)
 	if err != nil {
 		s.apiErr(w, r, http.StatusBadRequest, "oauth.invalid_grant", "unreadable client_assertion")
 		return
 	}
-	var outer aicjson.OuterClaims
+	var outer aicjwt.OuterClaims
 	if err := json.Unmarshal(pb, &outer); err != nil {
 		s.apiErr(w, r, http.StatusBadRequest, "oauth.invalid_grant", "unreadable client_assertion")
 		return
@@ -195,9 +186,9 @@ func (s *Server) oauthJWTBearer(w http.ResponseWriter, r *http.Request, req aicj
 		s.apiErr(w, r, http.StatusBadRequest, "oauth.invalid_grant", fmt.Sprintf("issue access token: %v", err))
 		return
 	}
-	resp := aicjson.TokenResponse{
+	resp := oauthTokenResponse{
 		AccessToken: res.Token,
-		TokenType:   aicjson.TokenTypeBearer,
+		TokenType:   TokenTypeBearer,
 		ExpiresIn:   res.Claims.Exp - res.Claims.Iat,
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -206,7 +197,7 @@ func (s *Server) oauthJWTBearer(w http.ResponseWriter, r *http.Request, req aicj
 }
 
 // oauthAgentIDOf derives the agent id for re-issuance.
-func oauthAgentIDOf(outer aicjson.OuterClaims, actor string) string {
+func oauthAgentIDOf(outer aicjwt.OuterClaims, actor string) string {
 	if outer.Sub != "" {
 		return outer.Sub
 	}
@@ -217,16 +208,16 @@ func oauthAgentIDOf(outer aicjson.OuterClaims, actor string) string {
 }
 
 // aicjwtPrincipalFromOuter returns the assertion's AIC principal.
-func aicjwtPrincipalFromOuter(o aicjson.OuterClaims) aicjson.Principal {
+func aicjwtPrincipalFromOuter(o aicjwt.OuterClaims) aicjwt.Principal {
 	if o.Aic != nil {
 		return o.Aic.Principal
 	}
-	return aicjson.Principal{Realm: "r", ID: o.Sub}
+	return aicjwt.Principal{Realm: "r", ID: o.Sub}
 }
 
 // principalKeyHashOf decodes the assertion principal's key_hash (base64url)
 // into bytes for the core PrincipalUid.
-func principalKeyHashOf(o aicjson.OuterClaims) []byte {
+func principalKeyHashOf(o aicjwt.OuterClaims) []byte {
 	if o.Aic == nil {
 		return nil
 	}
@@ -238,7 +229,7 @@ func principalKeyHashOf(o aicjson.OuterClaims) []byte {
 }
 
 // oauthCapabilitiesOf converts AIC-JWT capabilities to the core ca form.
-func oauthCapabilitiesOf(caps []aicjson.Capability) []ca.Capability {
+func oauthCapabilitiesOf(caps []aicjwt.Capability) []ca.Capability {
 	out := make([]ca.Capability, 0, len(caps))
 	for _, c := range caps {
 		out = append(out, ca.Capability{SchemeId: c.Scheme, CapabilityId: c.ID, Parameters: []byte(c.Params)})
@@ -266,9 +257,9 @@ func (s *Server) oauthExchangeX509(w http.ResponseWriter, r *http.Request, subje
 		s.apiErr(w, r, http.StatusBadRequest, "oauth.invalid_grant", err.Error())
 		return
 	}
-	resp := aicjson.TokenResponse{
+	resp := oauthTokenResponse{
 		AccessToken: res.Token,
-		TokenType:   aicjson.TokenTypeBearer,
+		TokenType:   TokenTypeBearer,
 		ExpiresIn:   res.Claims.Exp - res.Claims.Iat,
 		Scope:       oauthScopeOf(sc.AIC.Capabilities),
 	}
@@ -279,7 +270,7 @@ func (s *Server) oauthExchangeX509(w http.ResponseWriter, r *http.Request, subje
 
 // oauthSignConfigFromCert validates the x509 AIC subject certificate and
 // builds the SignConfig that mints its AIC-JWT equivalent.
-func oauthSignConfigFromCert(issuer *aicjson.Issuer, caCert *x509.Certificate, subjectToken string) (*ca.SignConfig, error) {
+func oauthSignConfigFromCert(issuer *oauthIssuer, caCert *x509.Certificate, subjectToken string) (*ca.SignConfig, error) {
 	block, _ := pem.Decode([]byte(subjectToken))
 	if block == nil {
 		return nil, errors.New("subject_token is not a PEM certificate")
@@ -327,7 +318,7 @@ func oauthPresenterKey(r *http.Request) (crypto.PublicKey, error) {
 		return r.TLS.PeerCertificates[0].PublicKey, nil
 	}
 	if dpop := r.Header.Get("DPoP"); dpop != "" {
-		pub, err := aicjson.VerifyDPoP(dpop, "", r.Method, r.URL.String(), time.Now(), aicjson.NewMemNonceStore())
+		pub, err := oauthVerifyDPoP(dpop, "", r.Method, r.URL.String(), time.Now(), oauthNewMemNonceStore())
 		if err != nil {
 			return nil, fmt.Errorf("invalid DPoP proof: %w", err)
 		}

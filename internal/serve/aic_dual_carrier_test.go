@@ -18,7 +18,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/varwof/aic-jwt"
 	"github.com/varwof/core/internal/ca"
 	"github.com/varwof/types/aicjwt"
 )
@@ -132,13 +131,13 @@ func jwtFor(t *testing.T, alg carrierAlg) string {
 }
 
 // outerClaimsFor decodes an AIC-JWT payload.
-func outerClaimsFor(t *testing.T, tok string) aicjson.OuterClaims {
+func outerClaimsFor(t *testing.T, tok string) aicjwt.OuterClaims {
 	t.Helper()
-	_, pb, _, err := aicjson.ParseCompact(tok)
+	_, pb, _, err := aicjwt.ParseCompact(tok)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var outer aicjson.OuterClaims
+	var outer aicjwt.OuterClaims
 	if err := json.Unmarshal(pb, &outer); err != nil {
 		t.Fatal(err)
 	}
@@ -156,11 +155,11 @@ func TestDualCarrierMatrix(t *testing.T) {
 			// (a) Same trust root: the JWT kid must be the CA cert's SPKI
 			// hash and the token must verify with the CA key that signed the
 			// x509 carrier.
-			hb, _, _, err := aicjson.ParseCompact(tok)
+			hb, _, _, err := aicjwt.ParseCompact(tok)
 			if err != nil {
 				t.Fatal(err)
 			}
-			var hdr aicjson.Header
+			var hdr aicjwt.Header
 			if err := json.Unmarshal(hb, &hdr); err != nil {
 				t.Fatal(err)
 			}
@@ -170,7 +169,7 @@ func TestDualCarrierMatrix(t *testing.T) {
 			if hdr.Kid != ca.SPKISHA256(c.caCert) {
 				t.Fatalf("kid %q != CA SPKI hash %q", hdr.Kid, ca.SPKISHA256(c.caCert))
 			}
-			if _, err := aicjson.Validate(tok, aicjson.VerifyOptions{
+			if _, err := aicjwt.Validate(tok, aicjwt.VerifyOptions{
 				Now:              time.Now(),
 				ExpectedIssuer:   "varwof-core",
 				ExpectedAudience: []string{"varwof-core"},
@@ -223,7 +222,7 @@ func TestDualCarrierMatrix(t *testing.T) {
 			// certificate signed by a different subject key is detected by
 			// the key_hash mismatch.
 			tampered := tok[:len(tok)-3] + "AAA"
-			if _, err := aicjson.Validate(tampered, aicjson.VerifyOptions{
+			if _, err := aicjwt.Validate(tampered, aicjwt.VerifyOptions{
 				Now:        time.Now(),
 				IssuerKeys: map[string]crypto.PublicKey{ca.SPKISHA256(c.caCert): c.caCert.PublicKey},
 			}); err == nil {

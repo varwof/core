@@ -21,8 +21,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/varwof/aic-jwt"
 	"github.com/varwof/core/internal/ca"
+	"github.com/varwof/types/aicjwt"
 )
 
 // oauthTestAICCert issues an AIC certificate under the test CA and returns
@@ -88,24 +88,24 @@ func TestOAuthTokenX509Exchange(t *testing.T) {
 	certPEM, key := oauthTestAICCert(t, srv, caCert, caKey)
 
 	w := oauthFormPost(t, handler, map[string]string{
-		"grant_type":        aicjson.GrantTypeTokenExchange,
+		"grant_type":        GrantTypeTokenExchange,
 		"subject_token":     certPEM,
 		"subject_token_type": oauthTokenTypeX509Cert,
 	}, nil)
 	if w.Code != http.StatusOK {
 		t.Fatalf("exchange: %d %s", w.Code, w.Body.String())
 	}
-	var resp aicjson.TokenResponse
+	var resp oauthTokenResponse
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Fatal(err)
 	}
-	if resp.AccessToken == "" || resp.TokenType != aicjson.TokenTypeBearer {
+	if resp.AccessToken == "" || resp.TokenType != TokenTypeBearer {
 		t.Fatalf("bad token response: %+v", resp)
 	}
 
 	// The exchanged token must validate against the same CA trust root and
 	// bind the same subject key (cnf.jkt).
-	dec, err := aicjson.Validate(resp.AccessToken, aicjson.VerifyOptions{
+	dec, err := aicjwt.Validate(resp.AccessToken, aicjwt.VerifyOptions{
 		Now:              time.Now(),
 		ExpectedIssuer:   oauthIssuerID,
 		ExpectedAudience: []string{oauthIssuerID},
@@ -118,18 +118,18 @@ func TestOAuthTokenX509Exchange(t *testing.T) {
 		t.Fatalf("capabilities = %+v", dec.Capabilities)
 	}
 	// cnf.jkt must equal the certificate subject key thumbprint.
-	_, pb, _, err := aicjson.ParseCompact(resp.AccessToken)
+	_, pb, _, err := aicjwt.ParseCompact(resp.AccessToken)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var outer aicjson.OuterClaims
+	var outer aicjwt.OuterClaims
 	if err := json.Unmarshal(pb, &outer); err != nil {
 		t.Fatal(err)
 	}
 	if outer.Cnf == nil || outer.Cnf.Jkt == "" {
 		t.Fatal("exchanged token missing cnf.jkt")
 	}
-	wantJkt, err := aicjson.KeyHashOf(&key.PublicKey, "jkt")
+	wantJkt, err := aicjwt.KeyHashOf(&key.PublicKey, "jkt")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,7 +150,7 @@ func TestOAuthTokenX509Exchange_WrongCA(t *testing.T) {
 	// A cert from the "other" CA must be rejected.
 	otherPEM, _ := oauthTestAICCert(t, srv, otherCert, otherKey)
 	w := oauthFormPost(t, handler, map[string]string{
-		"grant_type":         aicjson.GrantTypeTokenExchange,
+		"grant_type":         GrantTypeTokenExchange,
 		"subject_token":      otherPEM,
 		"subject_token_type": oauthTokenTypeX509Cert,
 	}, nil)
@@ -191,14 +191,14 @@ func TestOAuthTokenJWTBearer(t *testing.T) {
 	// and proves possession of the same key via mTLS.
 	clientCert := leafCertForTest(t, agentKey)
 	w := oauthFormPost(t, handler, map[string]string{
-		"grant_type":            aicjson.GrantTypeJWTBearer,
-		"client_assertion_type": aicjson.AssertionTypeJWT,
+		"grant_type":            GrantTypeJWTBearer,
+		"client_assertion_type": AssertionTypeJWT,
 		"client_assertion":      res.Token,
 	}, clientCert)
 	if w.Code != http.StatusOK {
 		t.Fatalf("jwt-bearer: %d %s", w.Code, w.Body.String())
 	}
-	var resp aicjson.TokenResponse
+	var resp oauthTokenResponse
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Fatal(err)
 	}
@@ -235,8 +235,8 @@ func TestOAuthTokenRequiresPoP(t *testing.T) {
 
 	// No mTLS, no DPoP → cnf cannot be bound → reject.
 	w := oauthFormPost(t, handler, map[string]string{
-		"grant_type":            aicjson.GrantTypeJWTBearer,
-		"client_assertion_type": aicjson.AssertionTypeJWT,
+		"grant_type":            GrantTypeJWTBearer,
+		"client_assertion_type": AssertionTypeJWT,
 		"client_assertion":      res.Token,
 	}, nil)
 	if w.Code != http.StatusBadRequest {
