@@ -7,6 +7,10 @@ Documents the authorization/operation audit model, query and integrity
 verification, privacy masking, and evidence generation for
 SOC 2 / PCI DSS / NIST SP 800-53 / ISO 27001.
 
+> ⚠️ These are **self-assessment report templates** generated from local state.
+> They are not an independent auditor attestation (SOC 2 Type I/II, PCI
+> assessment, or ISO certification) and make no claim of audit readiness.
+
 ## 1. Audit model
 
 Sensitive and general API operations write to the audit chain

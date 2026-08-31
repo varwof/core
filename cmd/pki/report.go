@@ -77,10 +77,10 @@ func generateComplianceReport(rawDB *sql.DB, standard string, caFilter string) (
 	rawDB.QueryRow("SELECT COUNT(*) FROM ca_meta WHERE type='root'").Scan(&rootCA)
 
 	title := map[string]string{
-		"soc2": "SOC 2 Compliance Report",
-		"pci":  "PCI DSS v4.0 Compliance Report",
-		"nist": "NIST SP 800-53 Compliance Report",
-		"iso":  "ISO 27001 Compliance Report",
+		"soc2": "SOC 2 Self-Assessment Report",
+		"pci":  "PCI DSS v4.0 Self-Assessment Report",
+		"nist": "NIST SP 800-53 Self-Assessment Report",
+		"iso":  "ISO 27001 Self-Assessment Report",
 	}[standard]
 	if title == "" {
 		return nil, fmt.Errorf("unknown template: %s (use soc2, pci, nist, iso)", standard)

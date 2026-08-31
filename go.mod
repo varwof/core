@@ -55,7 +55,3 @@ require (
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
 )
-
-// Local development: core depends on un-released engine changes
-// (DA nonce expiry, user/token memory index, NonceTTL). Replace with the
-// local engine checkout; a published engine release should remove this.

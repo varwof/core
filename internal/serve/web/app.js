@@ -416,8 +416,8 @@ $('refreshRA').onclick = () => loadRA('pending');
 async function loadReports() {
   const g = $('reportsGrid');
   g.innerHTML = [
-    { title: __('ui.reports_soc2'), desc: 'SOC 2 Type II compliance — certificate inventory, CA hierarchy, CRL/OCSP status, key strength analysis.', url: '/api/v1/reports/compliance?soc2' },
-    { title: __('ui.reports_pci'), desc: 'PCI DSS v4.0 compliance — certificate validity, key strength, revocation checks, expiring certs.', url: '/api/v1/reports/compliance?pci' },
+    { title: __('ui.reports_soc2'), desc: 'SOC 2 Type II self-assessment — certificate inventory, CA hierarchy, CRL/OCSP status, key strength analysis.', url: '/api/v1/reports/compliance?soc2' },
+    { title: __('ui.reports_pci'), desc: 'PCI DSS v4.0 self-assessment — certificate validity, key strength, revocation checks, expiring certs.', url: '/api/v1/reports/compliance?pci' },
   ].map(r => `<div class="stat-card" style="cursor:pointer" onclick="window.open('${r.url}','_blank')">
     <h3>${r.title}</h3>
     <p style="font-size:13px;color:var(--text2);margin:8px 0 12px">${r.desc}</p>
