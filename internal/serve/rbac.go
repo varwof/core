@@ -26,6 +26,7 @@ import (
 	"github.com/varwof/core/internal"
 	"github.com/varwof/core/internal/ca"
 	"github.com/varwof/core/internal/provisioner"
+	"github.com/varwof/types/aicjwt"
 	"github.com/varwof/engine/db"
 )
 
@@ -325,6 +326,12 @@ func rememberAuthScopes(username string, scopes []string) {
 }
 
 func (s *Server) authResultToUser(r *provisioner.AuthResult) (*AuthUser, error) {
+	// AIC-JWT bearer authentication: capabilities come from the verified
+	// token (CA-signed), intersected with route rules like the certificate
+	// PA path. See authFromAICJWT.
+	if r.AICJWT != nil {
+		return s.authFromAICJWT(r)
+	}
 	perms := make([]Permission, len(r.Permissions))
 	for i, p := range r.Permissions {
 		perms[i] = Permission(p)
@@ -818,6 +825,56 @@ func grantCovered(capID string, allowed []string) bool {
 		}
 	}
 	return false
+}
+
+// aicjwtPrincipalUID renders an AIC-JWT principal in the X.509
+// communication-format principalUid ({realm}:{identifier}:{keyHash}) so the
+// same DB user lookup applies to both carriers.
+func aicjwtPrincipalUID(p aicjwt.Principal) string {
+	kh, err := base64.RawURLEncoding.DecodeString(p.KeyHash)
+	if err != nil {
+		kh = nil
+	}
+	return ca.PrincipalUid{Version: 1, Realm: p.Realm, Identifier: p.ID, KeyHash: kh}.String()
+}
+
+// authFromAICJWT derives permissions from a verified AIC-JWT bearer token.
+// The token is CA-signed (the issuer is the same trust root as X.509), so its
+// capability set is authoritative the way a certificate PA is. CA scopes are
+// resolved from the DB user bound to the principal uid. Fail-closed: a token
+// declaring no capabilities grants empty permission (never inherits the DB
+// role's full permissions).
+func (s *Server) authFromAICJWT(r *provisioner.AuthResult) (*AuthUser, error) {
+	id := r.AICJWT
+	username := aicjwtPrincipalUID(id.Principal)
+
+	user, err := s.getUserByUsername(username)
+	if err != nil || !user.Enabled {
+		return nil, nil
+	}
+
+	var caScopes []string
+	if user.CAScopes != "" {
+		caScopes = parseCAScopes(user.CAScopes)
+	}
+	caScopes, err = s.operatorCertScopes(user, caScopes)
+	if err != nil {
+		return nil, err
+	}
+
+	perms := make([]Permission, 0, len(id.Capabilities))
+	for _, c := range id.Capabilities {
+		if c == "" {
+			continue
+		}
+		perms = append(perms, Permission(c))
+	}
+	return &AuthUser{
+		Username:    username,
+		Role:        user.Role + "(agent)",
+		Permissions: perms,
+		CAScopes:    caScopes,
+	}, nil
 }
 
 // getRolePerms returns role permissions, preferring Policy reads, falling back to hardcoded RolePermissions.

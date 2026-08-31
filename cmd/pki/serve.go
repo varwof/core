@@ -869,6 +869,8 @@ func startServers(cfg *internal.Config, database *db.DB) error {
 	reg := provisioner.NewRegistry()
 	reg.Register(provisioner.NewMTLSProvisioner())
 	reg.Register(provisioner.NewTokenProvisioner())
+	reg.Register(provisioner.NewAICJWTProvisioner())
+	provisioner.SetAICJWTResolver(buildAICJWTResolver(cfg))
 	provisioner.UserResolver = func(username string) (string, []string, error) {
 		user, err := database.GetUserByUsername(username)
 		if err != nil {
@@ -1105,6 +1107,7 @@ func reloadConfigNowWithMuxes(cfgPath string, full, public *serve.Server) {
 		provisioner.CertResolver = func(issuerDN, serial string) (string, string, error) {
 			return newDB.GetPrincipalByCert(issuerDN, serial)
 		}
+		provisioner.SetAICJWTResolver(buildAICJWTResolver(merged))
 	}
 
 	// Atomically swap sub-handlers, config, and db on both muxes

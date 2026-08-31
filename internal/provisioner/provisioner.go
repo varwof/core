@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/varwof/core/internal/ca"
+	"github.com/varwof/types/aicjwt"
 )
 
 // SignOption modifies or validates a SignConfig before signing.
@@ -49,6 +50,20 @@ type AuthResult struct {
 	// nil means no certificate (e.g. token/Basic login). Sourced from the same origin as mTLS
 	// direct connection, ensuring Web sessions and certificate identity are not disconnected.
 	CertIdentity *CertIdentity
+	// AICJWT is set when the request authenticated via a validated AIC-JWT
+	// bearer token (draft-ietf-oauth-aic). The RBAC layer intersects its
+	// capabilities with route rules; nil means no AIC-JWT carrier.
+	AICJWT *AICJWTIdentity
+}
+
+// AICJWTIdentity is the validated AIC-JWT principal identity handed to
+// RBAC authorization. Capabilities are expressed as full identifiers
+// (scheme:id), the same representation the certificate PA path uses.
+type AICJWTIdentity struct {
+	Principal    aicjwt.Principal
+	Issuer       string
+	TokenID      string
+	Capabilities []string // FullID ("scheme:id") forms, acceptable to MatchCapability
 }
 
 // CertIdentity is a session-bound client certificate identity snapshot for Web user detection and audit display.

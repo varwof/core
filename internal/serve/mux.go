@@ -1103,6 +1103,10 @@ func (s *Server) serveByPath(w http.ResponseWriter, r *http.Request, path string
 		s.tsaHandler().ServeHTTP(w, r)
 	case path == "/ocsp" || strings.HasPrefix(path, "/ocsp/"):
 		s.ocspHandler().ServeHTTP(w, r)
+	case path == "/.well-known/jwks.json":
+		s.serveJWKS(w, r)
+	case path == "/oauth/token":
+		s.serveOAuthToken(w, r)
 	case strings.HasPrefix(path, "/pki/"):
 		s.serveStatic(w, r)
 	default:

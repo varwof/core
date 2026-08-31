@@ -17,6 +17,8 @@
     "/api/v1/dns-query",
     "/api/v1/permissions/roles",
     "/metrics",
+    "/.well-known/jwks.json",
+    "/oauth/token",
     "/pki/*"
   ],
   "rules": [
