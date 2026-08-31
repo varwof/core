@@ -17,7 +17,8 @@ Product / operations documentation ships with this repository:
 | [Configuration](en/configuration.md) | All configuration options |
 | [API Reference](en/api.md) | REST API endpoints |
 | [Deployment](en/deployment.md) | Production deployment guide |
+| [Dual Carrier](en/dual-carrier.md) | X.509 + AIC-JWT under one trust root (JWKS, OAuth token exchange, Bearer validation) |
 
 ## License
 
-AGPL-3.0
+AGPL-3.0 / Commercial — see https://varwof.com/pricing

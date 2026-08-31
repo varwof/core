@@ -8,6 +8,7 @@ Raw measurement data and reports produced by the `bench/` tool
 
 | Document | Description |
 |----------|-------------|
+| [Benchmark Report (2026-08-30)](en/benchmark-report-2026-08-30.md) | CPU-mode re-measurement (powersave/performance/turbo) + engine backend comparison (MariaDB/PostgreSQL/SQLite) on this box |
 | [Benchmark Report](en/benchmark-report-2026-08-27.md) | Large-scale Agent load benchmark: test matrix, backpressure analysis, no-backpressure re-measurement (§1), enterprise 50k×10 scenario (§2), wake-up burst (§3), reproducible script (§4), CPU power-save impact (§5), Raspberry Pi 5 (§6), device profiles (§7) and configuration quick reference (§8) |
 | [Performance Work Log](en/performance-worklog-2026-08-27.md) | Prerequisite engineering record §1–§4: bench tool changes, argon2 root cause, engine-mode backend comparison (PG/MariaDB/SQLite), DA nonce batch writes, User/Token memory indexes, MariaDB crash root cause (R12), bottleneck prof + lock sharding (R4/R13) |
 | [Test Report](en/test-report-2026-08-27.md) | Full test run: builds, unit tests, integration smoke suite (91/91) |
@@ -37,4 +38,4 @@ and the `performance` CPU governor + turbo enabled (see the benchmark report §5
 
 ## License
 
-AGPL-3.0
+AGPL-3.0 / Commercial — see https://varwof.com/pricing

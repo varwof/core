@@ -107,6 +107,14 @@ graph TB
 
 core is the **core CA engine** of the varwof ecosystem, providing complete PKI lifecycle management. This project is a member of the [Open Invention Network](https://openinventionnetwork.com/).
 
+## License & Commercial Use
+
+`varwof-core` is licensed under [AGPL-3.0](LICENSE). Organizations that cannot adopt AGPL may request a **commercial license**.
+
+Varwof is an independent personal project. During the ecosystem-building period (target 1–2 years), the commercial license is **free and granted annually** (one-year terms, fee 0; renewal is decided by Varwof, free renewals during the free period). Use is unrestricted: unlimited instances, users, and issuance; embedding in products and SaaS is allowed. If fees are introduced, licensees receive 6 months' notice and may fall back to AGPL-3.0. **Not offered in the EU/EEA/UK/Switzerland.** The software is provided 'as is' without warranties of any kind; use is at your own risk.
+
+Contact: **pki@varwof.com** | https://varwof.com
+
 ## Links
 
 | | |
@@ -114,7 +122,7 @@ core is the **core CA engine** of the varwof ecosystem, providing complete PKI l
 | Homepage | https://varwof.com |
 | Community | https://varwof.org |
 | IETF Draft | [draft-wei-aic-identity-cert](https://datatracker.ietf.org/doc/draft-wei-aic-identity-cert/) |
-| License | AGPL-3.0 |
+| License | AGPL-3.0 / Commercial |
 | Member | [Open Invention Network](https://openinventionnetwork.com/) |
 
 ## Community

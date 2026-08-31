@@ -17,7 +17,8 @@
 | [配置](zh/configuration.md) | 所有配置选项 |
 | [API 参考](zh/api.md) | REST API 端点 |
 | [部署](zh/deployment.md) | 生产部署指南 |
+| [双载体](zh/dual-carrier.md) | X.509 与 AIC-JWT 同一信任根（JWKS、OAuth token 兑换、Bearer 校验） |
 
 ## 许可证
 
-AGPL-3.0
+AGPL-3.0 / 商业许可 — 见 https://varwof.com/pricing

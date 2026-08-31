@@ -20,4 +20,4 @@ Architecture and design docs live in the
 
 ## License
 
-AGPL-3.0
+AGPL-3.0 / Commercial — see https://varwof.com/pricing

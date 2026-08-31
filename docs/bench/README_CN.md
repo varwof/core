@@ -7,6 +7,7 @@ varwof-core 引擎与写管线的负载基准和测试报告。原始数据与�
 
 | 文档 | 说明 |
 |------|------|
+| [基准报告（2026-08-30）](zh/benchmark-report-2026-08-30.md) | 本机 CPU 模式复测（powersave/performance/turbo）+ 引擎三后端对比（MariaDB/PostgreSQL/SQLite） |
 | [基准报告](zh/benchmark-report-2026-08-27.md) | 大规模 Agent 负载基准：测试矩阵、背压分析、无背压复测（§1）、企业 5万×10 场景（§2）、上班瞬间 burst（§3）、复现脚本（§4）、CPU 节能影响（§5）、树莓派 5（§6）、设备档案（§7）、配置速查（§8） |
 | [性能工程工作日志](zh/performance-worklog-2026-08-27.md) | 前置工程记录 §1–§4：bench 工具变更、argon2 根因、引擎模式三后端对比（PG/MariaDB/SQLite）、DA nonce 批量写、User/Token 内存索引、MariaDB 写管线崩溃根因（R12）、瓶颈 prof + 锁分片（R4/R13） |
 | [全面测试报告](zh/test-report-2026-08-27.md) | 构建、单元测试、集成冒烟套件（91/91 全通过） |
@@ -36,4 +37,4 @@ varwof-core 引擎与写管线的负载基准和测试报告。原始数据与�
 
 ## 许可证
 
-AGPL-3.0
+AGPL-3.0 / 商业许可 — 见 https://varwof.com/pricing
