@@ -88,8 +88,8 @@ func TestOAuthTokenX509Exchange(t *testing.T) {
 	certPEM, key := oauthTestAICCert(t, srv, caCert, caKey)
 
 	w := oauthFormPost(t, handler, map[string]string{
-		"grant_type":        GrantTypeTokenExchange,
-		"subject_token":     certPEM,
+		"grant_type":         GrantTypeTokenExchange,
+		"subject_token":      certPEM,
 		"subject_token_type": oauthTokenTypeX509Cert,
 	}, nil)
 	if w.Code != http.StatusOK {
@@ -176,10 +176,10 @@ func TestOAuthTokenJWTBearer(t *testing.T) {
 	res, err := ca.SignJWT(&ca.SignConfig{
 		CAKey: caKey, CACert: caCert, SubjectPubKey: &agentKey.PublicKey, Validity: time.Hour,
 		AIC: &ca.AICConfig{
-			AgentId:        "agent-oauth",
-			PrincipalUid:   ca.PrincipalUid{Version: 1, Realm: "r", Identifier: "oauth-user", KeyHash: keyHash},
-			DelegationMode: ca.DelegationAuthorized,
-			Capabilities:   []ca.Capability{{SchemeId: "std/database-v1", CapabilityId: "SELECT:*"}},
+			AgentId:                 "agent-oauth",
+			PrincipalUid:            ca.PrincipalUid{Version: 1, Realm: "r", Identifier: "oauth-user", KeyHash: keyHash},
+			DelegationMode:          ca.DelegationAuthorized,
+			Capabilities:            []ca.Capability{{SchemeId: "std/database-v1", CapabilityId: "SELECT:*"}},
 			DelegationAuthorization: da,
 		},
 	}, ca.JWTSignOptions{})

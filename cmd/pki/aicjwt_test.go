@@ -78,9 +78,9 @@ func signTestToken(t *testing.T, caCert *x509.Certificate, caKey *ecdsa.PrivateK
 			Capabilities:   []ca.Capability{{SchemeId: "std/database-v1", CapabilityId: "SELECT:*"}},
 			DelegationMode: ca.DelegationAuthorized,
 			DelegationAuthorization: &ca.DelegationAuthorization{
-				Reason:         ca.Reason{ReasonCode: "ROTATION", Description: "test"},
-				Nonce:          make([]byte, 32),
-				Timestamp:      time.Now().Add(-time.Minute),
+				Reason:            ca.Reason{ReasonCode: "ROTATION", Description: "test"},
+				Nonce:             make([]byte, 32),
+				Timestamp:         time.Now().Add(-time.Minute),
 				RequestedLifetime: 3600,
 			},
 		},

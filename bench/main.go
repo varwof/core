@@ -27,24 +27,24 @@ import (
 
 func main() {
 	var (
-		mode     = flag.String("mode", "stress", "load mode: stress | random")
-		scenario = flag.String("scenario", "regular", "cert scenario: regular | aic")
-		duration = flag.Duration("duration", 5*time.Minute, "test duration (e.g. 5m 10m 20m)")
-		agents   = flag.Int("agents", 100, "number of concurrent agent workers")
-		users    = flag.Int("users", 0, "number of user certs for AIC (default = agents)")
-		qps      = flag.Float64("qps", 0, "global target QPS for stress mode (0 = unlimited)")
-		interval = flag.Duration("interval", 10*time.Minute, "mean request interval per agent (random mode)")
-		dbPath   = flag.String("db", "", "SQLite database path (default: bench-work/bench.db)")
-		port     = flag.Int("port", 0, "HTTP listen port (0 = auto)")
-		jsonOut  = flag.Bool("json", false, "emit JSON report only")
-		outFile  = flag.String("out", "", "write report to file (JSON)")
-		maxpend  = flag.Int("maxpending", 0, "record-buffer max pending (0 = server default 20000)")
-		syncWr   = flag.Bool("sync", false, "disable record buffer (synchronous DB writes)")
+		mode      = flag.String("mode", "stress", "load mode: stress | random")
+		scenario  = flag.String("scenario", "regular", "cert scenario: regular | aic")
+		duration  = flag.Duration("duration", 5*time.Minute, "test duration (e.g. 5m 10m 20m)")
+		agents    = flag.Int("agents", 100, "number of concurrent agent workers")
+		users     = flag.Int("users", 0, "number of user certs for AIC (default = agents)")
+		qps       = flag.Float64("qps", 0, "global target QPS for stress mode (0 = unlimited)")
+		interval  = flag.Duration("interval", 10*time.Minute, "mean request interval per agent (random mode)")
+		dbPath    = flag.String("db", "", "SQLite database path (default: bench-work/bench.db)")
+		port      = flag.Int("port", 0, "HTTP listen port (0 = auto)")
+		jsonOut   = flag.Bool("json", false, "emit JSON report only")
+		outFile   = flag.String("out", "", "write report to file (JSON)")
+		maxpend   = flag.Int("maxpending", 0, "record-buffer max pending (0 = server default 20000)")
+		syncWr    = flag.Bool("sync", false, "disable record buffer (synchronous DB writes)")
 		useEngine = flag.Bool("engine", false, "enable in-memory engine (memory-is-truth + async persist, production architecture)")
-		cpuProf  = flag.String("cpuprofile", "", "write a golang CPU profile to file (pprof)")
-		memProf  = flag.String("memprofile", "", "write a golang heap profile to file (pprof)")
-		verbose  = flag.Bool("v", false, "verbose progress output")
-		profile  = flag.String("profile", "", "device_profile preset applied to the embedded server config (\"\" | low_mem | high_throughput)")
+		cpuProf   = flag.String("cpuprofile", "", "write a golang CPU profile to file (pprof)")
+		memProf   = flag.String("memprofile", "", "write a golang heap profile to file (pprof)")
+		verbose   = flag.Bool("v", false, "verbose progress output")
+		profile   = flag.String("profile", "", "device_profile preset applied to the embedded server config (\"\" | low_mem | high_throughput)")
 	)
 	flag.Parse()
 
@@ -68,19 +68,19 @@ func main() {
 	}
 
 	opts := Options{
-		Mode:       *mode,
-		Scenario:   *scenario,
-		Duration:   *duration,
-		Agents:     *agents,
-		Users:      *users,
-		QPS:        *qps,
-		Interval:   *interval,
-		DBPath:     *dbPath,
-		Port:       *port,
-		MaxPending: *maxpend,
-		Sync:       *syncWr,
-		Engine:     *useEngine,
-		Verbose:    *verbose,
+		Mode:          *mode,
+		Scenario:      *scenario,
+		Duration:      *duration,
+		Agents:        *agents,
+		Users:         *users,
+		QPS:           *qps,
+		Interval:      *interval,
+		DBPath:        *dbPath,
+		Port:          *port,
+		MaxPending:    *maxpend,
+		Sync:          *syncWr,
+		Engine:        *useEngine,
+		Verbose:       *verbose,
 		DeviceProfile: *profile,
 	}
 

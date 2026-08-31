@@ -165,14 +165,14 @@ func hi(i int) float64 {
 
 // Report is the final JSON-serializable result.
 type Report struct {
-	Mode     string `json:"mode"`
-	Scenario string `json:"scenario"`
-	Duration string `json:"duration"`
-	Agents   int    `json:"agents"`
-	Users    int    `json:"users"`
-	TargetQPS int   `json:"target_qps"`
-	Interval string `json:"interval,omitempty"`
-	Totals   Totals `json:"totals"`
+	Mode      string `json:"mode"`
+	Scenario  string `json:"scenario"`
+	Duration  string `json:"duration"`
+	Agents    int    `json:"agents"`
+	Users     int    `json:"users"`
+	TargetQPS int    `json:"target_qps"`
+	Interval  string `json:"interval,omitempty"`
+	Totals    Totals `json:"totals"`
 }
 
 // Totals carries the aggregated run metrics.

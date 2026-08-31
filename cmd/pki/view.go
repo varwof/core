@@ -147,41 +147,41 @@ func viewCertTable(rec *db.CertRecord, cert *x509.Certificate) {
 }
 
 type certJSON struct {
-	SerialNumber    string   `json:"serial_number"`
-	CASerial        string   `json:"ca_serial_number,omitempty"`
-	CAName          string   `json:"ca_name"`
-	Status          string   `json:"status"`
-	Profile         string   `json:"profile,omitempty"`
-	Fingerprint     string   `json:"fingerprint"`
-	SPKIHash        string   `json:"spki_hash,omitempty"`
-	SubjectDN       string   `json:"subject_dn"`
-	CommonName      string   `json:"common_name"`
-	Organization    string   `json:"organization,omitempty"`
-	Country         string   `json:"country,omitempty"`
-	IssuerDN        string   `json:"issuer_dn"`
-	NotBefore       string   `json:"not_before"`
-	NotAfter        string   `json:"not_after"`
-	RevokedAt       *string  `json:"revoked_at,omitempty"`
-	RevokeReason    *int     `json:"revoke_reason,omitempty"`
-	InvalidityDate  *string  `json:"invalidity_date,omitempty"`
-	KeyAlgorithm    string   `json:"key_algorithm"`
-	KeySize         int      `json:"key_size"`
-	SignatureAlgo   string   `json:"signature_algorithm"`
-	SKI             string   `json:"ski,omitempty"`
-	AKI             string   `json:"aki,omitempty"`
-	SAN             string   `json:"san,omitempty"`
-	IsCA            bool     `json:"is_ca"`
-	MaxPathLen      int      `json:"max_path_len"`
-	KeyUsage        string   `json:"key_usage"`
-	ExtKeyUsage     []string `json:"ext_key_usage"`
-	DNSNames        []string `json:"dns_names,omitempty"`
-	IPAddresses     []string `json:"ip_addresses,omitempty"`
-	EmailAddresses  []string `json:"email_addresses,omitempty"`
-	PrincipalUID    string   `json:"principal_uid,omitempty"`
-	AgentID         string   `json:"agent_id,omitempty"`
-	CertVersion     int      `json:"cert_version"`
-	RawSerialDec    string   `json:"raw_serial_decimal"`
-	ExtensionCount  int      `json:"extension_count"`
+	SerialNumber   string   `json:"serial_number"`
+	CASerial       string   `json:"ca_serial_number,omitempty"`
+	CAName         string   `json:"ca_name"`
+	Status         string   `json:"status"`
+	Profile        string   `json:"profile,omitempty"`
+	Fingerprint    string   `json:"fingerprint"`
+	SPKIHash       string   `json:"spki_hash,omitempty"`
+	SubjectDN      string   `json:"subject_dn"`
+	CommonName     string   `json:"common_name"`
+	Organization   string   `json:"organization,omitempty"`
+	Country        string   `json:"country,omitempty"`
+	IssuerDN       string   `json:"issuer_dn"`
+	NotBefore      string   `json:"not_before"`
+	NotAfter       string   `json:"not_after"`
+	RevokedAt      *string  `json:"revoked_at,omitempty"`
+	RevokeReason   *int     `json:"revoke_reason,omitempty"`
+	InvalidityDate *string  `json:"invalidity_date,omitempty"`
+	KeyAlgorithm   string   `json:"key_algorithm"`
+	KeySize        int      `json:"key_size"`
+	SignatureAlgo  string   `json:"signature_algorithm"`
+	SKI            string   `json:"ski,omitempty"`
+	AKI            string   `json:"aki,omitempty"`
+	SAN            string   `json:"san,omitempty"`
+	IsCA           bool     `json:"is_ca"`
+	MaxPathLen     int      `json:"max_path_len"`
+	KeyUsage       string   `json:"key_usage"`
+	ExtKeyUsage    []string `json:"ext_key_usage"`
+	DNSNames       []string `json:"dns_names,omitempty"`
+	IPAddresses    []string `json:"ip_addresses,omitempty"`
+	EmailAddresses []string `json:"email_addresses,omitempty"`
+	PrincipalUID   string   `json:"principal_uid,omitempty"`
+	AgentID        string   `json:"agent_id,omitempty"`
+	CertVersion    int      `json:"cert_version"`
+	RawSerialDec   string   `json:"raw_serial_decimal"`
+	ExtensionCount int      `json:"extension_count"`
 }
 
 func viewCertJSON(rec *db.CertRecord, cert *x509.Certificate) error {
@@ -243,14 +243,14 @@ func formatKeyUsage(u x509.KeyUsage) string {
 	}
 	var names []string
 	m := map[x509.KeyUsage]string{
-		x509.KeyUsageDigitalSignature:  "DigitalSignature",
-		x509.KeyUsageKeyEncipherment:   "KeyEncipherment",
-		x509.KeyUsageDataEncipherment:  "DataEncipherment",
-		x509.KeyUsageKeyAgreement:      "KeyAgreement",
-		x509.KeyUsageCertSign:          "CertSign",
-		x509.KeyUsageCRLSign:           "CRLSign",
-		x509.KeyUsageEncipherOnly:      "EncipherOnly",
-		x509.KeyUsageDecipherOnly:      "DecipherOnly",
+		x509.KeyUsageDigitalSignature: "DigitalSignature",
+		x509.KeyUsageKeyEncipherment:  "KeyEncipherment",
+		x509.KeyUsageDataEncipherment: "DataEncipherment",
+		x509.KeyUsageKeyAgreement:     "KeyAgreement",
+		x509.KeyUsageCertSign:         "CertSign",
+		x509.KeyUsageCRLSign:          "CRLSign",
+		x509.KeyUsageEncipherOnly:     "EncipherOnly",
+		x509.KeyUsageDecipherOnly:     "DecipherOnly",
 	}
 	for k, v := range m {
 		if u&k != 0 {

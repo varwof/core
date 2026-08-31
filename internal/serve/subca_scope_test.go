@@ -44,7 +44,7 @@ func scopedAdminCert(t *testing.T, d *db.DB, ou, scope string) *x509.Certificate
 		t.Fatal(err)
 	}
 	tmpl := &x509.Certificate{
-		SerialNumber:          big.NewInt(id),
+		SerialNumber: big.NewInt(id),
 		Subject: pkix.Name{
 			CommonName:         ou + "@test",
 			OrganizationalUnit: []string{ou},

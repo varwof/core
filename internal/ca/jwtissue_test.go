@@ -86,14 +86,14 @@ func TestSignJWT_Golden_EC(t *testing.T) {
 	}
 
 	sc := &SignConfig{
-		CAKey:   caKey,
-		CACert:  caCert,
-		CAName:  "test-ca",
-		Profile: ProfileAgentProxy,
-		CommonName: "agent-007",
+		CAKey:         caKey,
+		CACert:        caCert,
+		CAName:        "test-ca",
+		Profile:       ProfileAgentProxy,
+		CommonName:    "agent-007",
 		SubjectPubKey: agentKey.Public(),
-		Validity:  1 * time.Hour,
-		AIC:       aic,
+		Validity:      1 * time.Hour,
+		AIC:           aic,
 	}
 
 	result, err := SignJWT(sc, JWTSignOptions{})
@@ -202,7 +202,7 @@ func TestSignJWT_RequiresConfig(t *testing.T) {
 	// Missing SubjectPubKey → cnf.jkt empty error.
 	okAIC := &AICConfig{
 		AgentId: "agent-008", PrincipalUid: PrincipalUid{Realm: "r", Identifier: "i", KeyHash: ph},
-		Capabilities: []Capability{{SchemeId: "std/database-v1", CapabilityId: "SELECT:*"}},
+		Capabilities:            []Capability{{SchemeId: "std/database-v1", CapabilityId: "SELECT:*"}},
 		DelegationAuthorization: testAICDelegation(),
 	}
 	_, err = SignJWT(&SignConfig{CAKey: caKey, CACert: caCert, AIC: okAIC}, JWTSignOptions{})
@@ -271,8 +271,8 @@ func TestSignJWT_RepresentativeRequiresDA(t *testing.T) {
 
 	aic := &AICConfig{
 		AgentId: "agent-rep", PrincipalUid: PrincipalUid{Realm: "r", Identifier: "i", KeyHash: userHash},
-		Capabilities:        []Capability{{SchemeId: "std/database-v1", CapabilityId: "SELECT:*"}},
-		DelegationMode:      DelegationRepresentative,
+		Capabilities:            []Capability{{SchemeId: "std/database-v1", CapabilityId: "SELECT:*"}},
+		DelegationMode:          DelegationRepresentative,
 		DelegationAuthorization: testAICDelegation(),
 	}
 	sc := &SignConfig{CAKey: caKey, CACert: caCert, SubjectPubKey: agentKey.Public(), AIC: aic, Validity: time.Hour}
@@ -383,7 +383,7 @@ func TestSignJWT_RSA(t *testing.T) {
 		Validity: 30 * time.Minute,
 		AIC: &AICConfig{
 			AgentId: "agent-rsa", PrincipalUid: PrincipalUid{Realm: "r", Identifier: "i", KeyHash: ph},
-			Capabilities: []Capability{{SchemeId: "std/database-v1", CapabilityId: "SELECT:*"}},
+			Capabilities:            []Capability{{SchemeId: "std/database-v1", CapabilityId: "SELECT:*"}},
 			DelegationAuthorization: testAICDelegation(),
 		},
 	}, JWTSignOptions{})

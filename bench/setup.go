@@ -52,9 +52,9 @@ type Env struct {
 	hSrv   *http.Server
 	ln     net.Listener
 
-	RootCA   *x509.Certificate
-	RootKey  crypto.Signer
-	PeopleCA *x509.Certificate
+	RootCA    *x509.Certificate
+	RootKey   crypto.Signer
+	PeopleCA  *x509.Certificate
 	PeopleKey crypto.Signer
 
 	AdminUser  string

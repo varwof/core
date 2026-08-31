@@ -227,15 +227,15 @@ func (e *Env) buildAICBody(user *TestUser, agentID, csrPEM string) ([]byte, erro
 
 	caps := []ca.Capability{{SchemeId: "varwof-gateway-v1", CapabilityId: "gateway:read"}}
 	tbs := &pki.DelegationAuthTBS{
-		Version:          1,
-		AgentId:          agentID,
-		PrincipalUid:     pu,
-		Reason:           pki.Reason{ReasonCode: "API_ISSUE", Description: "user-authorized AIC issuance"},
-		Capabilities:     toPKICaps(caps),
-		DelegationMode:   pki.DelegationAuthorized,
+		Version:           1,
+		AgentId:           agentID,
+		PrincipalUid:      pu,
+		Reason:            pki.Reason{ReasonCode: "API_ISSUE", Description: "user-authorized AIC issuance"},
+		Capabilities:      toPKICaps(caps),
+		DelegationMode:    pki.DelegationAuthorized,
 		RequestedLifetime: 3600,
-		Timestamp:        ts,
-		Nonce:            nonce,
+		Timestamp:         ts,
+		Nonce:             nonce,
 	}
 	tbsDER, err := asn1.Marshal(*tbs)
 	if err != nil {
