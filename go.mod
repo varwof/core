@@ -45,7 +45,7 @@ require (
 	github.com/prometheus/common v0.55.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
-	github.com/varwof/types v0.3.1
+	github.com/varwof/types v0.4.0
 	golang.org/x/mod v0.37.0 // indirect
 	golang.org/x/net v0.56.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
@@ -60,11 +60,6 @@ require (
 // Local development: core depends on un-released engine changes
 // (DA nonce expiry, user/token memory index, NonceTTL). Replace with the
 // local engine checkout; a published engine release should remove this.
-
-// Local development: core reuses the local types checkout so new AIC-JWT
-// interop (CertToJWK/licensed JWKS) is available before the next types
-// release. Remove once a published types release covers it.
-replace github.com/varwof/types => ../types
 
 // Local development: core reuses the local aic-jwt checkout (OAuth AS/RS
 // reference layer) for the L3 OAuth endpoints. Remove once a published
