@@ -78,6 +78,10 @@ type issueReq struct {
 	UserAuthTimestamp      string                           `json:"user_auth_timestamp,omitempty"`
 	UserAuthReasonCode     string                           `json:"user_auth_reason_code,omitempty"`
 	UserAuthReasonDesc     string                           `json:"user_auth_reason_description,omitempty"`
+	// CapabilityClaimsDigest is the SHA-256 of the validated capability claims
+	// file that produced this AIC (P1-3). Recorded in the issuance audit so
+	// the evidence chain links the certificate to the exact claims.
+	CapabilityClaimsDigest string `json:"capability_claims_digest,omitempty"`
 	// UserCertPEM is the DA signer (user) certificate PEM. During agent-proxy issuance,
 	// the CA uses it to verify the DelegationAuthorization signature (C3). Defaults to
 	// the mTLS peer cert if its SPKI matches principal_uid.keyHash.
@@ -631,8 +635,11 @@ func (s *Server) apiIssueCert(w http.ResponseWriter, r *http.Request) {
 		s.apiErr(w, r, http.StatusInternalServerError, "api.persist_failed", err.Error())
 		return
 	}
-	s.auditLog(r, "cert_issue",
-		fmt.Sprintf("ca=%s profile=%s serial=%s cn=%q", caName, effProfile, result.SerialHex, result.Cert.Subject.CommonName))
+	detail := fmt.Sprintf("ca=%s profile=%s serial=%s cn=%q", caName, effProfile, result.SerialHex, result.Cert.Subject.CommonName)
+	if req.CapabilityClaimsDigest != "" {
+		detail += fmt.Sprintf(" claims=sha256:%s", req.CapabilityClaimsDigest)
+	}
+	s.auditLog(r, "cert_issue", detail)
 	var keyPEM []byte
 	if req.KeyPassword != "" {
 		keyPEM, err = ca.EncryptPrivateKeyPEM(privKey, req.KeyPassword)
