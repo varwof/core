@@ -56,10 +56,34 @@ func TestValidateParameterSubset_NoParams(t *testing.T) {
 }
 
 func TestValidateParameterSubset_UnknownScheme(t *testing.T) {
+	// Generic JSON subset semantics for unknown scheme families (P0-2):
+	// numbers <= grant, arrays subset, extra keys rejected.
 	granted := Capability{SchemeId: "custom-scheme", CapabilityId: "x", Parameters: []byte(`{"foo":1}`)}
-	declared := Capability{SchemeId: "custom-scheme", CapabilityId: "x", Parameters: []byte(`{"foo":99}`)}
-	if err := ValidateParameterSubset(granted, declared); err != nil {
-		t.Fatalf("unknown scheme should pass, got %v", err)
+	over := Capability{SchemeId: "custom-scheme", CapabilityId: "x", Parameters: []byte(`{"foo":99}`)}
+	if err := ValidateParameterSubset(granted, over); err == nil {
+		t.Fatal("unknown scheme over-bound should be rejected")
+	}
+	equal := Capability{SchemeId: "custom-scheme", CapabilityId: "x", Parameters: []byte(`{"foo":1}`)}
+	if err := ValidateParameterSubset(granted, equal); err != nil {
+		t.Fatalf("equal params should pass: %v", err)
+	}
+
+	dbGrant := Capability{SchemeId: "std/database-v1", CapabilityId: "query:SELECT",
+		Parameters: []byte(`{"tables":["customers","orders"],"limit":{"max":500}}`)}
+	narrow := Capability{SchemeId: "std/database-v1", CapabilityId: "query:SELECT",
+		Parameters: []byte(`{"tables":["customers"],"limit":{"max":100}}`)}
+	if err := ValidateParameterSubset(dbGrant, narrow); err != nil {
+		t.Fatalf("narrow subset should pass: %v", err)
+	}
+	widened := Capability{SchemeId: "std/database-v1", CapabilityId: "query:SELECT",
+		Parameters: []byte(`{"tables":["customers","orders","secret"],"limit":{"max":99999}}`)}
+	if err := ValidateParameterSubset(dbGrant, widened); err == nil {
+		t.Fatal("widened tables/limit must be rejected")
+	}
+	extraKey := Capability{SchemeId: "std/database-v1", CapabilityId: "query:SELECT",
+		Parameters: []byte(`{"tables":["customers"],"junk":1}`)}
+	if err := ValidateParameterSubset(dbGrant, extraKey); err == nil {
+		t.Fatal("extra unknown key must be rejected")
 	}
 }
 

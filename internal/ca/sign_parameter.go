@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+
+	"github.com/varwof/types/aicjwt"
 )
 
 // ── A6: Parameter-level subset validation (spec §issuance validation + P2-B-05) ──
@@ -40,8 +42,19 @@ func ValidateParameterSubset(granted, declared Capability) error {
 	case hasSchemePrefix(declared.SchemeId, "gateway"):
 		return validateMaxConcurrentParam(granted, declared)
 	default:
-		// Unknown scheme: parameter semantics defined by scheme, CA does not infer values, pass
-		// (capability-level subset already ensures AIC caps ⊆ PA grants).
+		// Unknown scheme family: fall back to generic JSON parameter-subset
+		// semantics (numbers <= grant, arrays subset, objects recursive, grant
+		// keys must be present) so a declared capability cannot widen the
+		// principal's grant boundary (P0-2). Scheme-specific plugins may supply
+		// stricter comparators later.
+		within, err := aicjwt.ParamsWithinGrant(granted.Parameters, declared.Parameters)
+		if err != nil {
+			return fmt.Errorf("capability %s.%s parameters: %w", granted.SchemeId, granted.CapabilityId, err)
+		}
+		if !within {
+			return fmt.Errorf("capability %s.%s parameters exceed grant boundary",
+				declared.SchemeId, declared.CapabilityId)
+		}
 		return nil
 	}
 }
