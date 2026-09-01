@@ -19,7 +19,17 @@ func cmdAutoRenew(cfg *internal.Config, args []string) error {
 	if len(args) > 0 && (args[0] == "daemon" || args[0] == "--daemon") {
 		return autoRenewDaemon(cfg, args[1:])
 	}
+	if len(args) > 0 && (args[0] == "help" || args[0] == "--help" || args[0] == "-h") {
+		return cmdAutoRenewHelp()
+	}
 	return autoRenewOnce(cfg, args)
+}
+
+func cmdAutoRenewHelp() error {
+	fmt.Println("Usage: auto-renew [daemon]")
+	fmt.Println("  (no args)  Run auto-renew once")
+	fmt.Println("  daemon     Run auto-renew as a daemon on an interval")
+	return nil
 }
 
 func autoRenewOnce(cfg *internal.Config, args []string) error {
@@ -50,6 +60,9 @@ func autoRenewOnce(cfg *internal.Config, args []string) error {
 	}, func(event, caName, serial, cn, msg string) {
 		notifyEvent(cfg, database, event, caName, serial, cn, msg)
 	})
+	if results == nil {
+		results = []ca.AutoRenewResult{}
+	}
 
 	data, _ := json.MarshalIndent(results, "", "  ")
 	fmt.Println(string(data))

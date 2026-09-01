@@ -35,7 +35,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, err := io.ReadAll(r.Body)
+	// M5 security fix (memory DoS): bound the request body. This endpoint is in
+	// the public path (unauthenticated), so an attacker must not be able to
+	// exhaust heap with an arbitrarily large POST body.
+	body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 	r.Body.Close()
 	if err != nil {
 		slog.Error("tsa: read body", "err", err)

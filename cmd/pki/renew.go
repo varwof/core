@@ -86,7 +86,7 @@ func cmdRenew(cfg *internal.Config, args []string) error {
 	}
 
 	if oldCert.IsCA {
-		return fmt.Errorf("refusing to renew a CA certificate; use 'goca ca init' to create a new one")
+		return fmt.Errorf("refusing to renew a CA certificate; use 'pki ca init' to create a new one")
 	}
 	*serial = fmt.Sprintf("%X", oldCert.SerialNumber)
 

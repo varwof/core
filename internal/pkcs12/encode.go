@@ -12,8 +12,18 @@ import (
 	"software.sslmate.com/src/go-pkcs12"
 )
 
+// pbkdf2Iterations is the PBKDF2-HMAC-SHA-256 iteration count used for PBES2
+// key derivation. The sslmate Modern encoder defaults to only 2048 iterations
+// (L15), which does not meaningfully resist offline brute-force of a weak
+// password. 600k is the OWASP-recommended count for PBKDF2-HMAC-SHA-256.
+const pbkdf2Iterations = 600_000
+
+// MinPasswordBytes is the minimum password length accepted for PFX export.
+const MinPasswordBytes = 8
+
 // Encode creates a PFX/PKCS#12 archive using pure Go implementation.
-// Uses Modern (AES-256-CBC + SHA-256) encryption.
+// Uses Modern (AES-256-CBC + SHA-256) encryption with a strong PBKDF2
+// iteration count (L15).
 func Encode(privateKey crypto.Signer, cert *x509.Certificate, chain []*x509.Certificate, password string) ([]byte, error) {
 	if err := checkKeyMatch(privateKey, cert); err != nil {
 		return nil, err
@@ -21,7 +31,8 @@ func Encode(privateKey crypto.Signer, cert *x509.Certificate, chain []*x509.Cert
 	if len(chain) == 0 {
 		chain = nil
 	}
-	pfxData, err := pkcs12.Modern.Encode(privateKey, cert, chain, password)
+	enc := pkcs12.Modern.WithIterations(pbkdf2Iterations)
+	pfxData, err := enc.Encode(privateKey, cert, chain, password)
 	if err != nil {
 		return nil, fmt.Errorf("pkcs12 encode: %w", err)
 	}

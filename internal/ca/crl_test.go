@@ -184,3 +184,42 @@ func TestPartitionOfSerial(t *testing.T) {
 		t.Log("warning: all tested serials map to the same partition (unlikely but not incorrect)")
 	}
 }
+
+// L16: CRL numbers must be monotonic per CA, independent of other CAs sharing
+// the process. Previously a single global counter linked CAs, so generating a
+// CRL for one CA advanced the number seen by another (contention), violating
+// per-CA RFC 5280 §5.2.4 monotonicity semantics.
+func TestGenerateCRLPerCANumberIndependentL16(t *testing.T) {
+	caCert, caKey := newTestCA(t)
+	d := newTestDB(t)
+
+	genNum := func(name string) int64 {
+		crlDER, err := GenerateCRL(&CRLConfig{
+			DB:           d,
+			CACert:       caCert,
+			CAKey:        caKey,
+			CAName:       name,
+			ValidityDays: 30,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		crl, err := x509.ParseRevocationList(crlDER)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return crl.Number.Int64()
+	}
+
+	a1 := genNum("CA-A") // CA-A first
+	_ = genNum("CA-B")   // CA-B interleaves
+	a2 := genNum("CA-A") // CA-A again
+
+	if a2 <= a1 {
+		t.Fatalf("CA-A CRL number not monotonic: %d then %d", a1, a2)
+	}
+	if a2 != a1+1 {
+		t.Fatalf("CA-A CRL number advanced unexpectedly across CA-B interleave: %d -> %d (want %d); a shared global counter would consume the CA-B increment",
+			a1, a2, a1+1)
+	}
+}

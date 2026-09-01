@@ -979,6 +979,35 @@ func TestDispatchTrustAPI_DefaultPath(t *testing.T) {
 	}
 }
 
+// ─── L22: baseline security headers on every response ────────────
+
+func TestSecurityHeadersPresentL22(t *testing.T) {
+	_, handler := newTestServerWithDB(t)
+	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+	h := rec.Header()
+	for _, key := range []string{
+		"X-Content-Type-Options",
+		"X-Frame-Options",
+		"Referrer-Policy",
+		"Permissions-Policy",
+		"Cache-Control",
+		"Content-Security-Policy",
+	} {
+		if h.Get(key) == "" {
+			t.Errorf("missing security header %q (L22)", key)
+		}
+	}
+	if got := h.Get("X-Content-Type-Options"); got != "nosniff" {
+		t.Errorf("X-Content-Type-Options = %q, want nosniff", got)
+	}
+}
+
 // ─── unused import guard ─────────────────────────────────────────
 
 var (

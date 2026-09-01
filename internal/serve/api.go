@@ -640,6 +640,10 @@ func (s *Server) apiImportCA(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// M12: importing a CA (with its private key) must be audited.
+	s.auditLog(r, "ca_import",
+		fmt.Sprintf("name=%s fingerprint=%s", record.Name, record.Fingerprint))
+
 	apiOK(w, map[string]interface{}{
 		"success":     true,
 		"name":        record.Name,
@@ -1078,6 +1082,10 @@ func (s *Server) apiCrossCertIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// M12: cross-certificate issuance must be audited.
+	s.auditLog(r, "cross_cert_issue",
+		fmt.Sprintf("issuer=%s target=%s serial=%s", req.Issuer, req.Target, result.SerialHex))
+
 	pemBytes := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: result.CertDER})
 	apiOK(w, jsonCrossCert{
 		IssuerCA:     req.Issuer,
@@ -1119,6 +1127,9 @@ func (s *Server) apiCrossCertRevoke(w http.ResponseWriter, r *http.Request) {
 		s.apiErr(w, r, http.StatusInternalServerError, "api.revoke_failed", err.Error())
 		return
 	}
+	// M12: cross-certificate revocation must be audited.
+	s.auditLog(r, "cross_cert_revoke",
+		fmt.Sprintf("issuer=%s serial=%s reason=%d", req.Issuer, req.Serial, reason))
 	apiOK(w, map[string]string{"status": "ok"})
 }
 

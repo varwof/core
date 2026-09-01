@@ -50,7 +50,7 @@ func baseDACert(pubKey crypto.PublicKey) *x509.Certificate {
 }
 
 func newDAConfig(pubKey crypto.PublicKey, algoOID asn1.ObjectIdentifier) *AICConfig {
-	return &AICConfig{
+	cfg := &AICConfig{
 		AgentId:        "agent-7",
 		PrincipalUid:   PrincipalUid{Version: 1, Realm: "acme", Identifier: "alice"},
 		DelegationMode: DelegationAuthorized,
@@ -66,6 +66,15 @@ func newDAConfig(pubKey crypto.PublicKey, algoOID asn1.ObjectIdentifier) *AICCon
 			SignatureAlgorithm: AlgorithmIdentifier{Algorithm: algoOID},
 		},
 	}
+	// S3 security fix: a DelegationAuthorization must bind to the principal's
+	// key (non-empty KeyHash). Compute it from the same public key so the
+	// valid-signature cases exercise the principal-binding cross-check.
+	if pubKey != nil {
+		if kh, err := pki.KeyHashFromCertSPKI(pki.OIDSHA256, &x509.Certificate{PublicKey: pubKey}); err == nil {
+			cfg.PrincipalUid.KeyHash = kh
+		}
+	}
+	return cfg
 }
 
 func signDA(t *testing.T, key crypto.Signer, aic *AICConfig, autoOID asn1.ObjectIdentifier) {
@@ -190,5 +199,22 @@ func TestVerifyDelegationAuthorizationUnsupportedKey(t *testing.T) {
 	aic.DelegationAuthorization.SignatureValue = []byte{0x01}
 	if err := VerifyDelegationAuthorization(&x509.Certificate{PublicKey: nil}, aic); err == nil {
 		t.Fatal("unsupported key type must error")
+	}
+}
+
+// S3: an empty PrincipalUid.KeyHash must fail closed (principal-binding bypass).
+// Previously the SPKI cross-check was skipped when KeyHash was empty, letting a
+// caller self-delegate AIC capabilities with an arbitrary self-signed cert.
+func TestVerifyDelegationAuthorization_EmptyKeyHashFailsClosed(t *testing.T) {
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	aic := newDAConfig(&key.PublicKey, OIDSigECDSAWithSHA256)
+	signDA(t, key, aic, OIDSigECDSAWithSHA256)
+	// Strip the KeyHash (the vulnerable path) but keep a valid signature.
+	aic.PrincipalUid.KeyHash = nil
+	if err := VerifyDelegationAuthorization(baseDACert(&key.PublicKey), aic); err == nil {
+		t.Fatal("empty keyHash must fail closed")
 	}
 }

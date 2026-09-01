@@ -411,6 +411,10 @@ Generate CP/CPS compliance documents (RFC 3647).
 varwof cpcps --out-dir docs/ --separate-cp
 ```
 
+Notes:
+- `--ca` matches a CA by its certificate **Common Name (CN)**, not by the config `cas` map key. To find a CA use the CN printed by `varwof ca list` (e.g. `--ca "Cli Root CA"`).
+- When `--out-dir` is set, `--out` is ignored (the publication directory mode writes `<ca>-cps.md` / `<ca>-cps-v<version>.md`). A warning is logged if both are given.
+
 ### `varwof completion`
 
 Generate shell completions.

@@ -203,12 +203,14 @@ func (rr *RouteRules) Count() int {
 	return len(rr.compiled)
 }
 
-// matchMethod checks if the rule's method matches the request method.
+// matchMethod checks if the rule's method matches the request method. Method
+// tokens are case-sensitive per RFC 7231; only the "*" / empty wildcard matches
+// every method (L22: no case-insensitive normalization of non-standard casing).
 func matchMethod(ruleMethod, reqMethod string) bool {
 	if ruleMethod == "*" || ruleMethod == "" {
 		return true
 	}
-	return strings.EqualFold(ruleMethod, reqMethod)
+	return ruleMethod == reqMethod
 }
 
 // ---- path pattern compiler ----

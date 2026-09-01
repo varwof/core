@@ -224,8 +224,11 @@ func VerifySCT(cert *x509.Certificate, sctVersion int, logID string, timestamp u
 		if !ok {
 			return fmt.Errorf("SCT signed with Ed25519 but log key is %T", logPubKey)
 		}
-		digest := sha256.Sum256(signedBytes)
-		if !ed25519.Verify(pub, digest[:], sig) {
+		// RFC 6962 §3.2: Ed25519 is a pure (non-prehashed) signature scheme and
+		// signs the raw signed-bytes directly. Do NOT SHA-256 pre-hash here —
+		// the previous double-hash made every valid Ed25519-log SCT fail
+		// verification (L20).
+		if !ed25519.Verify(pub, signedBytes, sig) {
 			return fmt.Errorf("SCT Ed25519 signature verification failed")
 		}
 		return nil

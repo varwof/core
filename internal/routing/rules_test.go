@@ -128,6 +128,35 @@ func TestMethodWildcard(t *testing.T) {
 	}
 }
 
+func TestMethodCaseSensitiveL22(t *testing.T) {
+	// RFC 7231: method tokens are case-sensitive. Non-standard casing such as
+	// "get" must NOT match a rule declared for "GET" (L22).
+	rules := mustLoad(t, `{
+		"version": "v1",
+		"rules": [
+			{"method":"GET","path":"/api/v1/version","permission":"web:view"}
+		]
+	}`)
+
+	if r := rules.Match("GET", "/api/v1/version"); r == nil {
+		t.Fatal("GET should match")
+	}
+	for _, m := range []string{"get", "Get", "gEt"} {
+		if r := rules.Match(m, "/api/v1/version"); r != nil {
+			t.Errorf("%s: non-standard casing must not match (L22)", m)
+		}
+	}
+	if !matchMethod("GET", "GET") {
+		t.Error("matchMethod exact GET/GET should match")
+	}
+	if matchMethod("GET", "get") {
+		t.Error("matchMethod GET/get must not match case-insensitively (L22)")
+	}
+	if !matchMethod("*", "POST") {
+		t.Error("matchMethod wildcard should always match")
+	}
+}
+
 func TestPriorityMostSpecificFirst(t *testing.T) {
 	rules := mustLoad(t, `{
 		"version": "v1",
@@ -297,16 +326,20 @@ func TestLoadFile(t *testing.T) {
 	}
 }
 
-func TestMethodCaseInsensitive(t *testing.T) {
+// L22: methods are case-sensitive per RFC 7231. A rule configured with a
+// lowercase method must NOT match the uppercase request method.
+func TestMethodCaseSensitive(t *testing.T) {
 	rules := mustLoad(t, `{
 		"version": "v1",
 		"rules": [
 			{"method":"get","path":"/test","permission":"test"}
 		]
 	}`)
-	r := rules.Match("GET", "/test")
-	if r == nil {
-		t.Error("expected case-insensitive method match")
+	if r := rules.Match("get", "/test"); r == nil {
+		t.Error("expected exact-case method match")
+	}
+	if r := rules.Match("GET", "/test"); r != nil {
+		t.Error("lowercase rule must not match uppercase request method (L22)")
 	}
 }
 

@@ -466,3 +466,58 @@ func testAICDelegation() *DelegationAuthorization {
 func testPrincipalUID(realm, identifier string) string {
 	return PrincipalUid{Version: 1, Realm: realm, Identifier: identifier, KeyHash: testAICKeyHash()}.String()
 }
+
+// L14: an AIC parsed from a certificate must reconstruct to a full AICConfig so
+// a re-issued (cmdReSign) certificate retains identical authorization
+// constraints (previously the AIC was dropped on re-sign).
+func TestAICConfigReconstructionL14(t *testing.T) {
+	cfg := AICConfig{
+		AgentId:      "agent-014",
+		PrincipalUid: PrincipalUid{Version: 1, Realm: "varwof", Identifier: "user@varwof.com", KeyHash: testAICKeyHash()},
+		Capabilities: []Capability{
+			{SchemeId: "varwof-gateway-v1", CapabilityId: "gateway:admin"},
+		},
+		AuthorizationConstraints: []Capability{
+			{SchemeId: "constraint", CapabilityId: "gateway:user"},
+		},
+		DelegationAuthorization: testAICDelegation(),
+	}
+	round := func(c AICConfig) AICConfig {
+		ext, err := BuildAIC(c)
+		if err != nil {
+			t.Fatalf("BuildAIC: %v", err)
+		}
+		parsed, err := ParseAIC(certFromExt(ext))
+		if err != nil {
+			t.Fatalf("ParseAIC: %v", err)
+		}
+		rc := parsed.Config()
+		if rc == nil {
+			t.Fatal("Config() returned nil")
+		}
+		return *rc
+	}
+
+	// Round 1: original -> reconstructed
+	rc := round(cfg)
+	// Round 2: reconstructed must be re-buildable and equivalent (stable fixpoint).
+	round(rc)
+
+	if rc.AgentId != cfg.AgentId {
+		t.Errorf("AgentId: got %q, want %q", rc.AgentId, cfg.AgentId)
+	}
+	if rc.PrincipalUid.Identifier != cfg.PrincipalUid.Identifier {
+		t.Errorf("PrincipalUid.Identifier: got %q, want %q", rc.PrincipalUid.Identifier, cfg.PrincipalUid.Identifier)
+	}
+	if len(rc.Capabilities) != len(cfg.Capabilities) {
+		t.Fatalf("Capabilities len: got %d, want %d", len(rc.Capabilities), len(cfg.Capabilities))
+	}
+	if len(rc.AuthorizationConstraints) != len(cfg.AuthorizationConstraints) {
+		t.Fatalf("AuthorizationConstraints len: got %d, want %d", len(rc.AuthorizationConstraints), len(cfg.AuthorizationConstraints))
+	}
+	if rc.DelegationAuthorization == nil {
+		t.Fatal("DelegationAuthorization must be preserved")
+	} else if string(rc.DelegationAuthorization.Nonce) != string(cfg.DelegationAuthorization.Nonce) {
+		t.Error("DelegationAuthorization.Nonce not preserved")
+	}
+}

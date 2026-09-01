@@ -44,7 +44,7 @@ echo ""
 
 # ── Prerequisites ──
 echo "── Prerequisites ──"
-for cmd in "$BIN/pki" openssl python3; do
+for cmd in "$BIN/varwof" openssl python3; do
   command -v "$cmd" > /dev/null 2>&1 && ok "$(basename "$cmd") found" || fail "$(basename "$cmd") not found"
 done
 
@@ -64,7 +64,7 @@ echo ""
 echo "── 1. Init CA hierarchy ──"
 mkdir -p "$KEYDIR"
 cd "$BASE"
-"$BIN/pki" init-full \
+"$BIN/varwof" init-full \
   --out-dir "$KEYDIR" \
   --config-out "$CFG" \
   --domain "smoke.test" \
@@ -100,7 +100,7 @@ ok "Full chain certs created"
 # ── Step 2: Start server ──
 echo ""
 echo "── 2. Start server ──"
-"$BIN/pki" serve --config "$CFG" &>/dev/null &
+"$BIN/varwof" serve --config "$CFG" &>/dev/null &
 SERVER_PID=$!
 echo $SERVER_PID > "$BASE/server.pid"
 
@@ -124,7 +124,7 @@ echo "── 3. Smoke tests ──"
 API="https://127.0.0.1:9443"
 HTTP="http://127.0.0.1:8443"
 AGENT="--cert $KEYDIR/superadmin-fullchain.pem --key $KEYDIR/management/users/private/superadmin.key"
-PKI="$BIN/pki"
+PKI="$BIN/varwof"
 
 # 3.1 Basic
 echo "  ── 3.1 Basic ──"
@@ -265,6 +265,42 @@ curl -sf $HTTP/healthz | python3 -c "
 import sys,json;d=json.load(sys.stdin)
 assert d['status']=='ok'
 " 2>/dev/null && ok "healthz after all ops" || fail "healthz after all ops"
+
+# 3.14 AIC-JWT (L0 JWKS / L3 OAuth token / L2 Bearer auth)
+echo "  ── 3.14 AIC-JWT ──"
+# L0: every configured CA is published as a JWKS key (kid = SPKI hash)
+curl -sf $HTTP/.well-known/jwks.json 2>/dev/null | python3 -c "
+import sys,json; d=json.load(sys.stdin)
+keys=d.get('keys')
+assert isinstance(keys, list) and len(keys) > 0
+assert all(k.get('kid') and k.get('kty') for k in keys)
+" 2>/dev/null && ok "JWKS: keys published (kid/kty)" || fail "JWKS: missing/bad keys"
+# JWKS keys must anchor to the same trust root as the root CA (x5c present)
+curl -sf $HTTP/.well-known/jwks.json 2>/dev/null | python3 -c "
+import sys,json; d=json.load(sys.stdin)
+assert all(k.get('x5c') for k in d['keys'])
+" 2>/dev/null && ok "JWKS: x5c cert binding present" || fail "JWKS: missing x5c"
+
+# L3 /oauth/token is public but POST-only
+curl -s -o /dev/null -w '%{http_code}' $HTTP/oauth/token 2>/dev/null | grep -q '405' \
+  && ok "oauth/token: GET → 405" || fail "oauth/token: GET not 405"
+# Unsupported grant types are rejected outright
+curl -s -o /dev/null -w '%{http_code}' -X POST $HTTP/oauth/token \
+  -d 'grant_type=authorization_code' 2>/dev/null | grep -q '400' \
+  && ok "oauth/token: unsupported grant → 400" || fail "oauth/token: unsupported grant not 400"
+# x509→AIC-JWT exchange validates the trust root fail-closed (foreign/non-AIC
+# subject certificate → 400, never a crash or 500)
+curl -s -o /dev/null -w '%{http_code}' -X POST $HTTP/oauth/token \
+  -d 'grant_type=token_exchange' \
+  -d 'subject_token_type=urn:ietf:params:oauth:token-type:x509-cert' \
+  --data-urlencode "subject_token@$KEYDIR/superadmin-fullchain.pem" 2>/dev/null \
+  | grep -q '400' \
+  && ok "oauth/token: foreign-CA x509 exchange → 400" || fail "oauth/token: foreign-CA exchange not 400"
+
+# L2 AIC-JWT Bearer auth is wired and fail-closed: invalid bearer → 401
+curl -s -o /dev/null -w '%{http_code}' -H 'Authorization: Bearer not.a.real.aicjwt' \
+  $HTTP/api/v1/certs 2>/dev/null | grep -q '401' \
+  && ok "Bearer AIC-JWT: invalid token → 401" || fail "Bearer AIC-JWT: invalid token not 401"
 
 # ── Summary ──
 echo ""

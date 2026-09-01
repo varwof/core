@@ -50,6 +50,14 @@ func cmdReSign(cfg *internal.Config, args []string) error {
 	if err != nil {
 		return fmt.Errorf("get cert %s/%s: %w", *caName, *serial, err)
 	}
+
+	// S2 security fix (revoke-then-re-issue bypass): resurrecting a revoked or
+	// expired certificate as a fresh valid cert defeats key-compromise / cessation
+	// revocation. Only a currently-valid ("V") certificate may be re-issued.
+	if rec.Status != "" && rec.Status != "V" {
+		return fmt.Errorf("cert %s/%s is not active (status %q); refusing to re-sign a revoked/expired certificate", *caName, *serial, rec.Status)
+	}
+
 	oldCert, err := x509.ParseCertificate(rec.CertDER)
 	if err != nil {
 		return fmt.Errorf("parse stored cert: %w", err)
@@ -93,6 +101,26 @@ func cmdReSign(cfg *internal.Config, args []string) error {
 	}
 	if sc.Profile == "" {
 		sc.Profile = ca.ProfileTLSServer
+	}
+
+	// L14 fix: preserve the original certificate's scope and authorization
+	// constraints. Re-signing previously dropped Scope/CAScope/PrincipalAuthorization
+	// /AIC, so a re-issued management or agent/AIC certificate lost the
+	// constraints of the original and could escalate past its original bounds.
+	if adminScope := ca.ExtractAdminScope(oldCert); adminScope != "" {
+		sc.Scope = adminScope
+		sc.CAScope = []string{adminScope}
+	}
+	if pa, err := ca.ParsePrincipalAuthorizationExtension(oldCert.Extensions); err == nil && pa != nil {
+		paCfg := &ca.PrincipalAuthorizationConfig{Grants: pa.Grants}
+		if pa.DelegationPolicy.AllowedMode != 0 {
+			dp := pa.DelegationPolicy
+			paCfg.DelegationPolicy = &dp
+		}
+		sc.PrincipalAuthorization = paCfg
+	}
+	if aic, err := ca.ParseAIC(oldCert); err == nil && aic != nil {
+		sc.AIC = aic.Config()
 	}
 
 	result, err := ca.Sign(sc)

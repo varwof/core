@@ -42,3 +42,20 @@ func TestCmdReSignBranches(t *testing.T) {
 		t.Fatalf("re-sign without output: %v", err)
 	}
 }
+
+// S2: a revoked (or otherwise non-active) certificate must not be re-issued.
+// Previously cmdReSign resurrected revoked certs as fresh valid ones, defeating
+// key-compromise / cessation revocation.
+func TestCmdReSignRejectsRevokedCert(t *testing.T) {
+	dir := t.TempDir()
+	d, cfg, caCert, caKey := setupTestCA(t, dir)
+	cfg.Defaults = internal.DefaultsConfig{CA: "", Hash: "sha256", DefaultOrg: "ACME", DefaultCountry: "US"}
+
+	serial := issueTestCert(t, d, caCert, caKey, "rev-ca", "revoked.example.com")
+	if err := d.RevokeCert("rev-ca", serial, 1); err != nil {
+		t.Fatalf("revoke cert: %v", err)
+	}
+	if err := cmdReSign(cfg, []string{"--ca", "rev-ca", "--serial", serial, "--target-ca", "rev-ca"}); err == nil {
+		t.Fatal("re-sign of a revoked cert must fail")
+	}
+}

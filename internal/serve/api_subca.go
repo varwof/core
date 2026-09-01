@@ -51,7 +51,6 @@ type createSubCARequest struct {
 type createSubCAResponse struct {
 	Name        string `json:"name"`
 	CertPEM     string `json:"cert_pem"`
-	KeyPEM      string `json:"key_pem,omitempty"`
 	SerialHex   string `json:"serial_number"`
 	Fingerprint string `json:"fingerprint"`
 }
@@ -144,13 +143,19 @@ func (s *Server) apiCreateSubCA(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// M11 fix: the newly generated sub-CA private key is retained encrypted
+	// server-side and must NOT be returned to the client in the API response
+	// (the key should never leave the server over this channel).
 	resp := createSubCAResponse{
 		Name:        result.Name,
 		CertPEM:     string(result.CertPEM),
-		KeyPEM:      string(result.KeyPEM),
 		SerialHex:   result.SerialHex,
 		Fingerprint: result.Fingerprint,
 	}
+
+	// M12: sub-CA creation must be audited.
+	s.auditLog(r, "subca_create",
+		fmt.Sprintf("name=%s parent=%s serial=%s", result.Name, req.ParentCA, result.SerialHex))
 
 	writeJSON(w, resp)
 }
@@ -349,6 +354,44 @@ func (s *Server) adminCertFromRequest(r *http.Request, targetCA string) (*x509.C
 func (s *Server) verifyAdminCert(r *http.Request, targetCA string) error {
 	_, err := s.adminCertFromRequest(r, targetCA)
 	return err
+}
+
+// actornameFromCert returns a human-readable identity for audit logging from an
+// admin certificate's subject.
+func actornameFromCert(cert *x509.Certificate) string {
+	if cert == nil {
+		return ""
+	}
+	if cert.Subject.CommonName != "" {
+		return cert.Subject.CommonName
+	}
+	return cert.Subject.String()
+}
+
+// auditActor derives an identity string for audit logging: the authenticated
+// token user when present, otherwise the admin certificate's subject, otherwise
+// "unknown".
+func (s *Server) auditActor(r *http.Request) string {
+	if u, ok := r.Context().Value(userCtxKey).(*AuthUser); ok && u != nil && u.Username != "" {
+		return u.Username
+	}
+	if pemStr := r.Header.Get("X-Admin-Cert"); pemStr != "" {
+		if block, _ := pem.Decode([]byte(pemStr)); block != nil {
+			if cert, err := x509.ParseCertificate(block.Bytes); err == nil {
+				return actornameFromCert(cert)
+			}
+		}
+	}
+	if r.TLS != nil && len(r.TLS.PeerCertificates) > 0 {
+		return actornameFromCert(r.TLS.PeerCertificates[0])
+	}
+	return "unknown"
+}
+
+// auditLog records an audit entry, ignoring errors (audit must not block the
+// primary operation).
+func (s *Server) auditLog(r *http.Request, action, detail string) {
+	_ = s.getDB().LogAudit(s.auditActor(r), r.RemoteAddr, r.Method, r.URL.Path, action, detail)
 }
 
 // getParentCAKey retrieves the private key for a parent CA.

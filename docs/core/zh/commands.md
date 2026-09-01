@@ -411,6 +411,10 @@ varwof report --type soc2 --out report.pdf
 varwof cpcps --out-dir docs/ --separate-cp
 ```
 
+说明：
+- `--ca` 按证书的 **通用名称 (CN)** 匹配，而非 config 中 `cas` map 的 key。请使用 `varwof ca list` 输出的 CN（例如 `--ca "Cli Root CA"`）。
+- 当设置了 `--out-dir` 时，`--out` 会被忽略（发布目录模式会写入 `<ca>-cps.md` 和 `<ca>-cps-v<version>.md`）。若两者同时给出会打印警告。
+
 ### `varwof completion`
 
 生成 shell 补全。

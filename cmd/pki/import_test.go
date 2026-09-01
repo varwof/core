@@ -284,3 +284,49 @@ func TestPubKeyAlgorithmUnknown(t *testing.T) {
 		t.Fatal("expected non-empty string for unknown type")
 	}
 }
+
+// L21: a cert path taken from index.txt (untrusted) must not read files outside
+// certDir via `../` traversal or an absolute path.
+func TestLoadCertFileRejectsPathTraversalL21(t *testing.T) {
+	base := t.TempDir()
+	certDir := filepath.Join(base, "certs")
+	if err := os.MkdirAll(certDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// A valid cert inside certDir.
+	caCert, _ := newTestCACert(t)
+	validPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: caCert.Raw})
+	if err := os.WriteFile(filepath.Join(certDir, "good.pem"), validPEM, 0644); err != nil {
+		t.Fatal(err)
+	}
+	// A file outside certDir that traversal must NOT read.
+	secret := "TOP-SECRET-L21"
+	if err := os.WriteFile(filepath.Join(base, "secret.pem"), []byte(secret), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Normal relative path still works.
+	if got, err := loadCertFile(certDir, "good.pem", "01"); err != nil {
+		t.Fatalf("normal relative path failed: %v", err)
+	} else if len(got) == 0 {
+		t.Fatal("normal relative path returned empty data")
+	}
+
+	// ../ traversal variants must be rejected and must NOT reveal the secret.
+	for _, bad := range []string{"../secret.pem", "../../secret.pem", "sub/../secret.pem", "..\\secret.pem"} {
+		data, err := loadCertFile(certDir, bad, "01")
+		if err == nil {
+			t.Fatalf("traversal %q must be rejected (L21)", bad)
+		}
+		if string(data) == secret {
+			t.Fatalf("traversal %q disclosed the secret file (L21)", bad)
+		}
+	}
+
+	// An absolute path outside certDir must be rejected too.
+	abs := filepath.Join(base, "secret.pem")
+	if data, err := loadCertFile(certDir, abs, "01"); err == nil && string(data) == secret {
+		t.Fatal("absolute path escaping certDir must be rejected (L21)")
+	}
+}

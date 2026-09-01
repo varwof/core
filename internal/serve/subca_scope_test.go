@@ -264,3 +264,30 @@ func TestVerifyAdminCertTrustedByAnchor(t *testing.T) {
 		t.Fatalf("trusted admin cert should verify: %v", err)
 	}
 }
+
+// M11: the sub-CA create response must not serialize the private key; the key
+// is retained encrypted server-side and must never leave the server via the API.
+func TestCreateSubCAResponseOmitsPrivateKey(t *testing.T) {
+	resp := createSubCAResponse{
+		Name:        "sub",
+		CertPEM:     "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n",
+		SerialHex:   "0102",
+		Fingerprint: "aa:bb",
+	}
+	b, err := json.Marshal(resp)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(b, &m); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	for _, key := range []string{"key_pem", "private_key", "key"} {
+		if _, ok := m[key]; ok {
+			t.Fatalf("create response must not expose private key via %q", key)
+		}
+	}
+	if !strings.Contains(string(b), "cert_pem") {
+		t.Fatal("cert_pem should still be present")
+	}
+}

@@ -35,6 +35,12 @@ func cmdExport(cfg *internal.Config, args []string) error {
 	if !*pfx {
 		return ef("cli.err_pfx_only")
 	}
+	// L15: refuse to export a PFX with an empty or trivially weak password,
+	// which would leave the private key derivable in seconds (even with a
+	// strong PBKDF2 iteration count a short password is brute-forceable).
+	if len(*password) < pkcs12.MinPasswordBytes {
+		return fmt.Errorf("export requires a password of at least %d characters", pkcs12.MinPasswordBytes)
+	}
 
 	certPEM, err := os.ReadFile(*certFile)
 	if err != nil {

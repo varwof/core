@@ -136,7 +136,7 @@ func TestExportSuccess(t *testing.T) {
 	os.WriteFile(keyPath, keyPEM, 0600)
 	os.WriteFile(chainPath, caPEM, 0600)
 
-	if err := cmdExport(cfg, []string{"--cert", certPath, "--key", keyPath, "--chain", chainPath, "--out", outPath, "--pfx", "--password", "secret"}); err != nil {
+	if err := cmdExport(cfg, []string{"--cert", certPath, "--key", keyPath, "--chain", chainPath, "--out", outPath, "--pfx", "--password", "secret123"}); err != nil {
 		t.Fatalf("export: %v", err)
 	}
 	if _, err := os.Stat(outPath); err != nil {

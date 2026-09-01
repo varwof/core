@@ -11,6 +11,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/base64"
 	"encoding/json"
 	"math/big"
 	"testing"
@@ -398,5 +399,57 @@ func TestSignJWT_RSA(t *testing.T) {
 		Now:        time.Now(),
 	}); err != nil {
 		t.Fatalf("validate RSA token: %v", err)
+	}
+}
+
+// L19: JWT jti must be cryptographically random and unique per issuance. It
+// must never fall back to the guessable time-based value the old
+// randomTokenID used when randomness unavailable.
+func TestSignJWT_JtiRandomL19(t *testing.T) {
+	caCert, caKey := newTestCA(t)
+	agentKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	principalKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	aic := &AICConfig{
+		AgentId:                 "agent-l19",
+		PrincipalUid:            PrincipalUid{Version: 1, Realm: "varwof", Identifier: "u@varwof.com", KeyHash: keyHashOfPub(t, principalKey.Public())},
+		Capabilities:            []Capability{{SchemeId: "varwof-gateway-v1", CapabilityId: "gateway:read"}},
+		DelegationAuthorization: testAICDelegation(),
+		DelegationMode:          DelegationAuthorized,
+	}
+	sc := &SignConfig{
+		CAKey: caKey, CACert: caCert, CAName: "test-ca",
+		Profile: ProfileAgentProxy, CommonName: "agent-l19",
+		SubjectPubKey: agentKey.Public(), Validity: time.Hour, AIC: aic,
+	}
+	mk := func() string {
+		res, err := SignJWT(sc, JWTSignOptions{})
+		if err != nil {
+			t.Fatalf("SignJWT: %v", err)
+		}
+		return res.Claims.Jti
+	}
+
+	j1 := mk()
+	j2 := mk()
+	if j1 == "" || j2 == "" {
+		t.Fatal("jti must be present")
+	}
+	if j1 == j2 {
+		t.Fatal("jti must be unique per issuance")
+	}
+	// A time-based fallback would be a decimal timestamp string, not base64url;
+	// a random 12-byte jti decodes to exactly 12 bytes.
+	raw, err := base64.RawURLEncoding.DecodeString(j1)
+	if err != nil {
+		t.Fatalf("jti %q is not base64url (L19 fallback?): %v", j1, err)
+	}
+	if len(raw) != 12 {
+		t.Fatalf("jti %q decodes to %d bytes, want 12 (random, not time-based)", j1, len(raw))
 	}
 }

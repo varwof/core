@@ -9,6 +9,7 @@ import (
 	"encoding/pem"
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -150,6 +151,9 @@ func cmdCPCPS(cfg *internal.Config, args []string) error {
 
 	// Publication-directory mode: stable latest filename + version snapshot.
 	if *outDir != "" {
+		if *outPath != "" {
+			slog.Warn("cpcps: --out is ignored when --out-dir is set; only --out-dir is used")
+		}
 		if err := os.MkdirAll(*outDir, 0o755); err != nil {
 			return fmt.Errorf("create out dir: %w", err)
 		}

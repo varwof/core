@@ -19,7 +19,7 @@ import (
 
 // cmdPolicy handles the `pki policy` subcommand (policy signing).
 func cmdPolicy(cfg *internal.Config, args []string) error {
-	if len(args) == 0 || args[0] == "help" {
+	if len(args) == 0 || args[0] == "help" || args[0] == "--help" || args[0] == "-h" {
 		fmt.Println("Usage: pki policy sign --file authz.json --cert admin.pem --key admin-key.pem [--out authz.json.sig]")
 		fmt.Println("  sign    Use admin certificate to PKCS#7 detached-sign the policy file")
 		return nil

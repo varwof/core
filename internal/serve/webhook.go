@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/varwof/core/internal/ca"
 	"github.com/varwof/engine/db"
 )
 
@@ -53,6 +54,12 @@ func (s *Server) apiCreateWebhookSub(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.URL == "" {
 		s.apiErr(w, r, http.StatusBadRequest, "api.url_required", "")
+		return
+	}
+	// M10 SSRF fix: reject webhook URLs that point at internal/private/loopback
+	// hosts so the server cannot be used as a pivot to reach internal services.
+	if err := ca.ValidateOutboundHTTPURL(req.URL); err != nil {
+		s.apiErr(w, r, http.StatusBadRequest, "api.invalid_url", err.Error())
 		return
 	}
 	sub, err := db.CreateWebhookSub(s.getDB(), req.URL, req.Events)

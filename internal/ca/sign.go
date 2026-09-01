@@ -35,6 +35,13 @@ import (
 	pki "github.com/varwof/types"
 )
 
+// skipDBSerials tracks serials issued while sc.SkipDB is set. Serial
+// uniqueness is normally enforced by the DB insert retry loop; in SkipDB mode
+// there is no DB, so this in-process guard catches collisions against serials
+// issued within this process (L17, defense in depth — 160-bit random serials
+// already make true collisions astronomically unlikely).
+var skipDBSerials sync.Map // map[string]struct{}
+
 type Profile string
 
 const (
@@ -270,8 +277,14 @@ func CheckPublicKeyStrength(pub any) error {
 		return fmt.Errorf("EC curve not in allowed set (P-256/P-384/P-521)")
 	case ed25519.PublicKey:
 		return nil
-	default:
+	case nil:
+		// nil is a sentinel meaning "no key supplied"; the caller handles it.
 		return nil
+	default:
+		// M7 security fix: unknown key types must fail closed. Previously the
+		// default case accepted any key type, bypassing RSA-bit-length and
+		// EC-curve strength checks for non-RSA/ECDSA/Ed25519 keys.
+		return fmt.Errorf("unsupported public key type %T (must be RSA, ECDSA or Ed25519)", pub)
 	}
 }
 
@@ -573,6 +586,12 @@ func Sign(sc *SignConfig) (*SignResult, error) {
 		}
 		var insErr error
 		if sc.SkipDB {
+			// L17: enforce serial uniqueness even without a DB, against serials
+			// issued in this process.
+			if _, dup := skipDBSerials.LoadOrStore(serialHex, struct{}{}); dup {
+				slog.Debug("ca/sign: serial collision (SkipDB), retrying", "serial", serialHex)
+				continue
+			}
 			insErr = nil
 		} else if sc.DedupCN {
 			insErr = sc.DB.InsertCertWithDedup(record)

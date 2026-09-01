@@ -441,3 +441,24 @@ func (a *AIC) IntersectPermissions(userPerms []string) []string {
 	}
 	return result
 }
+
+// Config reconstructs an AICConfig from a parsed AIC so that an AIC-bearing
+// certificate can be re-issued with the same authorization constraints
+// (L14: cmdReSign previously dropped the AIC when re-signing).
+func (a *AIC) Config() *AICConfig {
+	if a == nil {
+		return nil
+	}
+	cfg := &AICConfig{
+		AgentId:                  a.AgentId,
+		PrincipalUid:             a.PrincipalUid,
+		DelegationMode:           a.DelegationMode,
+		Capabilities:             a.Capabilities,
+		AuthorizationConstraints: a.AuthorizationConstraints,
+	}
+	if len(a.DelegationAuthorization.SignatureValue) > 0 || len(a.DelegationAuthorization.Nonce) > 0 {
+		da := a.DelegationAuthorization
+		cfg.DelegationAuthorization = &da
+	}
+	return cfg
+}

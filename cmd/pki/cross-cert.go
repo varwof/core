@@ -18,7 +18,12 @@ import (
 
 func cmdCrossCert(cfg *internal.Config, args []string) error {
 	if len(args) < 1 {
-		return fmt.Errorf("usage: goca cross-cert <issue|list|revoke> [args]")
+		return fmt.Errorf("usage: pki cross-cert <issue|list|revoke> [args]")
+	}
+
+	if args[0] == "--help" || args[0] == "-h" {
+		printCrossCertUsage()
+		return nil
 	}
 
 	switch args[0] {
@@ -29,13 +34,17 @@ func cmdCrossCert(cfg *internal.Config, args []string) error {
 	case "revoke":
 		return cmdCrossCertRevoke(cfg, args[1:])
 	default:
-		return ef("cli.err_unknown_subcmd", args[0])
+		return ef("cli.err_unknown_subcmd", "cross-cert", args[0])
 	}
 }
 
 func cmdCrossCertIssue(cfg *internal.Config, args []string) error {
+	if len(args) == 1 && (args[0] == "--help" || args[0] == "-h") {
+		printCrossCertIssueUsage()
+		return nil
+	}
 	if len(args) < 1 {
-		return fmt.Errorf("usage: goca cross-cert issue --issuer <ca> --target <ca> [--validity <days>] [--out <file>]")
+		return fmt.Errorf("usage: pki cross-cert issue --issuer <ca> --target <ca> [--validity <days>] [--out <file>]")
 	}
 
 	var issuerName, targetName, outPath string
@@ -120,6 +129,10 @@ func cmdCrossCertIssue(cfg *internal.Config, args []string) error {
 }
 
 func cmdCrossCertList(cfg *internal.Config, args []string) error {
+	if len(args) == 1 && (args[0] == "--help" || args[0] == "-h") {
+		fmt.Println("Usage: cross-cert list [--issuer <ca>]")
+		return nil
+	}
 	issuerCA := ""
 	for i := 0; i < len(args); i++ {
 		if args[i] == "--issuer" && i+1 < len(args) {
@@ -162,6 +175,10 @@ func cmdCrossCertList(cfg *internal.Config, args []string) error {
 }
 
 func cmdCrossCertRevoke(cfg *internal.Config, args []string) error {
+	if len(args) == 1 && (args[0] == "--help" || args[0] == "-h") {
+		fmt.Println("Usage: cross-cert revoke --issuer <ca> --serial <serial> [--reason <reason>]")
+		return nil
+	}
 	var issuerCA, serial, reasonStr string
 
 	for i := 0; i < len(args); i++ {
@@ -205,4 +222,19 @@ func cmdCrossCertRevoke(cfg *internal.Config, args []string) error {
 
 	slog.Info("cross-certificate revoked", "issuer", issuerCA, "serial", serial, "reason", reason)
 	return nil
+}
+
+func printCrossCertUsage() {
+	fmt.Println("Usage: cross-cert <issue|list|revoke> [args]")
+	fmt.Println("  issue    Issue a cross-certificate between two CAs")
+	fmt.Println("  list     List cross-certificates")
+	fmt.Println("  revoke   Revoke a cross-certificate")
+}
+
+func printCrossCertIssueUsage() {
+	fmt.Println("Usage: cross-cert issue --issuer <ca> --target <ca> [--validity <days>] [--out <file>]")
+	fmt.Println("  --issuer     issuer CA name (must exist in config)")
+	fmt.Println("  --target     target CA name (must exist in database)")
+	fmt.Println("  --validity   validity in days (default 3650)")
+	fmt.Println("  --out        output cert PEM file")
 }

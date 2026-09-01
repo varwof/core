@@ -172,7 +172,7 @@ func cmdDB(cfg *internal.Config, args []string) error {
 	case "init":
 		return cmdDBInit(cfg, args[1:])
 	default:
-		return ef("cli.err_unknown_subcmd", args[0])
+		return ef("cli.err_unknown_subcmd", "db", args[0])
 	}
 }
 
@@ -186,6 +186,6 @@ func cmdKey(cfg *internal.Config, args []string) error {
 	case "decrypt":
 		return cmdKeyDecrypt(cfg, args[1:])
 	default:
-		return ef("cli.err_unknown_subcmd", args[0])
+		return ef("cli.err_unknown_subcmd", "key", args[0])
 	}
 }

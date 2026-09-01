@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -177,6 +178,8 @@ func (s *Server) apiCSRSign(w http.ResponseWriter, r *http.Request) {
 	}
 
 	recordCertIssued(caName, profileName)
+	s.auditLog(r, "csr_sign",
+		fmt.Sprintf("ca=%s profile=%s serial=%s cn=%q", caName, profileName, result.SerialHex, cn))
 
 	certPEM := string(ca.CertToPEM(result.CertDER))
 

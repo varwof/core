@@ -14,9 +14,11 @@ import (
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/pem"
+	"fmt"
 	"math/big"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -1087,5 +1089,51 @@ func TestSignCAScopeSurvivesDirNameSAN(t *testing.T) {
 	}
 	if !hasDirName {
 		t.Fatal("expected a SAN extension on the cert")
+	}
+}
+
+// L17: even in SkipDB mode (no DB, so no ErrDuplicateSerial retry), the
+// in-process guard must keep serials unique across a burst of concurrent
+// issuers. Previously SkipDB mode had no uniqueness enforcement at all.
+func TestSignSkipDBSerialUniquenessL17(t *testing.T) {
+	caCert, caKey := newTestCA(t)
+	d := newTestDB(t)
+
+	const n = 200
+	serials := make(chan string, n)
+	var wg sync.WaitGroup
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			sc := &SignConfig{
+				DB:         d,
+				SkipDB:     true,
+				CAKey:      caKey,
+				CACert:     caCert,
+				Profile:    ProfileTLSServer,
+				CommonName: fmt.Sprintf("skipdb-%d", i),
+				Validity:   24 * time.Hour,
+			}
+			res, err := Sign(sc)
+			if err != nil {
+				t.Errorf("Sign(SkipDB): %v", err)
+				return
+			}
+			serials <- res.SerialHex
+		}(i)
+	}
+	wg.Wait()
+	close(serials)
+
+	seen := make(map[string]struct{}, n)
+	for s := range serials {
+		if s == "" {
+			t.Fatal("empty serial from SkipDB sign")
+		}
+		if _, dup := seen[s]; dup {
+			t.Fatalf("duplicate serial %q issued in SkipDB mode (L17 guard failed)", s)
+		}
+		seen[s] = struct{}{}
 	}
 }

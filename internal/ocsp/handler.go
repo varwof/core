@@ -134,6 +134,23 @@ func (h *Handler) SetCache(cache *Cache) {
 	h.cache = cache
 }
 
+// PurgeCert invalidates all cached responses for a certificate serial. It is
+// called by the serve layer on revocation so clients are not served stale
+// "good" responses from a cache whose entries can live for up to 24h. The
+// persisted cache (when configured) is immediately re-saved so cold OCSP nodes
+// stop serving the stale entry across restarts too.
+func (h *Handler) PurgeCert(serial string) {
+	if serial == "" || h.cache == nil {
+		return
+	}
+	h.cache.PurgeSerial(serial)
+	if h.config.CacheFile != "" {
+		if err := h.cache.Save(h.config.CacheFile); err != nil {
+			slog.Warn("ocsp: cache purge save failed", "file", h.config.CacheFile, "error", err)
+		}
+	}
+}
+
 func cacheKey(reqDER []byte) string {
 	h := sha256.Sum256(reqDER)
 	return hex.EncodeToString(h[:])
@@ -150,7 +167,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodPost:
-		body, err := io.ReadAll(r.Body)
+		// M5 security fix (memory DoS): bound the request body. OCSP requests are
+		// small DER blobs; an unauthenticated attacker must not be able to exhaust
+		// heap with an arbitrarily large POST body.
+		body, err := io.ReadAll(io.LimitReader(r.Body, 64<<10))
 		r.Body.Close()
 		if err != nil {
 			writeOCSPError(w, ocspStatusMalformed)

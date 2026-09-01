@@ -243,6 +243,12 @@ func SignJWT(sc *SignConfig, opts JWTSignOptions) (*SignJWTResult, error) {
 
 	header := aicjwt.Header{Alg: alg, Typ: typ, Kid: kid}
 	nbf := notBefore.Unix()
+	// L19: never fall back to a guessable jti. If cryptographically-secure
+	// randomness is unavailable, fail issuance rather than emit a predictable ID.
+	jti, err := randomTokenID()
+	if err != nil {
+		return nil, err
+	}
 	claims := aicjwt.OuterClaims{
 		Iss:      issuer,
 		Sub:      aic.AgentId,
@@ -250,7 +256,7 @@ func SignJWT(sc *SignConfig, opts JWTSignOptions) (*SignJWTResult, error) {
 		Iat:      nowUnix,
 		Exp:      exp,
 		Nbf:      &nbf,
-		Jti:      randomTokenID(),
+		Jti:      jti,
 		Cnf:      &aicjwt.Cnf{Jkt: ""}, // filled below
 		Scope:    opts.Scope,
 		ClientID: "",
@@ -313,10 +319,13 @@ func SignJWT(sc *SignConfig, opts JWTSignOptions) (*SignJWTResult, error) {
 
 func b64uEncode(b []byte) string { return base64.RawURLEncoding.EncodeToString(b) }
 
-func randomTokenID() string {
+// randomTokenID returns a cryptographically-random URL-safe token ID (jti).
+// Unlike the previous implementation it fails instead of falling back to a
+// guessable time-based value when secure randomness is unavailable (L19).
+func randomTokenID() (string, error) {
 	b := make([]byte, 12)
 	if _, err := rand.Read(b); err != nil {
-		return fmt.Sprintf("%d", time.Now().UnixNano())
+		return "", fmt.Errorf("aicjwt: generate jti: %w", err)
 	}
-	return b64uEncode(b)
+	return b64uEncode(b), nil
 }

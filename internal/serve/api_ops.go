@@ -631,6 +631,8 @@ func (s *Server) apiIssueCert(w http.ResponseWriter, r *http.Request) {
 		s.apiErr(w, r, http.StatusInternalServerError, "api.persist_failed", err.Error())
 		return
 	}
+	s.auditLog(r, "cert_issue",
+		fmt.Sprintf("ca=%s profile=%s serial=%s cn=%q", caName, effProfile, result.SerialHex, result.Cert.Subject.CommonName))
 	var keyPEM []byte
 	if req.KeyPassword != "" {
 		keyPEM, err = ca.EncryptPrivateKeyPEM(privKey, req.KeyPassword)
@@ -682,6 +684,8 @@ func (s *Server) apiRevokeCert(w http.ResponseWriter, r *http.Request, caName, s
 	// best-effort disconnect on gateways (GAP-19)
 	go s.notifyGatewaysDisconnect("agent", caName, serial)
 	recordCertRevoked(caName)
+	s.auditLog(r, "cert_revoke",
+		fmt.Sprintf("ca=%s serial=%s reason=%d cascade=%d", caName, serial, reason, cascaded))
 	resp := map[string]any{"status": "revoked", "ca": caName, "serial": serial}
 	if cascaded > 0 {
 		resp["cascade_count"] = cascaded

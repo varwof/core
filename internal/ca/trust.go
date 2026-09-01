@@ -12,7 +12,9 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/netip"
 	neturl "net/url"
+	"slices"
 	"strings"
 	"time"
 
@@ -122,6 +124,97 @@ func trustAnchorDisplayName(cert *x509.Certificate) string {
 // a few MB; a much larger response is a sign of a misbehaving/malicious server).
 const maxTrustBundleBytes = 32 << 20 // 32 MiB
 
+// blockedFetchRanges are internal/private networks that must never be reached
+// during a CA-bundle fetch (SSRF defense). Loopback (127.0.0.0/8, ::1) is
+// deliberately excluded so local test federations keep working.
+var blockedFetchRanges = []netip.Prefix{
+	netip.MustParsePrefix("0.0.0.0/8"),      // unspecified
+	netip.MustParsePrefix("10.0.0.0/8"),     // private (RFC 1918)
+	netip.MustParsePrefix("100.64.0.0/10"),  // CGNAT
+	netip.MustParsePrefix("169.254.0.0/16"), // link-local
+	netip.MustParsePrefix("172.16.0.0/12"),  // private (RFC 1918)
+	netip.MustParsePrefix("192.168.0.0/16"), // private (RFC 1918)
+	netip.MustParsePrefix("::/128"),         // unspecified
+	netip.MustParsePrefix("fc00::/7"),       // unique-local
+	netip.MustParsePrefix("fe80::/10"),      // link-local
+}
+
+// blockedOutboundRanges additionally blocks loopback: outbound requests (e.g.
+// webhook delivery) must never target the host's own loopback services either.
+var blockedOutboundRanges = slices.Concat(
+	blockedFetchRanges,
+	[]netip.Prefix{
+		netip.MustParsePrefix("127.0.0.0/8"), // loopback
+		netip.MustParsePrefix("::1/128"),     // loopback
+	},
+)
+
+// guardAgainstSSRFFetch rejects a host whose literal or resolved addresses
+// fall inside the given internal/loopback network ranges. It fails closed: an
+// unresolvable host is refused rather than fetched.
+func guardAgainstSSRFFetch(host string) error {
+	return guardAgainstSSRFRanges(host, blockedFetchRanges, "internal network")
+}
+
+// ValidateOutboundHTTPURL checks that url is an http(s) URL with a non-empty
+// host whose literal or resolved addresses are not internal/private/loopback
+// (SSRF defense). Used when registering outbound destinations such as webhook
+// subscriptions so the server cannot be used as a pivot to reach internal hosts.
+func ValidateOutboundHTTPURL(rawurl string) error {
+	u, err := neturl.Parse(rawurl)
+	if err != nil {
+		return fmt.Errorf("parse URL %q: %w", rawurl, err)
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("unsupported URL scheme %q (must be http or https)", u.Scheme)
+	}
+	host := u.Hostname()
+	if host == "" {
+		return fmt.Errorf("URL %q has no host", rawurl)
+	}
+	return guardAgainstSSRFRanges(host, blockedOutboundRanges, "internal or loopback")
+}
+
+func guardAgainstSSRFRanges(host string, ranges []netip.Prefix, label string) error {
+	if a, err := netip.ParseAddr(host); err == nil {
+		if addrInRanges(a, ranges) {
+			return fmt.Errorf("refusing to reach %s address %s", label, host)
+		}
+		return nil
+	}
+	ips, err := net.LookupIP(host)
+	if err != nil {
+		// An unresolvable hostname is not evidence that the target is internal,
+		// so do not block it here: a legitimate public webhook/CA URL must not
+		// be rejected when DNS is unavailable (the outbound request will fail on
+		// its own if the host genuinely cannot be reached).
+		return nil
+	}
+	// net.IP may be an IPv4-mapped IPv6 (16-byte) slice; normalize so the
+	// IPv4 loopback/private prefixes match.
+	for _, ip := range ips {
+		if v4 := ip.To4(); v4 != nil {
+			ip = v4
+		}
+		if a, ok := netip.AddrFromSlice(ip); ok && addrInRanges(a, ranges) {
+			return fmt.Errorf("refusing to reach %s: %s resolves to %s address %s", label, host, label, ip)
+		}
+	}
+	return nil
+}
+
+func addrInRanges(a netip.Addr, ranges []netip.Prefix) bool {
+	if !a.IsValid() {
+		return false
+	}
+	for _, p := range ranges {
+		if p.Contains(a) {
+			return true
+		}
+	}
+	return false
+}
+
 func FetchCACertBundle(url string) ([]byte, error) {
 	if url == "" {
 		url = DefaultCACertURL
@@ -139,6 +232,15 @@ func FetchCACertBundle(url string) ([]byte, error) {
 		if host != "localhost" && !strings.HasPrefix(host, "127.") && !strings.HasPrefix(host, "::1") && (ip == nil || !ip.IsLoopback()) {
 			return nil, fmt.Errorf("fetch %s: refused non-TLS URL (scheme %q); use https:// for remote CA bundles", url, u.Scheme)
 		}
+	}
+
+	// M9 SSRF fix: never fetch from internal/private networks (RFC 1918,
+	// link-local, CGNAT, unique-local, unspecified). Loopback is the sole
+	// exception, retained for local test federations. This prevents a
+	// trust:import holder from using FetchCACertBundle to probe/reach internal
+	// hosts over https (previously any https:// host was allowed).
+	if err := guardAgainstSSRFFetch(host); err != nil {
+		return nil, fmt.Errorf("fetch %s: %w", url, err)
 	}
 
 	client := &http.Client{Timeout: 30 * time.Second}

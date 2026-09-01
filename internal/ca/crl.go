@@ -15,13 +15,46 @@ import (
 	"log/slog"
 	"math/big"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/varwof/engine/db"
 )
 
-var crlNumber atomic.Int64 // monotonic CRL number across GenerateCRL calls
+// crlNumber is a process-global monotonic floor for CRL numbers, seeded at
+// startup (SeedCRLNumber) to the max previously-issued value so counters never
+// decrease across restarts (RFC 5280 §5.2.4).
+var crlNumber atomic.Int64
+
+// crlCounters holds a per-CA monotonic CRL-number counter. Using a per-CA
+// counter (rather than a single global counter) means two CAs in one process
+// no longer contend for the same sequence (L16); each counter is floored by
+// the global seed so per-CA monotonicity and restart safety both hold.
+var crlCounters sync.Map // map[string]*atomic.Int64
+
+// nextCRLNumber returns the next CRL number for the given CA, enforcing
+// per-CA RFC 5280 §5.2.4 monotonicity. The global seed (SeedCRLNumber) acts as
+// a floor so a freshly-seen CA never generates a number below a historical
+// value.
+func nextCRLNumber(caName string) int64 {
+	floor := crlNumber.Load()
+	raw, _ := crlCounters.LoadOrStore(caName, &atomic.Int64{})
+	ctr := raw.(*atomic.Int64)
+	for {
+		cur := ctr.Load()
+		if cur < floor {
+			// Stall the counter up to the global floor.
+			if !ctr.CompareAndSwap(cur, floor) {
+				continue
+			}
+			cur = floor
+		}
+		if ctr.CompareAndSwap(cur, cur+1) {
+			return cur + 1
+		}
+	}
+}
 
 // CRLNumberStore persists the last used CRL number per CA so the counter can
 // be re-seeded at startup, preserving RFC 5280 §5.2.4 monotonicity across
@@ -241,7 +274,7 @@ func generateCRL(cfg *CRLConfig, dcfg *DeltaCRLConfig) ([]byte, error) {
 		nextUpdate = now.AddDate(0, 0, 30)
 	}
 
-	crlNum := crlNumber.Add(1)
+	crlNum := nextCRLNumber(cfg.CAName)
 
 	// H12 fix: persist the CRL number after each successful generation so a
 	// restart can re-seed the counter. Errors are non-fatal (a loss of
@@ -274,7 +307,20 @@ func generateCRL(cfg *CRLConfig, dcfg *DeltaCRLConfig) ([]byte, error) {
 		})
 
 		// Base CRL Number (2.5.29.31): the cRLNumber of the base CRL.
-		base, err := asn1.Marshal(dcfg.BaseCRLNumber)
+		// When the caller did not record a base CRL number (CLI/server leave
+		// it nil), fall back to the number the immediately-preceding base CRL
+		// would have carried. A nil *big.Int would otherwise fail asn1.Marshal
+		// with "asn1: structure error: empty integer" (RFC 5280 §5.2.4 requires
+		// the extension to carry a valid non-negative INTEGER).
+		baseNum := dcfg.BaseCRLNumber
+		if baseNum == nil || baseNum.Sign() < 0 {
+			b := crlNum - 1
+			if b < 0 {
+				b = 0
+			}
+			baseNum = big.NewInt(b)
+		}
+		base, err := asn1.Marshal(baseNum)
 		if err != nil {
 			return nil, fmt.Errorf("marshal base CRL number: %w", err)
 		}

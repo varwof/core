@@ -18,6 +18,14 @@ func cmdTrustBridge(cfg *internal.Config, args []string) error {
 		return fmt.Errorf("usage: trust-bridge {issue|list|federate}")
 	}
 
+	if args[0] == "--help" || args[0] == "-h" {
+		fmt.Println("Usage: trust-bridge {issue|list|federate}")
+		fmt.Println("  issue    Cross-sign a CA to establish trust bridge")
+		fmt.Println("  list     List existing trust bridges")
+		fmt.Println("  federate Federate trust anchors from remote URL")
+		return nil
+	}
+
 	database, err := db.Open(cfg.DB)
 	if err != nil {
 		return fmt.Errorf("open db: %w", err)
@@ -48,6 +56,7 @@ func trustBridgeIssue(cfg *internal.Config, database *db.DB, args []string) erro
 	}
 
 	bridges := []ca.TrustBridgePolicy{{
+		Enabled:   true,
 		IssuerCA:  issuerCA,
 		SubjectCA: subjectCA,
 		Validity:  validity,
@@ -62,6 +71,9 @@ func trustBridgeIssue(cfg *internal.Config, database *db.DB, args []string) erro
 	if err != nil {
 		return fmt.Errorf("trust bridge: %w", err)
 	}
+	if results == nil {
+		results = []*db.CrossCertRecord{}
+	}
 	data, _ := json.MarshalIndent(results, "", "  ")
 	fmt.Println(string(data))
 	slog.Info("trust bridge established", "count", len(results))
@@ -72,6 +84,9 @@ func trustBridgeList(cfg *internal.Config, database *db.DB, args []string) error
 	records, err := database.ListCrossCertsAll()
 	if err != nil {
 		return fmt.Errorf("list cross certs: %w", err)
+	}
+	if records == nil {
+		records = []*db.CrossCertRecord{}
 	}
 	data, _ := json.MarshalIndent(records, "", "  ")
 	fmt.Println(string(data))

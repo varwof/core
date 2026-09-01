@@ -82,11 +82,22 @@ func VerifyDelegationAuthorization(userCert *x509.Certificate, aic *AICConfig) e
 	// Cross-validation: the provided user certificate SPKI hash must match
 	// PrincipalUid.keyHash (prevents forged user certificates — consistent with
 	// gateway-lib VerifyDelegationAuth).
-	if len(aic.PrincipalUid.KeyHash) > 0 {
-		spkiHash := sha256.Sum256(userCert.RawSubjectPublicKeyInfo)
-		if !bytes.Equal(spkiHash[:], aic.PrincipalUid.KeyHash) {
-			return fmt.Errorf("verify_delegation_auth: user cert SPKI hash mismatch with principal_uid.keyHash")
-		}
+	//
+	// S3 security fix (principal binding bypass): an empty KeyHash must fail
+	// closed. Previously the SPKI cross-check was skipped whenever KeyHash was
+	// empty, letting a caller supply an arbitrary self-signed cert (whose key
+	// they own) and self-delegate AIC capabilities with no real principal
+	// binding. The cross-check also now honors the declared PrincipalUid.HashAlgo
+	// instead of a hardcoded SHA-256.
+	if len(aic.PrincipalUid.KeyHash) == 0 {
+		return fmt.Errorf("verify_delegation_auth: empty principal_uid.keyHash — cannot bind delegation to a user certificate")
+	}
+	expected, err := pki.KeyHashFromCertSPKI(aic.PrincipalUid.HashAlgoOID(), userCert)
+	if err != nil {
+		return fmt.Errorf("verify_delegation_auth: compute principal key hash: %w", err)
+	}
+	if !bytes.Equal(expected, aic.PrincipalUid.KeyHash) {
+		return fmt.Errorf("verify_delegation_auth: user cert SPKI hash mismatch with principal_uid.keyHash")
 	}
 
 	algoOID := da.SignatureAlgorithm.Algorithm

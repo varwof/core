@@ -164,3 +164,50 @@ func TestGenerateDeltaCRLEmptyDelta(t *testing.T) {
 		t.Fatalf("expected empty delta, got %d", len(delta.RevokedCertificateEntries))
 	}
 }
+
+// TestGenerateDeltaCRLNilBaseNumber ensures a delta CRL still generates when
+// the caller leaves BaseCRLNumber nil (the CLI and server both do). The Base
+// CRL Number extension must carry a valid non-negative INTEGER rather than
+// failing asn1.Marshal with "asn1: structure error: empty integer".
+func TestGenerateDeltaCRLNilBaseNumber(t *testing.T) {
+	caCert, caKey := newTestCA(t)
+	d := newTestDB(t)
+
+	if err := d.InsertCert(newTestCertRecord("1")); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.RevokeCert("Test CA", "1", 1); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := &CRLConfig{DB: d, CACert: caCert, CAKey: caKey, ValidityDays: 30}
+	deltaCRL, err := GenerateDeltaCRL(cfg, &DeltaCRLConfig{
+		Since: time.Now().Add(-time.Hour),
+		// BaseCRLNumber intentionally left nil (mirrors CLI/server paths).
+	})
+	if err != nil {
+		t.Fatalf("GenerateDeltaCRL with nil BaseCRLNumber: %v", err)
+	}
+
+	delta, err := x509.ParseRevocationList(deltaCRL)
+	if err != nil {
+		t.Fatalf("parse delta CRL: %v", err)
+	}
+
+	var hasBase bool
+	for _, ext := range delta.Extensions {
+		if ext.Id.Equal(asn1.ObjectIdentifier{2, 5, 29, 31}) {
+			hasBase = true
+			var num int
+			if _, err := asn1.Unmarshal(ext.Value, &num); err != nil {
+				t.Fatalf("unmarshal base CRL number: %v", err)
+			}
+			if num < 0 {
+				t.Fatalf("base CRL number must be non-negative, got %d", num)
+			}
+		}
+	}
+	if !hasBase {
+		t.Fatal("missing Base CRL Number extension")
+	}
+}

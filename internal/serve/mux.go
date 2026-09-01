@@ -19,6 +19,7 @@ import (
 	"github.com/varwof/core/internal/ca"
 	"github.com/varwof/core/internal/capregistry"
 	"github.com/varwof/core/internal/i18n"
+	"github.com/varwof/core/internal/ocsp"
 	"github.com/varwof/core/internal/provisioner"
 	"github.com/varwof/core/internal/routing"
 	"github.com/varwof/core/internal/tsa"
@@ -32,10 +33,13 @@ type caTreeCacheEntry struct {
 }
 
 type Server struct {
-	cfgPtr     atomic.Pointer[internal.Config]
-	dbPtr      atomic.Pointer[db.DB]
-	tsaH       atomic.Pointer[http.Handler]
-	ocspH      atomic.Pointer[http.Handler]
+	cfgPtr atomic.Pointer[internal.Config]
+	dbPtr  atomic.Pointer[db.DB]
+	tsaH   atomic.Pointer[http.Handler]
+	ocspH  atomic.Pointer[http.Handler]
+	// ocspCache holds the typed *ocsp.Handler (when the configured OCSP handler
+	// is one) so the serve layer can purge cached responses on revocation.
+	ocspCache  atomic.Pointer[ocsp.Handler]
 	tsaRC      atomic.Pointer[tsa.RuntimeConfig]
 	publicOnly bool
 	rl         *RateLimiter
@@ -240,6 +244,7 @@ func NewFull(cfg *internal.Config, database *db.DB, b *i18n.Bundle, tsaH, ocspH 
 	s.tsaH.Store(&h)
 	h2 := ocspH
 	s.ocspH.Store(&h2)
+	s.setOCSPCache(ocspH)
 	s.loadRouteRules(cfg)
 	s.rebuildIdentitySource()
 	return s
@@ -691,6 +696,8 @@ func (s *Server) getAICExtensionByCert(caName, serial string) (*db.AICExtension,
 // revokeCert marks a certificate revoked. With the memory engine enabled the
 // mutation lands in memory first (immediately visible, async persisted, cache
 // invalidated via db.OnCertRevoked); otherwise it writes the DB directly.
+// On success the OCSP response cache for the serial is purged (M6) so clients
+// are not served a stale "good" response after revocation.
 func (s *Server) revokeCert(caName, serial string, reason int) error {
 	if e := s.getEngine(); e != nil {
 		if err := e.RevokeCert(caName, serial, reason); err != nil {
@@ -699,13 +706,22 @@ func (s *Server) revokeCert(caName, serial string, reason int) error {
 			// DB so the revocation is not silently lost.
 			if errors.Is(err, engine.ErrNotFound) {
 				slog.Debug("serve: engine revoke miss, falling back to DB", "ca", caName, "serial", serial)
-				return s.getDB().RevokeCert(caName, serial, reason)
+				if dbErr := s.getDB().RevokeCert(caName, serial, reason); dbErr != nil {
+					return dbErr
+				}
+				s.purgeOCSPForSerial(serial)
+				return nil
 			}
 			return err
 		}
+		s.purgeOCSPForSerial(serial)
 		return nil
 	}
-	return s.getDB().RevokeCert(caName, serial, reason)
+	if err := s.getDB().RevokeCert(caName, serial, reason); err != nil {
+		return err
+	}
+	s.purgeOCSPForSerial(serial)
+	return nil
 }
 
 // revokeByPrincipalUid revokes every active certificate of a principal.
@@ -892,6 +908,22 @@ func (s *Server) ocspHandler() http.Handler {
 	return http.NotFoundHandler()
 }
 
+// setOCSPCache records the typed *ocsp.Handler (when the provided handler is
+// one) so revocation can purge cached OCSP responses.
+func (s *Server) setOCSPCache(h http.Handler) {
+	if oc, ok := h.(*ocsp.Handler); ok {
+		s.ocspCache.Store(oc)
+	}
+}
+
+// purgeOCSPForSerial invalidates the OCSP response cache entry for a revoked
+// certificate serial (M6) so clients are not served stale "good" responses.
+func (s *Server) purgeOCSPForSerial(serial string) {
+	if oc := s.ocspCache.Load(); oc != nil && serial != "" {
+		oc.PurgeCert(serial)
+	}
+}
+
 func (s *Server) SetRateLimiter(rl *RateLimiter) {
 	s.rl = rl
 }
@@ -909,6 +941,9 @@ func requestIP(remoteAddr string) string {
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// L22 fix: emit baseline security headers on every response.
+	setSecurityHeaders(w)
+
 	// M20 fix: limit request body size to 10MB to prevent memory exhaustion.
 	if r.Method == http.MethodPost || r.Method == http.MethodPut || r.Method == http.MethodPatch {
 		r.Body = http.MaxBytesReader(w, r.Body, 10<<20) // 10 MB
@@ -1014,6 +1049,7 @@ func (s *Server) Reload(cfg *internal.Config, database *db.DB, tsaH, ocspH http.
 	if ocspH != nil {
 		h := ocspH
 		s.ocspH.Store(&h)
+		s.setOCSPCache(ocspH)
 	}
 	s.loadRouteRules(cfg)
 	s.rebuildIdentitySource()

@@ -69,6 +69,38 @@ func (r *statusRecorder) ReadFrom(src io.Reader) (int64, error) {
 // (Go 1.20+).
 func (r *statusRecorder) Unwrap() http.ResponseWriter { return r.ResponseWriter }
 
+// setSecurityHeaders applies baseline hardening headers to every HTTP response
+// (L22). The CSP is kept compatible with the HTML web dashboard, which uses an
+// inline bootstrap script and loads the Swagger UI bundle from the jsdelivr
+// CDN; on API/JSON responses the policy is inert but still present.
+func setSecurityHeaders(w http.ResponseWriter) {
+	h := w.Header()
+	if h.Get("X-Content-Type-Options") == "" {
+		h.Set("X-Content-Type-Options", "nosniff")
+	}
+	if h.Get("X-Frame-Options") == "" {
+		h.Set("X-Frame-Options", "DENY")
+	}
+	if h.Get("Referrer-Policy") == "" {
+		h.Set("Referrer-Policy", "no-referrer")
+	}
+	if h.Get("Permissions-Policy") == "" {
+		h.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+	}
+	if h.Get("Cache-Control") == "" {
+		h.Set("Cache-Control", "no-store")
+	}
+	if h.Get("Content-Security-Policy") == "" {
+		h.Set("Content-Security-Policy",
+			"default-src 'self'; "+
+				"script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "+
+				"style-src 'self' 'unsafe-inline'; "+
+				"img-src 'self' data:; font-src 'self' data:; "+
+				"connect-src 'self'; object-src 'none'; base-uri 'self'; "+
+				"frame-ancestors 'none'")
+	}
+}
+
 func accessLog(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()

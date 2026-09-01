@@ -161,3 +161,33 @@ func (b *badSigner) Public() crypto.PublicKey { return nil }
 func (b *badSigner) Sign(_ io.Reader, _ []byte, _ crypto.SignerOpts) ([]byte, error) {
 	return nil, nil
 }
+
+// L18: PKCS#7 padding must be validated fully (every trailing byte must equal
+// the pad length), not merely bounds-checked. Previously a malformed/mismatched
+// pad was accepted and only failed later during key parsing — a padding-oracle
+// surface.
+func TestValidatePKCS7PaddingL18(t *testing.T) {
+	validCases := [][]byte{
+		{0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10}, // padLen 16
+		{0x01},                         // padLen 1
+		{0xAA, 0xBB, 0xCC, 0x02, 0x02}, // padLen 2
+	}
+	for _, c := range validCases {
+		if err := validatePKCS7Padding(c); err != nil {
+			t.Errorf("valid padding %v rejected: %v", c, err)
+		}
+	}
+
+	invalidCases := [][]byte{
+		{},                             // empty
+		{0x00},                         // padLen 0 is invalid
+		{0x11},                         // padLen 17 > block size (16)
+		{0xAA, 0xBB, 0x03, 0x03, 0x02}, // padLen (last byte) 2, but adjacent byte 0x03 mismatch
+		{0x01, 0x02},                   // padLen (last byte) 2, but preceding byte 0x01 mismatch
+	}
+	for _, c := range invalidCases {
+		if err := validatePKCS7Padding(c); err == nil {
+			t.Errorf("invalid padding %v accepted (L18)", c)
+		}
+	}
+}

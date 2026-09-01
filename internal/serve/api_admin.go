@@ -5,6 +5,7 @@ package serve
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -465,6 +466,10 @@ func (s *Server) apiRecoverKey(w http.ResponseWriter, r *http.Request) {
 		s.apiErr(w, r, http.StatusNotFound, "api.key_not_found", "")
 		return
 	}
+	// M12: exporting an escrowed key is a highly sensitive operation and must
+	// be audited.
+	s.auditLog(r, "key_recover",
+		fmt.Sprintf("ca=%s serial=%s", req.CA, req.Serial))
 	apiOK(w, map[string]interface{}{
 		"ca":     req.CA,
 		"serial": req.Serial,

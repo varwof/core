@@ -212,13 +212,10 @@ func DecryptKeyPKCS8(der []byte, password string) (crypto.Signer, error) {
 	padded := make([]byte, len(e.EncryptedData))
 	mode.CryptBlocks(padded, e.EncryptedData)
 
-	if len(padded) == 0 {
-		return nil, fmt.Errorf("empty decrypted data")
+	if err := validatePKCS7Padding(padded); err != nil {
+		return nil, err
 	}
 	padLen := int(padded[len(padded)-1])
-	if padLen > aes.BlockSize || padLen > len(padded) {
-		return nil, fmt.Errorf("invalid padding")
-	}
 	privDER := padded[:len(padded)-padLen]
 
 	raw, err := x509.ParsePKCS8PrivateKey(privDER)
@@ -233,4 +230,29 @@ func DecryptKeyPKCS8(der []byte, password string) (crypto.Signer, error) {
 		return nil, fmt.Errorf("weak key: %w", err)
 	}
 	return signer, nil
+}
+
+// validatePKCS7Padding verifies that padded ends with a valid PKCS#7 padding
+// block (RFC 5652 §6.3): every trailing byte must equal the pad length.
+// The full check (not just bounds) closes a padding-oracle surface where a
+// malformed/mismatched pad would otherwise be silently accepted and only fail
+// later, unpredictably, during key parsing (L18).
+func validatePKCS7Padding(padded []byte) error {
+	if len(padded) == 0 {
+		return fmt.Errorf("empty decrypted data")
+	}
+	padLen := int(padded[len(padded)-1])
+	if padLen == 0 || padLen > aes.BlockSize || padLen > len(padded) {
+		return fmt.Errorf("invalid padding")
+	}
+	// Constant-time check of every padding byte: comparisons do not leak the
+	// position where a mismatch occurs (padding-oracle defense).
+	var invalid byte
+	for i := 0; i < padLen; i++ {
+		invalid |= padded[len(padded)-1-i] ^ byte(padLen)
+	}
+	if invalid != 0 {
+		return fmt.Errorf("invalid padding")
+	}
+	return nil
 }

@@ -301,7 +301,9 @@ func TestCLIVerifyMissingFile(t *testing.T) {
 
 // -- cmdExport tests ----------------------------------------------------------
 
-func TestCLIExportPFX(t *testing.T) {
+// L15: an empty or trivially short PFX password must be rejected — otherwise
+// the exported private key is left derivable in seconds.
+func TestCLIExportRejectsEmptyPassword(t *testing.T) {
 	dir := t.TempDir()
 	certPath, keyPath := writeTestCertKey(t, dir)
 	outPath := filepath.Join(dir, "out.pfx")
@@ -313,21 +315,29 @@ func TestCLIExportPFX(t *testing.T) {
 		"--key", keyPath,
 		"--out", outPath,
 	})
-	if err != nil {
-		t.Fatalf("cmdExport: %v", err)
+	if err == nil {
+		t.Fatal("expected cmdExport to reject an empty PFX password")
 	}
+	if _, statErr := os.Stat(outPath); statErr == nil {
+		t.Fatal("no PFX file should be written for an empty password")
+	}
+}
 
-	pfxData, err := os.ReadFile(outPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(pfxData) == 0 {
-		t.Fatal("empty PFX")
-	}
+func TestCLIExportRejectsShortPassword(t *testing.T) {
+	dir := t.TempDir()
+	certPath, keyPath := writeTestCertKey(t, dir)
+	outPath := filepath.Join(dir, "out.pfx")
 
-	_, _, _, err = p12.DecodeChain(pfxData, "")
-	if err != nil {
-		t.Fatalf("pkcs12 DecodeChain: %v", err)
+	cfg := &internal.Config{}
+	err := cmdExport(cfg, []string{
+		"--pfx",
+		"--cert", certPath,
+		"--key", keyPath,
+		"--out", outPath,
+		"--password", "short",
+	})
+	if err == nil {
+		t.Fatal("expected cmdExport to reject a short PFX password")
 	}
 }
 
@@ -342,7 +352,7 @@ func TestCLIExportPFXWithPassword(t *testing.T) {
 		"--cert", certPath,
 		"--key", keyPath,
 		"--out", outPath,
-		"--password", "test123",
+		"--password", "test1234",
 	})
 	if err != nil {
 		t.Fatalf("cmdExport: %v", err)
@@ -352,7 +362,7 @@ func TestCLIExportPFXWithPassword(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, _, err = p12.DecodeChain(pfxData, "test123")
+	_, _, _, err = p12.DecodeChain(pfxData, "test1234")
 	if err != nil {
 		t.Fatalf("pkcs12 DecodeChain: %v", err)
 	}

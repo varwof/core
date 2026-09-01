@@ -642,6 +642,12 @@ func checkNameConstraints(issuer, child *x509.Certificate) string {
 	for _, u := range child.URIs {
 		host := u.Hostname()
 		if host == "" {
+			// M8 security fix: a hostless URI (e.g. urn:..., spiffe://) has no
+			// authority to match. Previously it was silently skipped, allowing
+			// such a SAN to bypass configured permitted URI domain constraints.
+			if len(issuer.PermittedURIDomains) > 0 {
+				return fmt.Sprintf("hostless URI %q not in any permitted URI domain subtree", u.String())
+			}
 			continue
 		}
 		if matched, reason := constraintViolation(host, issuer.PermittedURIDomains, issuer.ExcludedURIDomains, dnsMatch, "URI host"); reason != "" {

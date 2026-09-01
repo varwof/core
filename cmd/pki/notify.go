@@ -130,7 +130,7 @@ func notifySMTP(cfg *internal.Config, event, msg string) {
 }
 
 func cmdNotify(cfg *internal.Config, args []string) error {
-	if len(args) == 0 || args[0] == "help" {
+	if len(args) == 0 || args[0] == "help" || args[0] == "--help" || args[0] == "-h" {
 		fmt.Println("Usage: pki notify test-smtp [--event cert_issued] [--message 'test']")
 		fmt.Println("  test-smtp    Send a test email via SMTP config")
 		return nil

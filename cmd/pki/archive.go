@@ -33,6 +33,9 @@ func cmdArchive(cfg *internal.Config, args []string) error {
 		if err != nil {
 			return fmt.Errorf("list archived: %w", err)
 		}
+		if archived == nil {
+			archived = []*db.CertRecord{}
+		}
 		data, _ := json.MarshalIndent(archived, "", "  ")
 		fmt.Println(string(data))
 		return nil
@@ -41,6 +44,7 @@ func cmdArchive(cfg *internal.Config, args []string) error {
 	policy := &ca.ArchivePolicy{
 		Enabled:        true,
 		RetentionDays:  *retention,
+		IncludeCA:      *caName,
 		ArchiveExpired: *expired,
 		ArchiveRevoked: *revoked,
 	}

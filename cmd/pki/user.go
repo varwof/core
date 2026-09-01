@@ -40,7 +40,7 @@ func cmdUser(cfg *internal.Config, args []string) error {
 	case "unbind-operator-cert":
 		return cmdUserUnbindOperatorCert(database, args[1:])
 	default:
-		return ef("cli.err_unknown_subcmd", args[0])
+		return ef("cli.err_unknown_subcmd", "user", args[0])
 	}
 }
 
@@ -227,7 +227,7 @@ func cmdToken(cfg *internal.Config, args []string) error {
 	case "revoke":
 		return cmdTokenRevoke(database, args[1:])
 	default:
-		return ef("cli.err_unknown_subcmd", args[0])
+		return ef("cli.err_unknown_subcmd", "token", args[0])
 	}
 }
 

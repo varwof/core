@@ -16,7 +16,7 @@ import (
 
 func cmdRA(cfg *internal.Config, args []string) error {
 	if len(args) < 1 {
-		return fmt.Errorf("usage: goca ra <submit|list|approve|reject|show>")
+		return fmt.Errorf("usage: pki ra <submit|list|approve|reject|show>")
 	}
 	sub := args[0]
 	rest := args[1:]

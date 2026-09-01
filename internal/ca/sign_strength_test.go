@@ -107,3 +107,15 @@ func TestCheckPublicKeyStrength_Nil(t *testing.T) {
 		t.Fatalf("nil should pass-through, got %v", err)
 	}
 }
+
+// M7: unknown public key types must fail closed (previously accepted, bypassing
+// RSA-bit-length / EC-curve strength checks).
+func TestCheckPublicKeyStrength_UnknownTypeFailsClosed(t *testing.T) {
+	var s string
+	if err := CheckPublicKeyStrength(s); err == nil {
+		t.Fatal("unknown key type must be rejected")
+	}
+	if err := CheckPublicKeyStrength(42); err == nil {
+		t.Fatal("unknown key type must be rejected")
+	}
+}

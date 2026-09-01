@@ -205,9 +205,20 @@ func registerCACert(d *db.DB, name, certPath string) error {
 }
 
 func loadCertFile(certDir, relPath, serialHex string) ([]byte, error) {
-	certPath := relPath
-	if !filepath.IsAbs(certPath) {
-		certPath = filepath.Join(certDir, certPath)
+	// L21: relPath and serialHex come from index.txt (untrusted input). All
+	// certificate reads are confined to certDir so a `../` (or absolute) path
+	// cannot read arbitrary PEM files elsewhere on disk.
+	certPath, err := confinedJoin(certDir, relPath)
+	if err != nil {
+		// Only attempt the serial fallback if it is itself confined.
+		altPath, altErr := confinedJoin(certDir, serialHex+".pem")
+		if altErr != nil {
+			return nil, fmt.Errorf("read cert: %v; fallback rejected: %v", err, altErr)
+		}
+		if pemData, rerr := os.ReadFile(altPath); rerr == nil {
+			return pemData, nil
+		}
+		return nil, fmt.Errorf("read cert: %v", err)
 	}
 
 	pemData, err := os.ReadFile(certPath)
@@ -215,14 +226,41 @@ func loadCertFile(certDir, relPath, serialHex string) ([]byte, error) {
 		return pemData, nil
 	}
 
-	// Fallback: try <serial>.pem in cert-dir
-	altPath := filepath.Join(certDir, serialHex+".pem")
-	pemData, err = os.ReadFile(altPath)
-	if err == nil {
-		return pemData, nil
+	// Fallback: try <serial>.pem in cert-dir.
+	altPath, altErr := confinedJoin(certDir, serialHex+".pem")
+	if altErr == nil {
+		if pemData, ferr := os.ReadFile(altPath); ferr == nil {
+			return pemData, nil
+		}
 	}
 
 	return nil, fmt.Errorf("read cert: tried %q and %q: %v", certPath, altPath, err)
+}
+
+// confinedJoin appends rel to base and verifies the result stays within base,
+// rejecting absolute paths and `..` traversal. This mitigates index.txt path
+// traversal (L21): a crafted cert path must not read files outside certDir.
+func confinedJoin(base, rel string) (string, error) {
+	baseAbs, err := filepath.Abs(base)
+	if err != nil {
+		return "", fmt.Errorf("resolve base dir: %w", err)
+	}
+	joined := rel
+	if !filepath.IsAbs(joined) {
+		joined = filepath.Join(baseAbs, joined)
+	}
+	joinedAbs, err := filepath.Abs(joined)
+	if err != nil {
+		return "", fmt.Errorf("resolve cert path: %w", err)
+	}
+	r, err := filepath.Rel(baseAbs, joinedAbs)
+	if err != nil {
+		return "", fmt.Errorf("resolve cert path relative: %w", err)
+	}
+	if r == ".." || strings.HasPrefix(r, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("cert path %q escapes cert dir %q", rel, base)
+	}
+	return joinedAbs, nil
 }
 
 func pubKeyAlgorithm(pub any) string {
