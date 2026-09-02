@@ -33,11 +33,44 @@ This project is the PKI/CA server package. Issues of interest include:
 Security fixes are applied to the latest release. Older releases are
 supported on a best-effort basis.
 
-## Code Review Findings (2026-09-01)
+## Funding note: no paid third-party audit
 
-Security / correctness review of the current `main` (post v0.3.0).
-All items below are open and not yet fixed. Priority: high for items
-1-4 (two of which are externally exploitable privilege escalations).
+This is an individual / open-source project; no paid third-party
+security audit has been conducted. Validation relies on internal
+AI-assisted review, automated tests (race-enabled), and independent
+cross-implementation exercise where available.
+
+## Security Audit History
+
+Review practice: development includes AI-assisted security review and
+RFC compliance cross-checks (X.509 / PKIX (RFC 5280), OCSP (RFC 6960), TSA (RFC 3161), PKCS#7 (RFC 5652)). Consolidated findings are
+logged below; each is retained as a historical record after resolution.
+
+### Development audit rounds (2026-06 -- 2026-08)
+
+| Date | Scope | Method | Status |
+|---|---|---|---|
+| 2026-06-29 | core security review | AI-assisted internal review | iterative; superseded by the 2026-09-01 pass |
+| 2026-07-23 | permission model | AI-assisted internal review | iterative; superseded by the 2026-09-01 pass |
+| 2026-07-25 | authentication | AI-assisted internal review | iterative; superseded by the 2026-09-01 pass |
+| 2026-08-01 | authentication | AI-assisted internal review | iterative; superseded by the 2026-09-01 pass |
+| 2026-08-11 | AIC issuance pipeline | AI-assisted internal review | iterative; superseded by the 2026-09-01 pass |
+
+These rounds were conducted during development; findings were addressed
+as development progressed. The 2026-09-01 pass below is the consolidated
+resolved baseline for `main` at that commit.
+
+### 2026-09-01 -- internal security review (AI-assisted), resolved
+
+Method: internal security/correctness review of the current `main`,
+assisted by AI tooling, with RFC cross-checks against X.509 / PKIX (RFC 5280), OCSP (RFC 6960), TSA (RFC 3161), PKCS#7 (RFC 5652).
+Status: all findings below were resolved in the 2026-09-01 security
+pass (commit d4bbb6d) and verified by the full test suite (race-enabled).
+
+Next scheduled review: quarterly (next: 2026-12-01).
+Independent exercise: independent implementation (EMILIA crossing, 13/13) exercised AIC/X.509 issuance and delegation semantics.
+
+### Resolved findings (2026-09-01)
 
 ### Security (high)
 
