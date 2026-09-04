@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -41,7 +42,16 @@ type ctAddChainResponse struct {
 // old code used the unbounded http.DefaultClient).
 const ctTimeout = 30 * time.Second
 
-func SubmitCertificate(url, apiKey string, cert *x509.Certificate, chain []*x509.Certificate) (sctVersion int, logID string, timestamp uint64, extensions string, sigDER []byte, err error) {
+// ctMaxResponseBytes caps the CT log response body. A valid add-chain response
+// is a few KB of JSON; 1 MiB is far beyond any legitimate reply and bounds the
+// memory a malicious/compromised log can force us to allocate.
+const ctMaxResponseBytes = 1 << 20
+
+func SubmitCertificate(url, apiKey string, cert *x509.Certificate, chain []*x509.Certificate, optHTTPClient ...*http.Client) (sctVersion int, logID string, timestamp uint64, extensions string, sigDER []byte, err error) {
+	if !strings.HasPrefix(url, "https://") {
+		return 0, "", 0, "", nil, fmt.Errorf("CT log URL must use HTTPS (got %q)", url)
+	}
+
 	certB64 := base64.StdEncoding.EncodeToString(cert.Raw)
 	chainB64 := []string{certB64}
 	for _, c := range chain {
@@ -63,13 +73,18 @@ func SubmitCertificate(url, apiKey string, cert *x509.Certificate, chain []*x509
 	}
 
 	client := &http.Client{Timeout: ctTimeout}
+	if len(optHTTPClient) > 0 && optHTTPClient[0] != nil {
+		client = optHTTPClient[0]
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return 0, "", 0, "", nil, fmt.Errorf("http post: %w", err)
 	}
 	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(resp.Body)
+	// Cap the response size: a legitimate CT log JSON response is a few KB;
+	// limit the read so a compromised/malicious log cannot exhaust memory.
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, ctMaxResponseBytes))
 	if err != nil {
 		return 0, "", 0, "", nil, fmt.Errorf("read response: %w", err)
 	}
@@ -141,6 +156,17 @@ func VerifySCT(cert *x509.Certificate, sctVersion int, logID string, timestamp u
 	}
 	if logPubKey == nil {
 		return fmt.Errorf("nil CT log public key: signature verification not possible")
+	}
+
+	// RFC 6962 §5.2: a TLS client MUST NOT use an SCT with a timestamp in
+	// the future. Reject timestamps more than 5 minutes ahead as a
+	// defence-in-depth against misconfigured or compromised CT logs.
+	const maxFutureSkewMs = 5 * 60 * 1000 // 5 minutes in milliseconds
+	if ts := int64(timestamp); ts > 0 {
+		nowMs := time.Now().UnixMilli()
+		if ts > nowMs+maxFutureSkewMs {
+			return fmt.Errorf("SCT timestamp is %d ms in the future (max skew %d ms)", ts-nowMs, maxFutureSkewMs)
+		}
 	}
 
 	// Reconstruct the SCT signed data per RFC 6962 §3.2.
