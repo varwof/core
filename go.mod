@@ -9,7 +9,7 @@ require (
 	github.com/prometheus/client_golang v1.20.5
 	github.com/tjfoc/gmsm v1.4.1
 	github.com/varwof/engine v0.2.0
-	github.com/varwof/pkcs7 v0.1.0
+	github.com/varwof/pkcs7 v0.1.1
 	github.com/varwof/register v0.1.0
 	golang.org/x/crypto v0.54.0
 	golang.org/x/sys v0.47.0
