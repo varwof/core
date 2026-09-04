@@ -678,6 +678,17 @@ func (s *Server) requirePolicy() bool {
 	return *cfg.EnforcePolicy
 }
 
+// requireTLSServerSAN reports whether TLS-server issuance must fail when the
+// certificate carries no subjectAltName (F11 fix: config require_tls_server_san).
+// It feeds SignConfig.RequireTLSServerSAN, mirroring requirePolicy().
+func (s *Server) requireTLSServerSAN() bool {
+	cfg := s.getConfig()
+	if cfg == nil || cfg.RequireTLSServerSAN == nil {
+		return false
+	}
+	return *cfg.RequireTLSServerSAN
+}
+
 // getAICExtensionByCert resolves the AIC extension for a certificate
 // preferring the memory engine and falling back to the DB.
 func (s *Server) getAICExtensionByCert(caName, serial string) (*db.AICExtension, error) {

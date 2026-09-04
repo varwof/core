@@ -233,21 +233,22 @@ func (s *Server) apiIssueCert(w http.ResponseWriter, r *http.Request) {
 		validity = 365
 	}
 	sc := &ca.SignConfig{
-		DB:             s.getDB(),
-		SkipDB:         s.addCertRecordEnabled(), // In-memory engine / buffer batch mode: issue only, no DB write
-		CAKey:          issuerKey,
-		CACert:         issuerCert,
-		CAName:         caName,
-		SubjectPubKey:  privKey.Public(),
-		CommonName:     req.CN,
-		SANs:           splitSANs(req.SAN),
-		KeyType:        keyType,
-		CRLBaseURL:     cfg.CRL.CRLBaseURL,
-		Validity:       time.Duration(validity) * 24 * time.Hour,
-		DefaultCountry: cfg.Defaults.DefaultCountry,
-		DefaultOrg:     cfg.Defaults.DefaultOrg,
-		PolicyFile:     cfg.Policy,
-		RequirePolicy:  s.requirePolicy(),
+		DB:                  s.getDB(),
+		SkipDB:              s.addCertRecordEnabled(), // In-memory engine / buffer batch mode: issue only, no DB write
+		CAKey:               issuerKey,
+		CACert:              issuerCert,
+		CAName:              caName,
+		SubjectPubKey:       privKey.Public(),
+		CommonName:          req.CN,
+		SANs:                splitSANs(req.SAN),
+		KeyType:             keyType,
+		CRLBaseURL:          cfg.CRL.CRLBaseURL,
+		Validity:            time.Duration(validity) * 24 * time.Hour,
+		DefaultCountry:      cfg.Defaults.DefaultCountry,
+		DefaultOrg:          cfg.Defaults.DefaultOrg,
+		PolicyFile:          cfg.Policy,
+		RequirePolicy:       s.requirePolicy(),
+		RequireTLSServerSAN: s.requireTLSServerSAN(),
 	}
 	sc.Profile = effProfile
 	if req.CAScope != "" {
@@ -497,6 +498,18 @@ func (s *Server) apiIssueCert(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		sc.UserCert = userCert
+		// C6 (security audit C-01): fail-closed binding of the DA's principal
+		// identifier to a known, active user. When Serve.RequireDelegationIdentity
+		// is enabled, the free-text PrincipalUid.identifier carried by the DA must
+		// resolve to an existing, enabled user in the configured identity source —
+		// otherwise invented realm:identifier values (e.g. an arbitrary
+		// "corp:admin:...") could be stamped onto an issued AIC.
+		if s.requireDelegationIdentity() {
+			if err := s.checkDelegationPrincipal(r, pu); err != nil {
+				s.apiErr(w, r, http.StatusForbidden, "api.delegation_principal_unknown", err.Error())
+				return
+			}
+		}
 		// C2: DA reason must be explicitly declared by the authorizer (DA signer);
 		// the CA must not fabricate audit reasons for the user.
 		// reason_code is required (description may be omitted and filled with defaults);
@@ -949,20 +962,21 @@ func (s *Server) apiRenewCert(w http.ResponseWriter, r *http.Request, caName, se
 		return
 	}
 	sc := &ca.SignConfig{
-		DB:             s.getDB(),
-		SkipDB:         s.addCertRecordEnabled(), // In-memory engine / buffer batch mode: issue only, no DB write
-		CAKey:          issuerKey,
-		CACert:         issuerCert,
-		CAName:         caName,
-		SubjectPubKey:  privKey.Public(),
-		CommonName:     oldCN,
-		Profile:        ca.ProfileTLSServer,
-		CRLBaseURL:     cfg.CRL.CRLBaseURL,
-		Validity:       365 * 24 * time.Hour,
-		DefaultCountry: cfg.Defaults.DefaultCountry,
-		DefaultOrg:     cfg.Defaults.DefaultOrg,
-		PolicyFile:     cfg.Policy,
-		RequirePolicy:  s.requirePolicy(),
+		DB:                  s.getDB(),
+		SkipDB:              s.addCertRecordEnabled(), // In-memory engine / buffer batch mode: issue only, no DB write
+		CAKey:               issuerKey,
+		CACert:              issuerCert,
+		CAName:              caName,
+		SubjectPubKey:       privKey.Public(),
+		CommonName:          oldCN,
+		Profile:             ca.ProfileTLSServer,
+		CRLBaseURL:          cfg.CRL.CRLBaseURL,
+		Validity:            365 * 24 * time.Hour,
+		DefaultCountry:      cfg.Defaults.DefaultCountry,
+		DefaultOrg:          cfg.Defaults.DefaultOrg,
+		PolicyFile:          cfg.Policy,
+		RequirePolicy:       s.requirePolicy(),
+		RequireTLSServerSAN: s.requireTLSServerSAN(),
 	}
 	result, err := ca.Sign(sc)
 	if err != nil {
@@ -1549,6 +1563,11 @@ func (s *Server) apiIssueAIC(w http.ResponseWriter, r *http.Request) {
 			s.apiErr(w, r, http.StatusBadRequest, "api.invalid_csr_signature", err.Error())
 			return
 		}
+		// RFC 2986 §4.1: the only defined CSR version is 0 (v1).
+		if csr.Version != 0 {
+			s.apiErr(w, r, http.StatusBadRequest, "api.invalid_csr_version", fmt.Sprintf("unsupported CSR version %d", csr.Version))
+			return
+		}
 		pubKey = csr.PublicKey
 		slog.Info("api/aic/issue: CSR mode (client-generated key)", "agent_id", req.AgentID)
 	} else {
@@ -1702,6 +1721,39 @@ func verifyRSASignature(cert *x509.Certificate, digest, sig []byte) error {
 		return fmt.Errorf("not RSA public key")
 	}
 	return rsa.VerifyPKCS1v15(pub, crypto.SHA256, digest, sig)
+}
+
+// requireDelegationIdentity reports whether AIC delegated issuance must resolve
+// the DA's principal identifier against the identity source (fail-closed).
+// Driven by Serve.RequireDelegationIdentity (read live so hot reload applies).
+func (s *Server) requireDelegationIdentity() bool {
+	cfg := s.getConfig()
+	return cfg != nil && cfg.Serve.RequireDelegationIdentity
+}
+
+// checkDelegationPrincipal enforces the C-01 fix. When enabled, the free-text
+// PrincipalUid.identifier carried by a DelegationAuthorization must resolve to
+// a known, active (non-disabled) user via the configured identity source.
+// Fail-closed: an unconfigured identity source, an unknown identifier, or a
+// disabled account all reject issuance, so an agent cannot mint an AIC for an
+// arbitrary invented realm:identifier.
+func (s *Server) checkDelegationPrincipal(r *http.Request, pu ca.PrincipalUid) error {
+	identifier := strings.TrimSpace(pu.Identifier)
+	if identifier == "" {
+		return fmt.Errorf("delegation principal: identifier is empty")
+	}
+	src := s.getIdentitySource()
+	if src == nil {
+		return fmt.Errorf("delegation principal: no identity source configured (set serve.identity.source_url)")
+	}
+	id, err := src.Lookup(r.Context(), "", identifier)
+	if err != nil {
+		return fmt.Errorf("delegation principal: identity lookup for %q failed (fail-closed): %v", identifier, err)
+	}
+	if id == nil || id.Disabled {
+		return fmt.Errorf("delegation principal: user %q not found or disabled (fail-closed)", identifier)
+	}
+	return nil
 }
 
 // resolveDAUserCert resolves the DA signer (user) certificate:
@@ -1858,6 +1910,7 @@ func (s *Server) apiReSignCert(w http.ResponseWriter, r *http.Request, caName, s
 		DefaultOrg:            cfg.Defaults.DefaultOrg,
 		PolicyFile:            cfg.Policy,
 		RequirePolicy:         s.requirePolicy(),
+		RequireTLSServerSAN:   s.requireTLSServerSAN(),
 	}
 	if sc.Profile == "" {
 		sc.Profile = ca.Profile(oldRec.Profile)

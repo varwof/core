@@ -140,7 +140,12 @@ type SignConfig struct {
 	// RequirePolicy (M4 fix): when true and no issuance policy is loaded, Sign()
 	// rejects issuance instead of warn-and-continue. The serve layer derives it
 	// from config enforce_policy. Library consumers may set it explicitly.
-	RequirePolicy          bool
+	RequirePolicy bool
+	// RequireTLSServerSAN (F11 fix): when true, a TLS-server certificate with
+	// no subjectAltName (RFC 5280 §4.1.2.6 / RFC 6125) is rejected at issuance
+	// instead of warn-and-continue. Mirrors RequirePolicy so strict deployments
+	// can opt in without breaking existing CN-only issuance.
+	RequireTLSServerSAN    bool
 	AIC                    *AICConfig                    // Agent Identity Certificate configuration
 	PrincipalAuthorization *PrincipalAuthorizationConfig // user authorization
 	Scope                  string                        // admin scope: which CAs this admin can manage (comma-separated)
@@ -233,7 +238,22 @@ func ParseCSR(pemBytes []byte) (*x509.CertificateRequest, error) {
 	if block == nil || block.Type != "CERTIFICATE REQUEST" {
 		return nil, fmt.Errorf("invalid CSR PEM")
 	}
-	return x509.ParseCertificateRequest(block.Bytes)
+	csr, err := x509.ParseCertificateRequest(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("parse CSR: %w", err)
+	}
+	// RFC 2986 §4.2: verify the CSR self-signature — the requester must prove
+	// control of the private key corresponding to the CSR public key before the
+	// CA uses that public key to issue a certificate. Reject otherwise.
+	if err := csr.CheckSignature(); err != nil {
+		return nil, fmt.Errorf("CSR signature verification: %w", err)
+	}
+	// RFC 2986 §4.1: the only defined CSR version is 0 (v1). Reject
+	// non-standard versions to prevent malformed or crafted CSRs.
+	if csr.Version != 0 {
+		return nil, fmt.Errorf("unsupported CSR version %d (only version 0 is defined)", csr.Version)
+	}
+	return csr, nil
 }
 
 // MinRSAKeySize is the minimum RSA key length (bits) allowed for signing.
@@ -484,6 +504,22 @@ func Sign(sc *SignConfig) (*SignResult, error) {
 			if err := parseSANs(tmpl, sc.SANs); err != nil {
 				return nil, fmt.Errorf("parse SANs: %w", err)
 			}
+		}
+
+		// RFC 5280 §4.1.2.6 + RFC 6125: a TLS server certificate must carry at
+		// least one subjectAltName (DNS or, for raw-IP services, an IP address)
+		// so its identity can be verified by name. CN-only server certs are
+		// rejected by modern clients. Enforced when RequireTLSServerSAN is set
+		// (mirrors RequirePolicy); otherwise warn-and-continue so existing
+		// CN-only issuance is not silently broken.
+		noSAN := len(tmpl.DNSNames) == 0 && len(tmpl.IPAddresses) == 0 &&
+			len(tmpl.URIs) == 0 && len(tmpl.EmailAddresses) == 0
+		if sc.Profile == ProfileTLSServer && noSAN {
+			if sc.RequireTLSServerSAN {
+				return nil, fmt.Errorf("tls server cert: at least one subjectAltName (DNS or IP) is required")
+			}
+			slog.Warn("ca/sign: tls server cert has no subjectAltName (CN-only); clients may reject it",
+				"cn", sc.CommonName, "ca", sc.CAName, "profile", sc.Profile)
 		}
 
 		pubBytes, err := x509.MarshalPKIXPublicKey(sc.CAKey.Public())
@@ -1295,8 +1331,9 @@ func addPolicyExtensions(tmpl *x509.Certificate, sc *SignConfig) error {
 			return fmt.Errorf("marshal PolicyConstraints: %w", err)
 		}
 		tmpl.ExtraExtensions = append(tmpl.ExtraExtensions, pkix.Extension{
-			Id:    oidPolicyConstraints,
-			Value: b,
+			Id:       oidPolicyConstraints,
+			Critical: true,
+			Value:    b,
 		})
 	}
 
@@ -1306,8 +1343,9 @@ func addPolicyExtensions(tmpl *x509.Certificate, sc *SignConfig) error {
 			return fmt.Errorf("marshal Inhibit anyPolicy: %w", err)
 		}
 		tmpl.ExtraExtensions = append(tmpl.ExtraExtensions, pkix.Extension{
-			Id:    oidInhibitAnyPolicy,
-			Value: b,
+			Id:       oidInhibitAnyPolicy,
+			Critical: true,
+			Value:    b,
 		})
 	}
 	return nil

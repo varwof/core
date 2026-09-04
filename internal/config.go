@@ -47,21 +47,25 @@ type Config struct {
 	// a hard error instead of a warn-and-continue (M4 fix). Default false keeps
 	// backward-compatible behavior; deployments that rely on policy restrictions
 	// should set this to fail closed when policy.json is missing/unloaded.
-	EnforcePolicy     *bool               `json:"enforce_policy,omitempty"`
-	RBAC              RBACConfig          `json:"rbac,omitempty"`               // Role-based access control config
-	AuthorizationFile string              `json:"authorization_file,omitempty"` // Path to authz.json policy file
-	RoutesFile        string              `json:"routes_file,omitempty"`        // Path to routes.json per-URL rule file
-	CapabilitySchemes string              `json:"capability_schemes,omitempty"` // Path to capability schemes dir (register; embedded default if empty)
-	PolicySigning     PolicySigningConfig `json:"policy_signing,omitempty"`     // Signed policy-file verification config
-	Hierarchy         string              `json:"hierarchy,omitempty"`          // "simple" | "complex" (CA hierarchy model)
-	KeyBackend        KeyBackendConfig    `json:"key_backend,omitempty"`        // Remote signer delegation config
-	Persist           PersistConfig       `json:"persist,omitempty"`            // Certificate persistence mode config
-	K8sEnabled        *bool               `json:"k8s_enabled,omitempty"`        // Enable /api/v1/k8s/sign endpoint (default false for security)
-	Aggregator        AggregatorConfig    `json:"aggregator,omitempty"`         // Batch certificate issuance aggregator config
-	RecordBuffer      RecordBufferConfig  `json:"record_buffer,omitempty"`      // RecordBuffer batch persistence config (threshold/max_pending/max_latency/disable)
-	Engine            *EngineConfig       `json:"engine,omitempty"`             // In-memory engine config (nil=disabled, reads/writes fall back to DB)
-	DeviceProfile     string              `json:"device_profile,omitempty"`     // Optional device tuning preset ("pi5"|"low_mem"|"high_throughput"). Applies device-sensitive defaults (write pipeline sizing) before explicit settings; "" = default (x86/desktop) tuned.
-	SPIFFE            *SPIFFEConfig       `json:"spiffe,omitempty"`             // SPIFFE identity integration config (nil=disabled)
+	EnforcePolicy *bool `json:"enforce_policy,omitempty"`
+	// RequireTLSServerSAN, when true, rejects issuance of TLS-server certificates
+	// that carry no subjectAltName (RFC 5280 §4.1.2.6 / RFC 6125). Default false
+	// (backward compatible) mirrors enforce_policy.
+	RequireTLSServerSAN *bool               `json:"require_tls_server_san,omitempty"`
+	RBAC                RBACConfig          `json:"rbac,omitempty"`               // Role-based access control config
+	AuthorizationFile   string              `json:"authorization_file,omitempty"` // Path to authz.json policy file
+	RoutesFile          string              `json:"routes_file,omitempty"`        // Path to routes.json per-URL rule file
+	CapabilitySchemes   string              `json:"capability_schemes,omitempty"` // Path to capability schemes dir (register; embedded default if empty)
+	PolicySigning       PolicySigningConfig `json:"policy_signing,omitempty"`     // Signed policy-file verification config
+	Hierarchy           string              `json:"hierarchy,omitempty"`          // "simple" | "complex" (CA hierarchy model)
+	KeyBackend          KeyBackendConfig    `json:"key_backend,omitempty"`        // Remote signer delegation config
+	Persist             PersistConfig       `json:"persist,omitempty"`            // Certificate persistence mode config
+	K8sEnabled          *bool               `json:"k8s_enabled,omitempty"`        // Enable /api/v1/k8s/sign endpoint (default false for security)
+	Aggregator          AggregatorConfig    `json:"aggregator,omitempty"`         // Batch certificate issuance aggregator config
+	RecordBuffer        RecordBufferConfig  `json:"record_buffer,omitempty"`      // RecordBuffer batch persistence config (threshold/max_pending/max_latency/disable)
+	Engine              *EngineConfig       `json:"engine,omitempty"`             // In-memory engine config (nil=disabled, reads/writes fall back to DB)
+	DeviceProfile       string              `json:"device_profile,omitempty"`     // Optional device tuning preset ("pi5"|"low_mem"|"high_throughput"). Applies device-sensitive defaults (write pipeline sizing) before explicit settings; "" = default (x86/desktop) tuned.
+	SPIFFE              *SPIFFEConfig       `json:"spiffe,omitempty"`             // SPIFFE identity integration config (nil=disabled)
 }
 
 // SPIFFEConfig configures optional SPIFFE identity integration for AIC certificates.
@@ -220,6 +224,15 @@ type ServeConfig struct {
 	AuditSalt          AuditSaltConfig   `json:"audit_salt,omitempty"`            // Per-day salt masking of PII in the audit log (privacy / data minimization)
 	AuditVerify        AuditVerifyConfig `json:"audit_verify,omitempty"`          // Periodic Merkle chain integrity verification of the audit log (AUTH-016)
 	DAMaxTimestampSkew string            `json:"da_max_timestamp_skew,omitempty"` // Max |now - DelegationAuthorization.timestamp| accepted at issuance (e.g. "30s"; default 30s, "0" disables the freshness check). Second line of the DA nonce/timestamp replay defense (P1-B-13).
+	// RequireDelegationIdentity, when true, makes AIC delegated issuance
+	// (agent-proxy profile carrying a user DelegationAuthorization) fail-closed
+	// unless the DA's PrincipalUid.identifier resolves to a known, active user
+	// via the configured identity source (bridge-ldap / bridge-oauth). This
+	// closes the "free-text identifier" gap described in security-audit-2026-09-02
+	// (C-01): an attacker may not mint an AIC for an arbitrary invented
+	// realm:identifier, only for identifiers present in the directory.
+	// Requires identity.source_url to be configured. Default false (opt-in).
+	RequireDelegationIdentity bool `json:"require_delegation_identity,omitempty"`
 }
 
 // AuditSaltConfig configures per-day salt masking of personally identifiable
