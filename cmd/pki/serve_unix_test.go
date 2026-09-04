@@ -15,8 +15,8 @@ import (
 )
 
 func TestServeWaitSignalSIGHUP(t *testing.T) {
-	reloadCalled := false
-	setReloadHandler(func() { reloadCalled = true })
+	reloadCalled := atomic.Bool{}
+	setReloadHandler(func() { reloadCalled.Store(true) })
 	defer setReloadHandler(nil)
 
 	sigCh := make(chan os.Signal, 1)
@@ -32,7 +32,7 @@ func TestServeWaitSignalSIGHUP(t *testing.T) {
 		t.Fatalf("unexpected return: %v", err)
 	case <-time.After(10 * time.Millisecond):
 	}
-	if !reloadCalled {
+	if !reloadCalled.Load() {
 		t.Fatal("reload handler not called on SIGHUP")
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -350,4 +351,177 @@ func TestServeIssueIdentityUserWithDefaultProfile(t *testing.T) {
 		n, _ := resp.Body.Read(bb)
 		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(bb[:n]))
 	}
+}
+
+// TestServeDelegationIdentity_C01 tests the C-01 fix: when
+// RequireDelegationIdentity is enabled, AIC/DA issuance must resolve the
+// principal_uid.identifier against the configured identity source. Unknown
+// identifiers and disabled accounts are rejected (fail-closed).
+func TestServeDelegationIdentity_C01(t *testing.T) {
+	// --- success case: identifier resolves to known, active user ---
+	t.Run("known_principal", func(t *testing.T) {
+		knownBridge := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			if r.URL.Path != "/api/v1/lookup" {
+				http.NotFound(w, r)
+				return
+			}
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"staff_id": "001", "full_name": "张三", "disabled": false,
+			})
+		}))
+		defer knownBridge.Close()
+
+		srv, h, caCert, caKey := newTestServerWithCA(t)
+		cfg := srv.getConfig()
+		cfg.Serve.RequireDelegationIdentity = true
+		cfg.Identity = &ca.IdentitySourceConfig{
+			Type: ca.IdentitySourceLDAP, SourceURL: knownBridge.URL, TimeoutSec: 5,
+		}
+		srv.Reload(cfg, srv.getDB(), nil, nil)
+		ts := httptest.NewServer(h)
+		defer ts.Close()
+
+		// AIC body with cn="001" → identifier resolves via bridge.
+		body, _ := agentProxyC3Body(t, caCert, caKey, "001", "agent-001",
+			[]ca.Capability{{SchemeId: "varwof-gateway-v1", CapabilityId: "gateway:read"}}, 0, nil)
+		resp := authedPost(t, ts, "/api/v1/certs", "application/json", strings.NewReader(string(body)))
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			bb := make([]byte, 512)
+			n, _ := resp.Body.Read(bb)
+			t.Fatalf("known principal: expected 200, got %d: %s", resp.StatusCode, string(bb[:n]))
+		}
+	})
+
+	// --- failure case: identifier not found (fail-closed) ---
+	t.Run("unknown_principal", func(t *testing.T) {
+		unknownBridge := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			if r.URL.Path != "/api/v1/lookup" {
+				http.NotFound(w, r)
+				return
+			}
+			// Only user "001" is known; everything else returns 404.
+			var req struct {
+				Username string `json:"username"`
+			}
+			json.NewDecoder(r.Body).Decode(&req)
+			if req.Username == "001" {
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"staff_id": "001", "full_name": "张三", "disabled": false,
+				})
+			} else {
+				w.WriteHeader(http.StatusNotFound)
+				json.NewEncoder(w).Encode(map[string]string{"error": "not found"})
+			}
+		}))
+		defer unknownBridge.Close()
+
+		srv, h, caCert, caKey := newTestServerWithCA(t)
+		cfg := srv.getConfig()
+		cfg.Serve.RequireDelegationIdentity = true
+		cfg.Identity = &ca.IdentitySourceConfig{
+			Type: ca.IdentitySourceLDAP, SourceURL: unknownBridge.URL, TimeoutSec: 5,
+		}
+		srv.Reload(cfg, srv.getDB(), nil, nil)
+		ts := httptest.NewServer(h)
+		defer ts.Close()
+
+		// AIC body with cn="ghost" → identifier not in bridge → 403.
+		body, _ := agentProxyC3Body(t, caCert, caKey, "ghost", "agent-ghost",
+			[]ca.Capability{{SchemeId: "varwof-gateway-v1", CapabilityId: "gateway:read"}}, 0, nil)
+		resp := authedPost(t, ts, "/api/v1/certs", "application/json", strings.NewReader(string(body)))
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusForbidden {
+			bb := make([]byte, 512)
+			n, _ := resp.Body.Read(bb)
+			t.Fatalf("unknown principal: expected 403, got %d: %s", resp.StatusCode, string(bb[:n]))
+		}
+		body2, _ := io.ReadAll(resp.Body)
+		if !strings.Contains(string(body2), "delegation_principal_unknown") {
+			t.Fatalf("expected api.delegation_principal_unknown, got: %s", string(body2))
+		}
+	})
+
+	// --- disabled account rejected ---
+	t.Run("disabled_principal", func(t *testing.T) {
+		disabledBridge := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			if r.URL.Path != "/api/v1/lookup" {
+				http.NotFound(w, r)
+				return
+			}
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"staff_id": "001", "full_name": "张三", "disabled": true,
+			})
+		}))
+		defer disabledBridge.Close()
+
+		srv, h, caCert, caKey := newTestServerWithCA(t)
+		cfg := srv.getConfig()
+		cfg.Serve.RequireDelegationIdentity = true
+		cfg.Identity = &ca.IdentitySourceConfig{
+			Type: ca.IdentitySourceLDAP, SourceURL: disabledBridge.URL, TimeoutSec: 5,
+		}
+		srv.Reload(cfg, srv.getDB(), nil, nil)
+		ts := httptest.NewServer(h)
+		defer ts.Close()
+
+		body, _ := agentProxyC3Body(t, caCert, caKey, "001", "agent-001",
+			[]ca.Capability{{SchemeId: "varwof-gateway-v1", CapabilityId: "gateway:read"}}, 0, nil)
+		resp := authedPost(t, ts, "/api/v1/certs", "application/json", strings.NewReader(string(body)))
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusForbidden {
+			bb := make([]byte, 512)
+			n, _ := resp.Body.Read(bb)
+			t.Fatalf("disabled principal: expected 403, got %d: %s", resp.StatusCode, string(bb[:n]))
+		}
+	})
+
+	// --- fail-closed: flag on but no identity source configured ---
+	t.Run("no_identity_source_fail_closed", func(t *testing.T) {
+		srv, h, caCert, caKey := newTestServerWithCA(t)
+		cfg := srv.getConfig()
+		cfg.Serve.RequireDelegationIdentity = true
+		// No identity configured → fail-closed.
+		srv.Reload(cfg, srv.getDB(), nil, nil)
+		ts := httptest.NewServer(h)
+		defer ts.Close()
+
+		body, _ := agentProxyC3Body(t, caCert, caKey, "001", "agent-001",
+			[]ca.Capability{{SchemeId: "varwof-gateway-v1", CapabilityId: "gateway:read"}}, 0, nil)
+		resp := authedPost(t, ts, "/api/v1/certs", "application/json", strings.NewReader(string(body)))
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusForbidden {
+			bb := make([]byte, 512)
+			n, _ := resp.Body.Read(bb)
+			t.Fatalf("no identity source: expected 403, got %d: %s", resp.StatusCode, string(bb[:n]))
+		}
+		body2, _ := io.ReadAll(resp.Body)
+		if !strings.Contains(string(body2), "delegation_principal_unknown") {
+			t.Fatalf("expected api.delegation_principal_unknown, got: %s", string(body2))
+		}
+	})
+
+	// --- flag off: no check performed (current default behavior) ---
+	t.Run("flag_off_no_check", func(t *testing.T) {
+		srv, h, caCert, caKey := newTestServerWithCA(t)
+		cfg := srv.getConfig()
+		cfg.Serve.RequireDelegationIdentity = false
+		// No identity source configured, flag off → should succeed.
+		srv.Reload(cfg, srv.getDB(), nil, nil)
+		ts := httptest.NewServer(h)
+		defer ts.Close()
+
+		body, _ := agentProxyC3Body(t, caCert, caKey, "001", "agent-001",
+			[]ca.Capability{{SchemeId: "varwof-gateway-v1", CapabilityId: "gateway:read"}}, 0, nil)
+		resp := authedPost(t, ts, "/api/v1/certs", "application/json", strings.NewReader(string(body)))
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			bb := make([]byte, 512)
+			n, _ := resp.Body.Read(bb)
+			t.Fatalf("flag off: expected 200, got %d: %s", resp.StatusCode, string(bb[:n]))
+		}
+	})
 }

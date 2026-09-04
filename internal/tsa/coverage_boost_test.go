@@ -170,6 +170,76 @@ func TestBuildTSTInfo_CriticalExtension(t *testing.T) {
 	}
 }
 
+func TestBuildTSTInfo_UnrecognizedExtension(t *testing.T) {
+	unknownOID := asn1.ObjectIdentifier{1, 2, 3, 4, 5}
+	for _, critical := range []bool{true, false} {
+		name := "non-critical"
+		if critical {
+			name = "critical"
+		}
+		t.Run(name, func(t *testing.T) {
+			extDER, err := asn1.Marshal(struct {
+				ID       asn1.ObjectIdentifier
+				Critical bool
+				Value    []byte
+			}{
+				ID:       unknownOID,
+				Critical: critical,
+				Value:    []byte{0x05, 0x00},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			req := &TimeStampReq{
+				Version: 1,
+				MessageImprint: MessageImprint{
+					HashAlgorithm: AlgorithmIdentifier{Algorithm: OIDDigestSHA256},
+					HashedMessage: make([]byte, 32),
+				},
+				Extensions: []asn1.RawValue{{FullBytes: extDER}},
+			}
+			_, status, err := BuildTSTInfo(req, 1, &TSTInfoConfig{})
+			if err == nil {
+				t.Fatal("expected error for unrecognized extension")
+			}
+			if status != 2 {
+				t.Fatalf("expected status 2, got %d", status)
+			}
+		})
+	}
+}
+
+// The OCSP nonce is the one recognized request extension and must be accepted.
+func TestBuildTSTInfo_NonceExtensionAccepted(t *testing.T) {
+	extDER, err := asn1.Marshal(struct {
+		ID       asn1.ObjectIdentifier
+		Critical bool
+		Value    []byte
+	}{
+		ID:       oidOCSPNonce,
+		Critical: false,
+		Value:    []byte{0x01, 0x02},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := &TimeStampReq{
+		Version: 1,
+		MessageImprint: MessageImprint{
+			HashAlgorithm: AlgorithmIdentifier{Algorithm: OIDDigestSHA256},
+			HashedMessage: make([]byte, 32),
+		},
+		Extensions: []asn1.RawValue{{FullBytes: extDER}},
+	}
+	_, status, err := BuildTSTInfo(req, 1, &TSTInfoConfig{})
+	if err != nil {
+		t.Fatalf("nonce extension should be accepted: %v", err)
+	}
+	if status != 0 {
+		t.Fatalf("expected status 0, got %d", status)
+	}
+}
+
 func TestBuildTSTInfo_WithNonce(t *testing.T) {
 	req := &TimeStampReq{
 		Version: 1,

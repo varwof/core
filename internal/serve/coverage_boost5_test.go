@@ -296,6 +296,33 @@ func TestAPICSRSign_ValidCSR(t *testing.T) {
 	}
 }
 
+// createBadSignatureCSR builds a structurally-valid CSR whose self-signature
+// does not verify (a byte in the signature is flipped). RFC 2986 callers must
+// reject it.
+func createBadSignatureCSR(t *testing.T, cn string) string {
+	t.Helper()
+	key, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	tmpl := &x509.CertificateRequest{
+		Subject: pkix.Name{CommonName: cn},
+	}
+	der, err := x509.CreateCertificateRequest(rand.Reader, tmpl, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	csr, err := x509.ParseCertificateRequest(der)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := csr.CheckSignature(); err != nil {
+		t.Fatalf("test CSR should have valid signature: %v", err)
+	}
+	// Flip a byte inside the trailing signature BIT STRING content so the DER
+	// structure remains parseable but the signature no longer verifies.
+	mut := append([]byte(nil), der...)
+	mut[len(mut)-5] ^= 0x01
+	return string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: mut}))
+}
+
 func TestAPICSRSign_WithProfileAndValidity(t *testing.T) {
 	_, handler := newTestServerWithDB(t)
 	ts := httptest.NewServer(handler)
@@ -325,6 +352,21 @@ func TestAPICSRSign_InvalidPEMBlock(t *testing.T) {
 
 	body, _ := json.Marshal(csrSignReq{
 		CSRPEM: "-----BEGIN CERTIFICATE REQUEST-----\nnot-base64\n-----END CERTIFICATE REQUEST-----",
+	})
+	resp := authedPost(t, ts, "/api/v1/csr/sign", "application/json", bytes.NewReader(body))
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", resp.StatusCode)
+	}
+}
+
+func TestAPICSRSign_RejectsBadSignature(t *testing.T) {
+	_, handler := newTestServerWithDB(t)
+	ts := httptest.NewServer(handler)
+	defer ts.Close()
+
+	body, _ := json.Marshal(csrSignReq{
+		CSRPEM: createBadSignatureCSR(t, "bad-sig.example.com"),
 	})
 	resp := authedPost(t, ts, "/api/v1/csr/sign", "application/json", bytes.NewReader(body))
 	defer resp.Body.Close()

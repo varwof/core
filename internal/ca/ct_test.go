@@ -290,7 +290,7 @@ func TestSubmitCertificate(t *testing.T) {
 	}
 
 	t.Run("successful submission", func(t *testing.T) {
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method != http.MethodPost {
 				t.Fatalf("expected POST, got %s", r.Method)
 			}
@@ -310,7 +310,7 @@ func TestSubmitCertificate(t *testing.T) {
 		}))
 		defer srv.Close()
 
-		sctVersion, logID, timestamp, extensions, sigDER, err := SubmitCertificate(srv.URL, "test-key", leafCert, []*x509.Certificate{caCert})
+		sctVersion, logID, timestamp, extensions, sigDER, err := SubmitCertificate(srv.URL, "test-key", leafCert, []*x509.Certificate{caCert}, srv.Client())
 		if err != nil {
 			t.Fatalf("SubmitCertificate: %v", err)
 		}

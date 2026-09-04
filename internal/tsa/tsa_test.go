@@ -17,6 +17,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/varwof/pkcs7"
 )
 
 func newTestSigner(t *testing.T) (*x509.Certificate, crypto.Signer) {
@@ -158,6 +160,64 @@ func TestSignRequest(t *testing.T) {
 	}
 }
 
+// TestSignRequestCertReq verifies RFC 3161 §2.4.1 certReq handling: certReq=true
+// includes the TSA signing certificate in the token's SignedData.certificates,
+// while certReq=false (the default when absent) omits it.
+func TestSignRequestCertReq(t *testing.T) {
+	cert, key := newTestSigner(t)
+	cfg := &TSAConfig{SignerCert: cert, SignerKey: key}
+
+	// Parse the granted TimeStampResp and count certs in the token.
+	tokenCerts := func(respDER []byte) int {
+		t.Helper()
+		var resp TimeStampResp
+		if _, err := asn1.Unmarshal(respDER, &resp); err != nil {
+			t.Fatalf("unmarshal TimeStampResp: %v", err)
+		}
+		if resp.Status.Status != 0 {
+			t.Fatalf("expected granted, got status %d", resp.Status.Status)
+		}
+		var ci pkcs7.ContentInfo
+		if _, err := asn1.Unmarshal(resp.TimeStampToken.FullBytes, &ci); err != nil {
+			t.Fatalf("unmarshal ContentInfo: %v", err)
+		}
+		var sd pkcs7.SignedData
+		if _, err := asn1.Unmarshal(ci.Content.Bytes, &sd); err != nil {
+			t.Fatalf("unmarshal SignedData: %v", err)
+		}
+		return len(sd.Certificates)
+	}
+
+	// certReq unset (defaults to false) → no signer cert in the token.
+	reqFalse := TimeStampReq{
+		Version: 1,
+		MessageImprint: MessageImprint{
+			HashAlgorithm: AlgorithmIdentifier{Algorithm: OIDDigestSHA256},
+			HashedMessage: make([]byte, 32), // zero hash
+		},
+	}
+	derFalse, err := asn1.Marshal(reqFalse)
+	if err != nil {
+		t.Fatal(err)
+	}
+	respFalse, err := SignRequest(derFalse, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := tokenCerts(respFalse); n != 0 {
+		t.Fatalf("certReq=false: expected 0 certs, got %d", n)
+	}
+
+	// certReq=true → signer cert included.
+	respTrue, err := SignRequest(makeTestReq(t), cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := tokenCerts(respTrue); n != 1 {
+		t.Fatalf("certReq=true: expected 1 cert, got %d", n)
+	}
+}
+
 func TestSignRequestBadHash(t *testing.T) {
 	badOID := asn1.ObjectIdentifier{1, 2, 3, 4}
 	req := TimeStampReq{
@@ -259,6 +319,86 @@ func TestBuildTSTInfoPolicyOrdering(t *testing.T) {
 	}
 	if info.Accuracy.Seconds != 1 || info.Accuracy.Millis != 500 || info.Accuracy.Micros != 250 {
 		t.Fatalf("unexpected accuracy: %+v", info.Accuracy)
+	}
+}
+
+func TestBuildTSTInfoRejectsUnsupportedReqPolicy(t *testing.T) {
+	cfg := &TSTInfoConfig{
+		Policy: asn1.ObjectIdentifier{1, 2, 3, 4, 5},
+	}
+	req := &TimeStampReq{
+		Version: 1,
+		MessageImprint: MessageImprint{
+			HashAlgorithm: AlgorithmIdentifier{Algorithm: OIDDigestSHA256},
+			HashedMessage: make([]byte, 32),
+		},
+		ReqPolicy: asn1.ObjectIdentifier{1, 2, 3, 4, 6}, // not the TSA's policy
+	}
+	_, status, err := BuildTSTInfo(req, 1, cfg)
+	if err == nil {
+		t.Fatal("expected rejection for unsupported reqPolicy")
+	}
+	if status != PKIStatusRejection {
+		t.Fatalf("expected rejection status %d, got %d", PKIStatusRejection, status)
+	}
+}
+
+func TestBuildTSTInfoAcceptsMatchingReqPolicy(t *testing.T) {
+	policyOID := asn1.ObjectIdentifier{1, 2, 3, 4, 5}
+	cfg := &TSTInfoConfig{Policy: policyOID}
+	req := &TimeStampReq{
+		Version: 1,
+		MessageImprint: MessageImprint{
+			HashAlgorithm: AlgorithmIdentifier{Algorithm: OIDDigestSHA256},
+			HashedMessage: make([]byte, 32),
+		},
+		ReqPolicy: policyOID,
+	}
+	der, status, err := BuildTSTInfo(req, 1, cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if status != 0 {
+		t.Fatalf("expected status 0, got %d", status)
+	}
+	var info TSTInfo
+	if _, err := asn1.Unmarshal(der, &info); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if !info.Policy.Equal(policyOID) {
+		t.Fatalf("expected policy %v, got %v", policyOID, info.Policy)
+	}
+}
+
+// A request naming an unsupported policy is rejected at the protocol level
+// (status 2, never granted), confirmed end-to-end through SignRequest.
+func TestSignRequestRejectsUnsupportedPolicy(t *testing.T) {
+	cert, key := newTestSigner(t)
+	cfg := &TSAConfig{
+		SignerCert: cert,
+		SignerKey:  key,
+		TSTInfo:    &TSTInfoConfig{Policy: asn1.ObjectIdentifier{1, 2, 3, 4, 5}},
+	}
+	req := TimeStampReq{
+		Version: 1,
+		MessageImprint: MessageImprint{
+			HashAlgorithm: AlgorithmIdentifier{Algorithm: OIDDigestSHA256},
+			HashedMessage: make([]byte, 32),
+		},
+		ReqPolicy: asn1.ObjectIdentifier{9, 9, 9},
+	}
+	reqDER, _ := asn1.Marshal(req)
+
+	respDER, err := SignRequest(reqDER, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var resp TimeStampResp
+	if _, err := asn1.Unmarshal(respDER, &resp); err != nil {
+		t.Fatal(err)
+	}
+	if resp.Status.Status != PKIStatusRejection {
+		t.Fatalf("expected rejection status %d, got %d", PKIStatusRejection, resp.Status.Status)
 	}
 }
 

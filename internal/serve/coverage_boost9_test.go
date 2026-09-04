@@ -242,6 +242,22 @@ func TestK8sSign_ValidityFromConfig(t *testing.T) {
 	}
 }
 
+func TestK8sSign_RejectsBadSignature(t *testing.T) {
+	srv, _, h := newTestServerFull7(t)
+	ts := httptest.NewServer(h)
+	defer ts.Close()
+
+	w := httptest.NewRecorder()
+	body, _ := json.Marshal(map[string]interface{}{
+		"csr_pem": createBadSignatureCSR(t, "k8s-bad-sig"),
+	})
+	r := httptest.NewRequest("POST", "/api/v1/k8s/sign", bytes.NewReader(body))
+	srv.apiK8sSign(w, r)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 got %d: %s", w.Code, w.Body.String())
+	}
+}
+
 // ─── apiRenewCert ──────────────────────────────────────────────────
 
 func TestRenewCert_MethodNotAllowedV9(t *testing.T) {

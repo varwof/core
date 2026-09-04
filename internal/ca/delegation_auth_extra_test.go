@@ -12,6 +12,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/asn1"
 	"math/big"
 	"testing"
@@ -217,4 +218,76 @@ func TestVerifyDelegationAuthorization_EmptyKeyHashFailsClosed(t *testing.T) {
 	if err := VerifyDelegationAuthorization(baseDACert(&key.PublicKey), aic); err == nil {
 		t.Fatal("empty keyHash must fail closed")
 	}
+}
+
+// TestVerifyDelegationAuthorization_UserSignerProtocol verifies cross-repo
+// compatibility with the DA produced by user-signer's SignApproval:
+//
+//   - the DA signer (user) certificate is a self-signed public-key container
+//     whose SPKI hash equals principalUid.keyHash (the signer binds the key,
+//     not the certificate chain);
+//   - the DelegationAuthorization carries reason/lifetime/timestamp/nonce and
+//     an ECDSA-SHA256 ASN.1 signature over sha256(DER(DelegationAuthTBS)).
+//
+// This mirrors exactly how varwof/user-signer constructs and signs, so the
+// agent can forward {da, user_cert_pem} from user-signer straight to core.
+func TestVerifyDelegationAuthorization_UserSignerProtocol(t *testing.T) {
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nonce := make([]byte, 32)
+	for i := range nonce {
+		nonce[i] = byte(i)
+	}
+	principalUid := PrincipalUid{Version: 1, Realm: "pki", Identifier: "alice@example.com"}
+	// user-signer: keyHash = sha256(cert.RawSubjectPublicKeyInfo).
+	cert := userSignerStyleCert(&key.PublicKey, "default")
+	{
+		kh, _ := pki.KeyHashFromCertSPKI(pki.OIDSHA256, cert)
+		principalUid.KeyHash = kh
+	}
+	aic := &AICConfig{
+		AgentId:        "spiffe://trustdomain/agent/alice-bot",
+		PrincipalUid:   principalUid,
+		DelegationMode: DelegationAuthorized,
+		Capabilities: []Capability{
+			{SchemeId: "ca", CapabilityId: "issue", Parameters: []byte(`{"tpl":"ci"}`)},
+		},
+		DelegationAuthorization: &DelegationAuthorization{
+			Reason:             Reason{ReasonCode: "ops", Description: "release pipeline"},
+			RequestedLifetime:  3600,
+			Timestamp:          time.Now().Round(time.Second),
+			Nonce:              nonce,
+			SignatureAlgorithm: AlgorithmIdentifier{Algorithm: OIDSigECDSAWithSHA256},
+		},
+	}
+	// user-signer signs sha256(DER(DelegationAuthTBS)) with its local ECDSA key.
+	signDA(t, key, aic, OIDSigECDSAWithSHA256)
+
+	if err := VerifyDelegationAuthorization(cert, aic); err != nil {
+		t.Fatalf("user-signer-protocol DA rejected by core: %v", err)
+	}
+}
+
+// userSignerStyleCert builds a self-signed public-key container whose SPKI
+// hash binds to the supplied public key — exactly what user-signer emits (it
+// signs the container with a throwaway key because it never exposes the raw
+// user private key).
+func userSignerStyleCert(pub crypto.PublicKey, cn string) *x509.Certificate {
+	tmpl := &x509.Certificate{
+		SerialNumber:          big.NewInt(1),
+		Subject:               pkix.Name{CommonName: cn, Organization: []string{"varwof-user-signer"}},
+		NotBefore:             time.Now().Add(-time.Hour),
+		NotAfter:              time.Now().Add(10 * 365 * 24 * time.Hour),
+		KeyUsage:              x509.KeyUsageDigitalSignature,
+		BasicConstraintsValid: true,
+	}
+	signKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, pub, signKey)
+	if err != nil {
+		return nil
+	}
+	c, _ := x509.ParseCertificate(der)
+	return c
 }

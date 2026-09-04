@@ -98,7 +98,7 @@ func TestStapleProviderGood(t *testing.T) {
 		t.Fatal("Staple() should return cached DER")
 	}
 
-	resp, err := ocsp.ParseResponse(der, ocspCert)
+	resp, err := ocsp.ParseResponse(der, caCert)
 	if err != nil {
 		t.Fatalf("parse staple: %v", err)
 	}
@@ -107,6 +107,10 @@ func TestStapleProviderGood(t *testing.T) {
 	}
 	if resp.SerialNumber.Cmp(leaf.SerialNumber) != 0 {
 		t.Fatalf("serial mismatch: %v vs %v", resp.SerialNumber, leaf.SerialNumber)
+	}
+	// RFC 5019 §2.2.2: the delegated responder certificate must be embedded.
+	if resp.Certificate == nil || !bytes.Equal(resp.Certificate.Raw, ocspCert.Raw) {
+		t.Fatal("expected delegated responder certificate embedded in response")
 	}
 }
 
@@ -131,12 +135,15 @@ func TestStapleProviderRevoked(t *testing.T) {
 	if err != nil {
 		t.Fatalf("refresh revoked: %v", err)
 	}
-	resp, err := ocsp.ParseResponse(der, ocspCert)
+	resp, err := ocsp.ParseResponse(der, caCert)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
 	if resp.Status != ocsp.Revoked {
 		t.Fatalf("expected Revoked, got %d", resp.Status)
+	}
+	if resp.Certificate == nil || !bytes.Equal(resp.Certificate.Raw, ocspCert.Raw) {
+		t.Fatal("expected delegated responder certificate embedded in response")
 	}
 }
 
@@ -157,12 +164,15 @@ func TestStapleProviderUnknownCert(t *testing.T) {
 	if err != nil {
 		t.Fatalf("refresh unknown: %v", err)
 	}
-	resp, err := ocsp.ParseResponse(der, ocspCert)
+	resp, err := ocsp.ParseResponse(der, caCert)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
 	if resp.Status != ocsp.Unknown {
 		t.Fatalf("expected Unknown, got %d", resp.Status)
+	}
+	if resp.Certificate == nil || !bytes.Equal(resp.Certificate.Raw, ocspCert.Raw) {
+		t.Fatal("expected delegated responder certificate embedded in response")
 	}
 }
 

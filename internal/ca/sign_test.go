@@ -112,6 +112,54 @@ func TestSignTLSServer(t *testing.T) {
 	}
 }
 
+// TestSignRequireTLSServerSAN verifies F11.1: when RequireTLSServerSAN is set,
+// a TLS-server certificate with no subjectAltName is rejected (RFC 6125);
+// otherwise it warn-and-continues (backward compatible). A SAN-bearing cert
+// always passes.
+func TestSignRequireTLSServerSAN(t *testing.T) {
+	caCert, caKey := newTestCA(t)
+	d := newTestDB(t)
+
+	base := func() *SignConfig {
+		return &SignConfig{
+			DB:         d,
+			CAKey:      caKey,
+			CACert:     caCert,
+			Profile:    ProfileTLSServer,
+			CommonName: "nosan.example.com",
+			Validity:   24 * time.Hour,
+		}
+	}
+
+	// Default off: CN-only succeeds (warn-and-continue).
+	if _, err := Sign(base()); err != nil {
+		t.Fatalf("default (RequireTLSServerSAN=false): CN-only should warn-and-continue, got %v", err)
+	}
+
+	// Enforced: CN-only must fail.
+	sc := base()
+	sc.RequireTLSServerSAN = true
+	if _, err := Sign(sc); err == nil {
+		t.Fatal("RequireTLSServerSAN=true with no SAN should fail")
+	}
+
+	// Enforced + DNS SAN: succeeds.
+	sc = base()
+	sc.RequireTLSServerSAN = true
+	sc.SANs = []string{"DNS:nosan.example.com"}
+	if _, err := Sign(sc); err != nil {
+		t.Fatalf("RequireTLSServerSAN with DNS SAN should succeed, got %v", err)
+	}
+
+	// Enforced + IP SAN (raw-IP service): succeeds.
+	sc = base()
+	sc.RequireTLSServerSAN = true
+	sc.SANs = []string{"IP:10.0.0.1"}
+	if _, err := Sign(sc); err != nil {
+		t.Fatalf("RequireTLSServerSAN with IP SAN should succeed, got %v", err)
+	}
+}
+
 func TestSignOCSPSigner(t *testing.T) {
 	caCert, caKey := newTestCA(t)
 	d := newTestDB(t)
@@ -154,6 +202,28 @@ func TestParseCSR(t *testing.T) {
 	}
 	if csr.Subject.CommonName != "csr.test" {
 		t.Fatalf("expected csr.test, got %q", csr.Subject.CommonName)
+	}
+}
+
+// A CSR whose self-signature does not verify must be rejected by ParseCSR.
+func TestParseCSRRejectsBadSignature(t *testing.T) {
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmpl := &x509.CertificateRequest{
+		Subject: pkix.Name{CommonName: "csr.test"},
+	}
+	csrDER, err := x509.CreateCertificateRequest(rand.Reader, tmpl, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mut := append([]byte(nil), csrDER...)
+	mut[len(mut)-5] ^= 0x01
+	csrPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: mut})
+
+	if _, err := ParseCSR(csrPEM); err == nil {
+		t.Fatal("expected ParseCSR to reject a CSR with a bad signature")
 	}
 }
 

@@ -93,12 +93,33 @@ func genIntermediate(t *testing.T, parent *certGen, cn string, opts map[string]a
 		})
 	}
 	if v, ok := opts["require_explicit"]; ok {
-		tmpl.RequireExplicitPolicy = v.(int)
-		tmpl.RequireExplicitPolicyZero = true
+		// Go's x509.CreateCertificate does not emit policyConstraints — encode it
+		// manually (mirrors addPolicyExtensions in sign.go).
+		type policyConstraints struct {
+			RequireExplicitPolicy int `asn1:"optional,explicit,tag:0"`
+		}
+		b, err := asn1.Marshal(policyConstraints{RequireExplicitPolicy: v.(int)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		tmpl.ExtraExtensions = append(tmpl.ExtraExtensions, pkix.Extension{
+			Id:       asn1.ObjectIdentifier{2, 5, 29, 36},
+			Critical: true,
+			Value:    b,
+		})
 	}
 	if v, ok := opts["inhibit_any"]; ok {
-		tmpl.InhibitAnyPolicy = v.(int)
-		tmpl.InhibitAnyPolicyZero = true
+		// Go's x509.CreateCertificate does not emit inhibitAnyPolicy — encode it
+		// manually (mirrors addPolicyExtensions in sign.go).
+		b, err := asn1.Marshal(v.(int))
+		if err != nil {
+			t.Fatal(err)
+		}
+		tmpl.ExtraExtensions = append(tmpl.ExtraExtensions, pkix.Extension{
+			Id:       asn1.ObjectIdentifier{2, 5, 29, 54},
+			Critical: true,
+			Value:    b,
+		})
 	}
 	if v, ok := opts["policies"].([]string); ok {
 		oids := make([]x509.OID, 0, len(v))
@@ -385,6 +406,109 @@ func TestEvaluatePolicyAcceptAny(t *testing.T) {
 	}
 }
 
+// TestEvaluatePolicyInhibitAnyPolicyIntermediate verifies that an
+// inhibitAnyPolicy constraint asserted by an intermediate CA (not the leaf) is
+// honored via the per-certificate minimum (RFC 5280 §6.1.5(j)).
+func TestEvaluatePolicyInhibitAnyPolicyIntermediate(t *testing.T) {
+	root := genRoot(t, "Root CA")
+	sub := genIntermediate(t, root, "Sub CA", map[string]any{
+		"inhibit_any": 0,
+	})
+	leaf := genLeaf(t, sub, "leaf.example.com", []string{"1.2.3.4.5"})
+	chain := []*x509.Certificate{leaf.cert, sub.cert, root.cert}
+
+	res, err := VerifyPath(chain, nil, VerifyPathOptions{
+		VerifyPolicy:         true,
+		UserInitialPolicySet: []string{"1.2.3.4.5"},
+	})
+	if err != nil {
+		t.Fatalf("verify path: %v", err)
+	}
+	if res.Policy == nil {
+		t.Fatal("expected policy decision")
+	}
+	if !res.Policy.InhibitAnyPolicyHit {
+		t.Fatal("expected InhibitAnyPolicyHit when intermediate asserts inhibitAnyPolicy=0")
+	}
+}
+
+// TestEvaluatePolicyInhibitAnyPolicyLeaf verifies that an inhibitAnyPolicy
+// constraint seeded from the leaf is enforced as the walk moves upward.
+func TestEvaluatePolicyInhibitAnyPolicyLeaf(t *testing.T) {
+	root := genRoot(t, "Root CA")
+	sub := genIntermediate(t, root, "Sub CA", nil)
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmpl := &x509.Certificate{
+		SerialNumber: big.NewInt(time.Now().UnixNano()),
+		Subject:      pkix.Name{CommonName: "leaf.example.com"},
+		NotBefore:    time.Now().Add(-time.Hour),
+		NotAfter:     time.Now().Add(90 * 24 * time.Hour),
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+	}
+	// Go's x509.CreateCertificate does not emit inhibitAnyPolicy — encode it manually.
+	inhibitBytes, err := asn1.Marshal(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmpl.ExtraExtensions = append(tmpl.ExtraExtensions, pkix.Extension{
+		Id:       asn1.ObjectIdentifier{2, 5, 29, 54},
+		Critical: true,
+		Value:    inhibitBytes,
+	})
+	oids := make([]x509.OID, 0, 1)
+	oids = append(oids, mustOIDFromStr("1.2.3.4.5"))
+	tmpl.Policies = oids
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, sub.cert, &key.PublicKey, sub.key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	leafCert, err := x509.ParseCertificate(der)
+	if err != nil {
+		t.Fatal(err)
+	}
+	chain := []*x509.Certificate{leafCert, sub.cert, root.cert}
+
+	res, err := VerifyPath(chain, nil, VerifyPathOptions{
+		VerifyPolicy:         true,
+		UserInitialPolicySet: []string{"1.2.3.4.5"},
+	})
+	if err != nil {
+		t.Fatalf("verify path: %v", err)
+	}
+	if res.Policy == nil {
+		t.Fatal("expected policy decision")
+	}
+	if !res.Policy.InhibitAnyPolicyHit {
+		t.Fatal("expected InhibitAnyPolicyHit when leaf asserts inhibitAnyPolicy=0")
+	}
+}
+
+// TestEvaluatePolicyNoInhibitAnyPolicy verifies the flag stays false when no
+// certificate along the path asserts inhibitAnyPolicy.
+func TestEvaluatePolicyNoInhibitAnyPolicy(t *testing.T) {
+	root := genRoot(t, "Root CA")
+	sub := genIntermediate(t, root, "Sub CA", nil)
+	leaf := genLeaf(t, sub, "leaf.example.com", []string{"1.2.3.4.5"})
+	chain := []*x509.Certificate{leaf.cert, sub.cert, root.cert}
+
+	res, err := VerifyPath(chain, nil, VerifyPathOptions{
+		VerifyPolicy:         true,
+		UserInitialPolicySet: []string{"1.2.3.4.5"},
+	})
+	if err != nil {
+		t.Fatalf("verify path: %v", err)
+	}
+	if res.Policy == nil {
+		t.Fatal("expected policy decision")
+	}
+	if res.Policy.InhibitAnyPolicyHit {
+		t.Fatal("expected InhibitAnyPolicyHit=false without inhibitAnyPolicy extension")
+	}
+}
+
 // TestVerifyPathWithStaticSource builds via the engine and checks policy.
 func TestVerifyPathWithStaticSource(t *testing.T) {
 	root := genRoot(t, "Root CA")
@@ -484,6 +608,43 @@ func TestVerifyPathNameConstraintDNS(t *testing.T) {
 	}
 }
 
+// TestVerifyPathNameConstraintPropagates verifies RFC 5280 §4.2.1.10: a
+// trusted root's name constraint must be applied not only to its immediate
+// intermediate but to every certificate below it — including the leaf. A leaf
+// outside the root's permitted DNS subtree must be rejected even when the
+// intermediate directly above it imposes no constraint.
+func TestVerifyPathNameConstraintPropagates(t *testing.T) {
+	root := genRoot(t, "Root CA")
+	root.cert.PermittedDNSDomains = []string{".example.com"}
+	root.cert.PermittedDNSDomainsCritical = true
+	sub := genIntermediate(t, root, "sub.example.com", nil)
+
+	ok := genLeaf(t, sub, "good.example.com", nil)
+	ok.cert.DNSNames = []string{"good.example.com"}
+
+	bad := genLeaf(t, sub, "evil.org", nil)
+	bad.cert.DNSNames = []string{"evil.org"}
+
+	resGood, err := VerifyPath([]*x509.Certificate{ok.cert, sub.cert, root.cert}, nil, VerifyPathOptions{})
+	if err != nil {
+		t.Fatalf("verify good: %v", err)
+	}
+	if !resGood.Valid {
+		t.Fatalf("expected good.example.com valid under propagated constraint: %s", resGood.RejectReason)
+	}
+
+	resBad, err := VerifyPath([]*x509.Certificate{bad.cert, sub.cert, root.cert}, nil, VerifyPathOptions{})
+	if err != nil {
+		t.Fatalf("verify bad: %v", err)
+	}
+	if resBad.Valid {
+		t.Fatalf("expected evil.org rejected by root propagated name constraint: %s", resBad.RejectReason)
+	}
+	if !strings.Contains(resBad.RejectReason, "name constraint") {
+		t.Fatalf("expected name constraint reason, got: %s", resBad.RejectReason)
+	}
+}
+
 // TestVerifyPathKeyUsageCertSign verifies a CA without keyCertSign cannot sign
 // a subordinate. Go's CheckSignatureFrom rejects such a signature outright, so
 // the exact rejection reason may be Go's or our explicit keyCertSign check —
@@ -532,5 +693,69 @@ func TestVerifyPathIPNameConstraint(t *testing.T) {
 	}
 	if resBad.Valid {
 		t.Fatalf("expected 192.168.1.1 rejected: %s", resBad.RejectReason)
+	}
+}
+
+// genLeafUnknownCritical builds an end-entity certificate carrying an
+// unrecognized CRITICAL extension. RFC 5280 §4.1.1.2 requires such a
+// certificate to be rejected; Go surfaces it via UnhandledCriticalExtensions.
+func genLeafUnknownCritical(t *testing.T, parent *certGen, cn string) *certGen {
+	t.Helper()
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmpl := &x509.Certificate{
+		SerialNumber: big.NewInt(time.Now().UnixNano()),
+		Subject:      pkix.Name{CommonName: cn},
+		NotBefore:    time.Now().Add(-time.Hour),
+		NotAfter:     time.Now().Add(90 * 24 * time.Hour),
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+		ExtraExtensions: []pkix.Extension{{
+			Id:       asn1.ObjectIdentifier{1, 2, 3, 4, 5, 6, 7},
+			Critical: true,
+			Value:    []byte("unknown-critical"),
+		}},
+	}
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, parent.cert, &key.PublicKey, parent.key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cert, err := x509.ParseCertificate(der)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cert.UnhandledCriticalExtensions) == 0 {
+		t.Fatal("expected UnhandledCriticalExtensions to be populated for unknown critical extension")
+	}
+	return &certGen{cert: cert, key: key}
+}
+
+// TestVerifyPathRejectsUnhandledCritical verifies F7.2: VerifyPath must reject
+// any certificate carrying an unrecognized CRITICAL extension (RFC 5280
+// §4.1.1.2), and still accept an otherwise-identical chain without one.
+func TestVerifyPathRejectsUnhandledCritical(t *testing.T) {
+	root := genRoot(t, "Root CA")
+	sub := genIntermediate(t, root, "Sub CA", nil)
+
+	good := genLeaf(t, sub, "leaf.example.com", nil)
+	resGood, err := VerifyPath([]*x509.Certificate{good.cert, sub.cert, root.cert}, nil, VerifyPathOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !resGood.Valid {
+		t.Fatalf("normal chain should be valid: %s", resGood.RejectReason)
+	}
+
+	bad := genLeafUnknownCritical(t, sub, "leaf.example.com")
+	resBad, err := VerifyPath([]*x509.Certificate{bad.cert, sub.cert, root.cert}, nil, VerifyPathOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resBad.Valid {
+		t.Fatal("expected path with unrecognized critical extension to be rejected")
+	}
+	if !strings.Contains(resBad.RejectReason, "unrecognized critical extension") {
+		t.Fatalf("expected reject reason mentioning unrecognized critical extension, got: %q", resBad.RejectReason)
 	}
 }
