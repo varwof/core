@@ -70,13 +70,13 @@ type TSTInfo struct {
 	Version        int
 	Policy         asn1.ObjectIdentifier
 	MessageImprint MessageImprint
-	SerialNumber   int
+	SerialNumber   int64
 	GenTime        asn1.RawValue
 	Accuracy       Accuracy        `asn1:"optional"`
 	Ordering       bool            `asn1:"optional,default:false"`
 	Nonce          *big.Int        `asn1:"optional"`
 	TSA            asn1.RawValue   `asn1:"optional,tag:0"`
-	TSTInfoExt     []asn1.RawValue `asn1:"optional,tag:3"`
+	TSTInfoExt     []asn1.RawValue `asn1:"optional,tag:1"`
 }
 
 type TSTInfoConfig struct {
@@ -89,6 +89,32 @@ type TSTInfoConfig struct {
 }
 
 var OIDTSAPolicyDefault = asn1.ObjectIdentifier{0, 0}
+
+// PKIStatus values (RFC 3161 §2.4.5 / RFC 4210 §5.2.3).
+const (
+	PKIStatusGranted     = 0
+	PKIStatusGrantedMods = 1
+	PKIStatusRejection   = 2
+	PKIStatusWaiting     = 3
+	// PKIStatusWaiting, revocationWarning(4) and revocationNotification(5) are
+	// not produced by this TSA; internal/system failures MUST be reported as
+	// rejection (2), never as revocationWarning (4).
+)
+
+// PKIFailureInfo bit positions (RFC 3161 §2.4.5 / RFC 4210). These constants
+// document the intended failInfo encoding. NOTE: the wire type for failInfo is
+// BIT STRING, but the Go struct field is an INTEGER, so it is not currently
+// emitted to preserve DER schema correctness (ASN.1 freeze).
+const (
+	failInfoBadAlg              = 1 << 0
+	failInfoBadRequest          = 1 << 2
+	failInfoBadDataFormat       = 1 << 5
+	failInfoTimeNotAvailable    = 1 << 14
+	failInfoUnacceptedPolicy    = 1 << 15
+	failInfoUnacceptedExtension = 1 << 16
+	failInfoAddInfoNotAvailable = 1 << 17
+	failInfoSystemFailure       = 1 << 25
+)
 
 func parseHashOID(oid asn1.ObjectIdentifier) (crypto.Hash, error) {
 	switch {
@@ -114,7 +140,7 @@ func ParseTimeStampReq(reqDER []byte) (*TimeStampReq, error) {
 	return &req, nil
 }
 
-func BuildTSTInfo(req *TimeStampReq, serial int, cfg *TSTInfoConfig) ([]byte, int, error) {
+func BuildTSTInfo(req *TimeStampReq, serial int64, cfg *TSTInfoConfig) ([]byte, int, error) {
 	hash, err := parseHashOID(req.MessageImprint.HashAlgorithm.Algorithm)
 	if err != nil {
 		return nil, 2, err
@@ -128,9 +154,13 @@ func BuildTSTInfo(req *TimeStampReq, serial int, cfg *TSTInfoConfig) ([]byte, in
 
 	for _, rawExt := range req.Extensions {
 		var ext pkix.Extension
-		if _, restErr := asn1.Unmarshal(rawExt.FullBytes, &ext); restErr == nil && ext.Critical {
+		// RFC 3161 §2.4.1: an extension not recognized by the TSA — regardless
+		// of whether it is marked critical — MUST NOT yield a token; the TSA
+		// SHALL return a failure (unacceptedExtension). Only the OCSP nonce is
+		// recognized.
+		if _, restErr := asn1.Unmarshal(rawExt.FullBytes, &ext); restErr == nil {
 			if !ext.Id.Equal(oidOCSPNonce) {
-				return nil, 2, fmt.Errorf("unrecognized critical extension: %v", ext.Id)
+				return nil, 2, fmt.Errorf("unrecognized extension: %v", ext.Id)
 			}
 		}
 	}
@@ -144,6 +174,13 @@ func BuildTSTInfo(req *TimeStampReq, serial int, cfg *TSTInfoConfig) ([]byte, in
 	policy := cfg.Policy
 	if policy == nil {
 		policy = OIDTSAPolicyDefault
+	}
+
+	// RFC 3161 §2.4.1: a request that names a reqPolicy must be served only
+	// under a policy the TSA recognizes; otherwise the TSA rejects it with
+	// unacceptedPolicy. A nil reqPolicy means the configured default applies.
+	if req.ReqPolicy != nil && !req.ReqPolicy.Equal(policy) {
+		return nil, 2, fmt.Errorf("unsupported policy: %v", req.ReqPolicy)
 	}
 
 	info := TSTInfo{
@@ -166,7 +203,7 @@ func BuildTSTInfo(req *TimeStampReq, serial int, cfg *TSTInfoConfig) ([]byte, in
 	}
 	der, err := asn1.Marshal(info)
 	if err != nil {
-		return nil, 4, fmt.Errorf("marshal TSTInfo: %w", err)
+		return nil, 2, fmt.Errorf("marshal TSTInfo: %w", err)
 	}
 
 	return der, 0, nil
