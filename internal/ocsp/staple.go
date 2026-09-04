@@ -98,6 +98,7 @@ func (p *StapleProvider) buildResponse(cert *x509.Certificate) ([]byte, error) {
 				SerialNumber: cert.SerialNumber,
 				ThisUpdate:   now,
 				NextUpdate:   now.Add(p.nextUpdate),
+				Certificate:  p.signerCert,
 			}
 			return ocsp.CreateResponse(p.caCert, p.signerCert, tmpl, p.signerKey)
 		}
@@ -109,6 +110,7 @@ func (p *StapleProvider) buildResponse(cert *x509.Certificate) ([]byte, error) {
 		SerialNumber: cert.SerialNumber,
 		ThisUpdate:   now,
 		NextUpdate:   now.Add(p.nextUpdate),
+		Certificate:  p.signerCert,
 	}
 	status := "unknown"
 	switch record.Status {

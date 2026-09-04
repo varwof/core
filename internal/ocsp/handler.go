@@ -4,7 +4,9 @@
 package ocsp
 
 import (
+	"bytes"
 	"crypto"
+	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -167,6 +169,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodPost:
+		// RFC 6960 A.1: the OCSP request SHALL contain a Content-Type of
+		// 'application/ocsp-request'.
+		if ct := r.Header.Get("Content-Type"); ct != "" && ct != "application/ocsp-request" && ct != "application/ocsp-request+pem" {
+			writeOCSPError(w, ocspStatusMalformed)
+			return
+		}
 		// M5 security fix (memory DoS): bound the request body. OCSP requests are
 		// small DER blobs; an unauthenticated attacker must not be able to exhaust
 		// heap with an arbitrarily large POST body.
@@ -178,16 +186,29 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		reqDER = body
 	case http.MethodGet:
-		q := r.URL.Query().Get("query")
+		// RFC 6960 A.1 / RFC 5019 §5: OCSP GET encodes the request as a
+		// base64 URL path suffix (GET /ocsp/<base64>). Fall back to the
+		// legacy ?query= form for backwards compatibility.
+		q := strings.TrimPrefix(r.URL.Path, "/")
+		if idx := strings.LastIndex(q, "/"); idx >= 0 {
+			q = q[idx+1:]
+		}
+		if q == "" {
+			q = r.URL.Query().Get("query")
+		}
 		if q == "" {
 			writeOCSPError(w, ocspStatusMalformed)
 			return
 		}
 		var err error
-		reqDER, err = base64.StdEncoding.DecodeString(q)
+		reqDER, err = base64.URLEncoding.DecodeString(q)
 		if err != nil {
-			writeOCSPError(w, ocspStatusMalformed)
-			return
+			// Try standard base64 (no padding) as fallback.
+			reqDER, err = base64.RawURLEncoding.DecodeString(q)
+			if err != nil {
+				writeOCSPError(w, ocspStatusMalformed)
+				return
+			}
 		}
 	default:
 		writeOCSPError(w, ocspStatusMalformed)
@@ -291,6 +312,29 @@ func (h *Handler) handle(reqDER []byte) ([]byte, error) {
 		return nil, fmt.Errorf("parse request: %w", err)
 	}
 
+	// RFC 6960 §4.1.1 / §3.2: validate issuerNameHash/issuerKeyHash against
+	// the configured CA to prevent cross-CA request confusion. The hash
+	// algorithms match golang.org/x/crypto/ocsp.CreateRequest:
+	//   issuerNameHash = SHA-1(RawSubject)
+	//   issuerKeyHash  = SHA-1(RightAlign(rawPublicKeyBits))
+	if h.config.CACert != nil {
+		expectedNameHash := sha1.Sum(h.config.CACert.RawSubject)
+		if !bytes.Equal(ocspReq.IssuerNameHash, expectedNameHash[:]) {
+			return nil, fmt.Errorf("OCSP request issuerNameHash does not match configured CA")
+		}
+		var pubInfo struct {
+			Algorithm pkix.AlgorithmIdentifier
+			PublicKey asn1.BitString
+		}
+		if _, err := asn1.Unmarshal(h.config.CACert.RawSubjectPublicKeyInfo, &pubInfo); err != nil {
+			return nil, fmt.Errorf("unmarshal CA SPKI: %w", err)
+		}
+		expectedKeyHash := sha1.Sum(pubInfo.PublicKey.RightAlign())
+		if !bytes.Equal(ocspReq.IssuerKeyHash, expectedKeyHash[:]) {
+			return nil, fmt.Errorf("OCSP request issuerKeyHash does not match configured CA")
+		}
+	}
+
 	// Extract nonce for echo
 	nonce := extractNonce(reqDER)
 
@@ -309,6 +353,9 @@ func (h *Handler) handle(reqDER []byte) ([]byte, error) {
 			SerialNumber: ocspReq.SerialNumber,
 			ThisUpdate:   now,
 			NextUpdate:   h.config.nextUpdate(now),
+			// RFC 5019 §2.2.2: a response signed by a delegate of the issuing CA
+			// must carry the responder certificate for in-band validation.
+			Certificate: h.config.SignerCert,
 		}
 		if nonce != nil {
 			template.ExtraExtensions = []pkix.Extension{{Id: oidOCSPNonce, Value: nonce}}
@@ -327,6 +374,7 @@ func (h *Handler) handle(reqDER []byte) ([]byte, error) {
 			SerialNumber: ocspReq.SerialNumber,
 			ThisUpdate:   now,
 			NextUpdate:   h.config.nextUpdate(now),
+			Certificate:  h.config.SignerCert,
 		}
 		if nonce != nil {
 			template.ExtraExtensions = []pkix.Extension{{Id: oidOCSPNonce, Value: nonce}}
@@ -341,6 +389,7 @@ func (h *Handler) handle(reqDER []byte) ([]byte, error) {
 		SerialNumber: ocspReq.SerialNumber,
 		ThisUpdate:   now,
 		NextUpdate:   h.config.nextUpdate(now),
+		Certificate:  h.config.SignerCert,
 	}
 	if nonce != nil {
 		template.ExtraExtensions = []pkix.Extension{{Id: oidOCSPNonce, Value: nonce}}
