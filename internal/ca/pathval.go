@@ -6,6 +6,7 @@ package ca
 import (
 	"crypto/x509"
 	"fmt"
+	"net"
 	"strings"
 	"time"
 
@@ -270,6 +271,14 @@ func VerifyPath(chain []*x509.Certificate, src CertSource, opts VerifyPathOption
 			res.RejectReason = fmt.Sprintf("certificate %d (CN=%s) outside validity window", i, c.Subject.CommonName)
 			return res, nil
 		}
+		// RFC 5280 §4.1.1.2: a certificate containing an unrecognized critical
+		// extension MUST be rejected. Go's ParseCertificate surfaces these in
+		// UnhandledCriticalExtensions; refuse the whole path if any appear.
+		if len(c.UnhandledCriticalExtensions) > 0 {
+			res.RejectReason = fmt.Sprintf("certificate %d (CN=%s) carries unrecognized critical extension(s): %v",
+				i, c.Subject.CommonName, c.UnhandledCriticalExtensions)
+			return res, nil
+		}
 		if i+1 < len(chain) {
 			parent := chain[i+1]
 			if err := c.CheckSignatureFrom(parent); err != nil {
@@ -288,11 +297,17 @@ func VerifyPath(chain []*x509.Certificate, src CertSource, opts VerifyPathOption
 				res.RejectReason = fmt.Sprintf("issuer %s lacks keyCertSign key usage", parent.Subject.CommonName)
 				return res, nil
 			}
-			// H6 fix: name constraints — every name (DNS/IP/URI/email) in the
-			// child must be permitted by the issuer's NameConstraints and not
-			// excluded.
-			if reason := checkNameConstraints(parent, c); reason != "" {
-				res.RejectReason = fmt.Sprintf("name constraint violation: %s", reason)
+		}
+		// RFC 5280 §4.2.1.10 / §6.1.4(g): a certificate's names must satisfy the
+		// name constraints of EVERY CA above it in the path — not only the
+		// immediate issuer. Excluded sets union and permitted sets intersect down
+		// the path; checking each certificate against every ancestor's constraints
+		// independently is equivalent (the leaf is accepted only when all
+		// ancestors permit it and none exclude it).
+		for j := i + 1; j < len(chain); j++ {
+			if reason := checkNameConstraints(chain[j], c); reason != "" {
+				res.RejectReason = fmt.Sprintf("name constraint violation (issuer %s): %s",
+					chain[j].Subject.CommonName, reason)
 				return res, nil
 			}
 		}
@@ -432,6 +447,7 @@ func EvaluatePolicy(chain []*x509.Certificate, opts VerifyPathOptions) (*PolicyD
 	// RFC 5280 walk: for each certificate from leaf (i=0) toward root.
 	// Counters are decremented when processing each successive cert upward,
 	// per 6.1.4 (initial) and 6.1.5 (i > 0).
+	var inhibitAnyPolicyHit, explicitPolicyRequired bool
 	for i := 0; i < len(chain); i++ {
 		cert := chain[i]
 		// Apply 6.1.4 for leaf / 6.1.5 for intermediates: decrement counters
@@ -439,6 +455,25 @@ func EvaluatePolicy(chain []*x509.Certificate, opts VerifyPathOptions) (*PolicyD
 		if i > 0 {
 			explicitPolicy, inhibitPolicyMapping, inhibitAnyPolicy =
 				decrementCounters(explicitPolicy, inhibitPolicyMapping, inhibitAnyPolicy, cert)
+			// RFC 5280 §6.1.5(i)(j): each certificate along the path may
+			// tighten the running counters — take the minimum of the running
+			// value and the value asserted by this certificate. Without this,
+			// a constraint asserted by an intermediate/root (e.g. the CA
+			// setting inhibitAnyPolicy=0 when issuing a subCA) would be
+			// ignored unless the leaf also asserted one.
+			e2, m2, a2 := counterState(cert)
+			if e2 >= 0 && (explicitPolicy < 0 || e2 < explicitPolicy) {
+				explicitPolicy = e2
+			}
+			if m2 >= 0 && (inhibitPolicyMapping < 0 || m2 < inhibitPolicyMapping) {
+				inhibitPolicyMapping = m2
+			}
+			if a2 >= 0 && (inhibitAnyPolicy < 0 || a2 < inhibitAnyPolicy) {
+				inhibitAnyPolicy = a2
+			}
+		}
+		if explicitPolicy == 0 && i > 0 {
+			explicitPolicyRequired = true
 		}
 
 		// Policy mappings at this (issuing) certificate: issuerDomainPolicy of
@@ -480,8 +515,12 @@ func EvaluatePolicy(chain []*x509.Certificate, opts VerifyPathOptions) (*PolicyD
 					}
 				}
 			}
-			// explicitPolicy enforcement: when it reaches 0, each subsequent
-			// cert must have an explicit policy; handled by intersection above.
+		}
+		// RFC 5280 §6.1.5(d): when inhibitAnyPolicy reaches 0, suppress
+		// anyPolicy from the valid policy tree at this and all subsequent depths.
+		if i > 0 && inhibitAnyPolicy == 0 {
+			delete(tree[i], oidAnyPolicy.String())
+			inhibitAnyPolicyHit = true
 		}
 	}
 
@@ -504,7 +543,10 @@ func EvaluatePolicy(chain []*x509.Certificate, opts VerifyPathOptions) (*PolicyD
 		}
 	}
 
-	dec := &PolicyDecision{}
+	dec := &PolicyDecision{
+		InhibitAnyPolicyHit:   inhibitAnyPolicyHit,
+		ExplicitPolicyRequired: explicitPolicyRequired,
+	}
 	for p := range matched {
 		dec.AcceptedUserPolicies = append(dec.AcceptedUserPolicies, p)
 	}
@@ -638,7 +680,10 @@ func checkNameConstraints(issuer, child *x509.Certificate) string {
 		}
 	}
 
-	// URI SANs: match on the authority host portion.
+	// URI SANs (RFC 5280 §7.4): constraints apply to the host part. A leading
+	// "." denotes a domain namespace (subdomains only, NOT the apex); a bare
+	// constraint specifies an exact host. A URI whose host is an IP address is
+	// rejected when URI constraints are present.
 	for _, u := range child.URIs {
 		host := u.Hostname()
 		if host == "" {
@@ -650,18 +695,28 @@ func checkNameConstraints(issuer, child *x509.Certificate) string {
 			}
 			continue
 		}
-		if matched, reason := constraintViolation(host, issuer.PermittedURIDomains, issuer.ExcludedURIDomains, dnsMatch, "URI host"); reason != "" {
+		matched, ipHost, reason := uriHostMatch(host, issuer.PermittedURIDomains, issuer.ExcludedURIDomains)
+		if reason != "" {
 			return fmt.Sprintf("URI host %q: %s", host, reason)
-		} else if !matched {
+		}
+		if ipHost {
+			return fmt.Sprintf("URI host %q specified as an IP address under URI constraints", host)
+		}
+		if !matched {
 			return fmt.Sprintf("URI host %q not in any permitted subtree", host)
 		}
 	}
 
-	// Email SANs / subject email: constraints without "@" match by domain.
+	// Email SANs / subject email (RFC 5280 §7.5): an "@" constraint is an exact
+	// mailbox; a bare host constraint matches only addresses AT that host (not
+	// subdomains); a leading "." constraint matches any address in the domain
+	// except the apex host.
 	for _, em := range child.EmailAddresses {
-		if matched, reason := constraintViolation(em, issuer.PermittedEmailAddresses, issuer.ExcludedEmailAddresses, emailMatch, "email"); reason != "" {
+		matched, reason := emailMatchName(em, issuer.PermittedEmailAddresses, issuer.ExcludedEmailAddresses)
+		if reason != "" {
 			return fmt.Sprintf("email %q: %s", em, reason)
-		} else if !matched {
+		}
+		if !matched {
 			return fmt.Sprintf("email %q not in any permitted subtree", em)
 		}
 	}
@@ -713,28 +768,92 @@ func constraintViolation[T any](name T, permitted, excluded []T, match func(cons
 	return false, ""
 }
 
-// dnsMatch implements RFC 5280 §7.2 domain name matching: the constraint
-// matches the name when the name equals the constraint or is a subdomain of it
-// (case-insensitive). A leading "." in the constraint is tolerated.
+// dnsMatch implements RFC 5280 §7.2 DNS name matching: the constraint matches
+// the name when the name equals the constraint or is a subdomain (left-label
+// extension) of it (case-insensitive). A leading "." does not change the DNS
+// result. This is correct for the dNSName name form only; URI hosts and email
+// domains use different rules (see uriHostMatch / emailMatchName).
 func dnsMatch(constraint, name string) bool {
 	c := strings.ToLower(strings.TrimPrefix(constraint, "."))
 	n := strings.ToLower(name)
 	return n == c || strings.HasSuffix(n, "."+c)
 }
 
-// emailMatch matches an email address against a constraint. Constraints with
-// "@" match the full address; otherwise the constraint is a domain that must
-// match the address's domain portion (RFC 5280 §4.2.1.10).
-func emailMatch(constraint, name string) bool {
-	at := strings.LastIndexByte(name, '@')
-	var domain string
-	if at >= 0 {
-		domain = name[at+1:]
-	} else {
-		domain = name
+// uriHostMatch applies RFC 5280 §7.4 URI-host name constraints. It returns
+// (permitted, ipHost, reason). ipHost is true when URI constraints are present
+// and the host is an IP address — RFC 5280 §7.4 requires rejecting such URIs.
+func uriHostMatch(host string, permitted, excluded []string) (bool, bool, string) {
+	constraintPresent := len(permitted) > 0 || len(excluded) > 0
+	if net.ParseIP(host) != nil {
+		return false, constraintPresent, ""
 	}
-	if strings.Contains(constraint, "@") {
-		return strings.EqualFold(constraint, name)
+	for _, c := range excluded {
+		if uriHostIn(c, host) {
+			return false, false, "excluded by URI host constraint"
+		}
 	}
-	return dnsMatch(constraint, domain)
+	if len(permitted) == 0 {
+		return true, false, ""
+	}
+	for _, c := range permitted {
+		if uriHostIn(c, host) {
+			return true, false, ""
+		}
+	}
+	return false, false, ""
+}
+
+// uriHostIn reports whether host is within the URI-host constraint namespace
+// per RFC 5280 §7.4: a leading "." matches only proper subdomains (never the
+// apex); a bare constraint matches the exact host only.
+func uriHostIn(constraint, host string) bool {
+	c := strings.ToLower(constraint)
+	h := strings.ToLower(host)
+	if strings.HasPrefix(c, ".") {
+		base := c[1:]
+		return h != base && strings.HasSuffix(h, "."+base)
+	}
+	return h == c
+}
+
+// emailMatchName applies RFC 5280 §7.5 email name constraints to addr, against
+// the permitted/excluded lists. Returns (permitted, reason) where reason is
+// non-empty on an explicit exclusion violation.
+func emailMatchName(addr string, permitted, excluded []string) (bool, string) {
+	for _, c := range excluded {
+		if emailAddrIn(c, addr) {
+			return false, "excluded by email constraint"
+		}
+	}
+	if len(permitted) == 0 {
+		return true, ""
+	}
+	for _, c := range permitted {
+		if emailAddrIn(c, addr) {
+			return true, ""
+		}
+	}
+	return false, ""
+}
+
+// emailAddrIn reports whether addr is within the email constraint namespace per
+// RFC 5280 §7.5: an "@" constraint is an exact mailbox; a bare host constraint
+// matches addresses AT that host only (not subdomains); a leading "." matches
+// any address in the domain except the apex host.
+func emailAddrIn(constraint, addr string) bool {
+	c := strings.ToLower(constraint)
+	a := strings.ToLower(addr)
+	if strings.Contains(c, "@") {
+		return c == a
+	}
+	at := strings.LastIndexByte(a, '@')
+	if at < 0 {
+		return false
+	}
+	domain := a[at+1:]
+	if strings.HasPrefix(c, ".") {
+		base := c[1:]
+		return domain != base && strings.HasSuffix(domain, "."+base)
+	}
+	return domain == c
 }
