@@ -8,7 +8,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rsa"
-	"crypto/sha256"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
@@ -305,15 +304,25 @@ func (p *OIDCProvisioner) verifyJWT(raw string) (map[string]interface{}, error) 
 		return nil, fmt.Errorf("no JWK matching kid %q", hdr.Kid)
 	}
 
-	// Verify signature
+	// Verify signature — the JWT alg must come from an allowlist AND be
+	// consistent with the selected JWK key type/curve (RFC 7515 §4.1.1,
+	// RFC 7518 §3). Never derive the algorithm from the unverified header alone.
+	hash, ecAlg, err := expectedHash(hdr.Alg, matchedKey)
+	if err != nil {
+		return nil, err
+	}
+
 	signingInput := parts[0] + "." + parts[1]
 	switch matchedKey.Kty {
 	case "RSA":
-		if err := verifyRSASignature(signingInput, sigBytes, matchedKey); err != nil {
+		if err := verifyRSASignature(signingInput, sigBytes, matchedKey, hash); err != nil {
 			return nil, fmt.Errorf("RSA signature verification: %w", err)
 		}
 	case "EC":
-		if err := verifyECDSASignature(signingInput, sigBytes, matchedKey); err != nil {
+		if hdr.Alg != ecAlg {
+			return nil, fmt.Errorf("JWT alg %q does not match EC curve %q", hdr.Alg, matchedKey.Crv)
+		}
+		if err := verifyECDSASignature(signingInput, sigBytes, matchedKey, hash); err != nil {
 			return nil, fmt.Errorf("ECDSA signature verification: %w", err)
 		}
 	default:
@@ -323,7 +332,43 @@ func (p *OIDCProvisioner) verifyJWT(raw string) (map[string]interface{}, error) 
 	return claims, nil
 }
 
-func verifyRSASignature(signingInput string, sig []byte, key *jwkKey) error {
+// expectedHash validates that alg is on the allowlist and is algorithmically
+// consistent with the resolved JWK key type/curve (RFC 7515 §4.1.1, RFC 7518
+// §3.1 / §3.4). On success it returns the hash to use and, for EC keys, the
+// algorithm string matched to the curve. Any mismatch is rejected.
+func expectedHash(alg string, key *jwkKey) (crypto.Hash, string, error) {
+	switch key.Kty {
+	case "RSA":
+		if alg != "RS256" {
+			return 0, "", fmt.Errorf("JWT alg %q not allowed for RSA key (expect RS256)", alg)
+		}
+		return crypto.SHA256, "", nil
+	case "EC":
+		switch alg {
+		case "ES256":
+			if key.Crv != "P-256" {
+				return 0, "", fmt.Errorf("JWT alg ES256 does not match EC curve %q", key.Crv)
+			}
+			return crypto.SHA256, "ES256", nil
+		case "ES384":
+			if key.Crv != "P-384" {
+				return 0, "", fmt.Errorf("JWT alg ES384 does not match EC curve %q", key.Crv)
+			}
+			return crypto.SHA384, "ES384", nil
+		case "ES512":
+			if key.Crv != "P-521" {
+				return 0, "", fmt.Errorf("JWT alg ES512 does not match EC curve %q", key.Crv)
+			}
+			return crypto.SHA512, "ES512", nil
+		default:
+			return 0, "", fmt.Errorf("JWT alg %q not allowed for EC key (expect ES256/ES384/ES512)", alg)
+		}
+	default:
+		return 0, "", fmt.Errorf("unsupported JWK key type %q", key.Kty)
+	}
+}
+
+func verifyRSASignature(signingInput string, sig []byte, key *jwkKey, hash crypto.Hash) error {
 	nBytes, err := base64.RawURLEncoding.DecodeString(key.N)
 	if err != nil {
 		return fmt.Errorf("decode RSA n: %w", err)
@@ -339,11 +384,12 @@ func verifyRSASignature(signingInput string, sig []byte, key *jwkKey) error {
 		E: e,
 	}
 
-	hashed := sha256.Sum256([]byte(signingInput))
-	return rsa.VerifyPKCS1v15(pub, crypto.SHA256, hashed[:], sig)
+	d := hash.New()
+	d.Write([]byte(signingInput))
+	return rsa.VerifyPKCS1v15(pub, hash, d.Sum(nil), sig)
 }
 
-func verifyECDSASignature(signingInput string, sig []byte, key *jwkKey) error {
+func verifyECDSASignature(signingInput string, sig []byte, key *jwkKey, hash crypto.Hash) error {
 	xBytes, err := base64.RawURLEncoding.DecodeString(key.X)
 	if err != nil {
 		return fmt.Errorf("decode EC x: %w", err)
@@ -354,13 +400,17 @@ func verifyECDSASignature(signingInput string, sig []byte, key *jwkKey) error {
 	}
 
 	var curve elliptic.Curve
+	var sigSize int
 	switch key.Crv {
 	case "P-256":
 		curve = elliptic.P256()
+		sigSize = 32
 	case "P-384":
 		curve = elliptic.P384()
+		sigSize = 48
 	case "P-521":
 		curve = elliptic.P521()
+		sigSize = 66
 	default:
 		return fmt.Errorf("unsupported EC curve: %s", key.Crv)
 	}
@@ -371,13 +421,20 @@ func verifyECDSASignature(signingInput string, sig []byte, key *jwkKey) error {
 		Y:     new(big.Int).SetBytes(yBytes),
 	}
 
-	hashed := sha256.Sum256([]byte(signingInput))
+	// JOSE ECDSA signatures are raw fixed-width R||S (RFC 7518 §3.4), each
+	// exactly the curve's coordinate size in octets. Reject malformed lengths.
+	if len(sig) != 2*sigSize {
+		return fmt.Errorf("ECDSA signature length %d does not match curve %s (expect %d)", len(sig), key.Crv, 2*sigSize)
+	}
 
-	// ECDSA signatures in JWT are raw R||S (not DER)
-	r := new(big.Int).SetBytes(sig[:len(sig)/2])
-	s := new(big.Int).SetBytes(sig[len(sig)/2:])
+	d := hash.New()
+	d.Write([]byte(signingInput))
+	digest := d.Sum(nil)
 
-	if !ecdsa.Verify(pub, hashed[:], r, s) {
+	r := new(big.Int).SetBytes(sig[:sigSize])
+	s := new(big.Int).SetBytes(sig[sigSize:])
+
+	if !ecdsa.Verify(pub, digest, r, s) {
 		return errors.New("ECDSA signature invalid")
 	}
 	return nil
