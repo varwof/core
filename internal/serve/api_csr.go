@@ -93,6 +93,17 @@ func (s *Server) apiCSRSign(w http.ResponseWriter, r *http.Request) {
 		s.apiErr(w, r, http.StatusBadRequest, "api.invalid_csr", err.Error())
 		return
 	}
+	// RFC 2986: reject CSRs whose self-signature does not verify — the requester
+	// must prove control of the private key corresponding to the CSR public key.
+	if err := csr.CheckSignature(); err != nil {
+		s.apiErr(w, r, http.StatusBadRequest, "api.invalid_csr_signature", err.Error())
+		return
+	}
+	// RFC 2986 §4.1: the only defined CSR version is 0 (v1).
+	if csr.Version != 0 {
+		s.apiErr(w, r, http.StatusBadRequest, "api.invalid_csr_version", fmt.Sprintf("unsupported CSR version %d", csr.Version))
+		return
+	}
 
 	profileName := req.Profile
 	if profileName == "" {
@@ -142,6 +153,7 @@ func (s *Server) apiCSRSign(w http.ResponseWriter, r *http.Request) {
 		InhibitAnyPolicy:      cfg.Defaults.InhibitAnyPolicy,
 		PolicyFile:            cfg.Policy,
 		RequirePolicy:         s.requirePolicy(),
+		RequireTLSServerSAN:   s.requireTLSServerSAN(),
 	}
 
 	for _, san := range req.SANs {

@@ -243,6 +243,10 @@ func parseCSRFile(path string) (*x509.CertificateRequest, error) {
 	if err := csr.CheckSignature(); err != nil {
 		return nil, fmt.Errorf("csr signature check: %w", err)
 	}
+	// RFC 2986 §4.1: the only defined CSR version is 0 (v1).
+	if csr.Version != 0 {
+		return nil, fmt.Errorf("unsupported CSR version %d (only version 0 is defined)", csr.Version)
+	}
 	return csr, nil
 }
 
